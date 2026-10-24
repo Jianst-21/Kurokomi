@@ -86,6 +86,9 @@ export function buildSearchQueryUrl(options: {
 
   if (options.query && options.query.trim()) {
     params.set('title', options.query.trim());
+  } else {
+    // Default to most followed/popular if no query text
+    params.set('order[followedCount]', 'desc');
   }
 
   if (options.limit) {
@@ -138,7 +141,10 @@ export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardI
     });
 
     if (!res.ok) {
-      throw new Error(`Failed to fetch updates: ${res.status}`);
+      if (res.status === 429) {
+        throw new Error('Batas akses terlampaui (429). Silakan tunggu beberapa detik.');
+      }
+      throw new Error(`Gagal memuat rilis terbaru: status ${res.status}`);
     }
 
     const data = await res.json();
@@ -183,7 +189,7 @@ export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardI
     return items;
   } catch (err) {
     console.error('fetchLatestUpdates error:', err);
-    return [];
+    throw err;
   }
 }
 
@@ -235,6 +241,9 @@ export async function searchComics(
 
     const res = await fetch(url, { next: { revalidate: 60 } });
     if (!res.ok) {
+      if (res.status === 429) {
+        throw new Error('Batas akses terlampaui (429). Silakan coba lagi sesaat lagi.');
+      }
       throw new Error(`Failed to search comics: ${res.status}`);
     }
 
@@ -272,7 +281,7 @@ export async function searchComics(
     return items;
   } catch (err) {
     console.error('searchComics error:', err);
-    return [];
+    throw err;
   }
 }
 
@@ -382,6 +391,18 @@ export async function fetchComicChapters(mangaId: string): Promise<ChapterItem[]
   } catch (err) {
     console.error('fetchComicChapters error:', err);
     return [];
+  }
+}
+
+export async function fetchMangaIdFromChapter(chapterId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${MANGADEX_API_BASE}/chapter/${chapterId}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const mangaRel = data.data?.relationships?.find((r: { type: string }) => r.type === 'manga');
+    return mangaRel?.id || null;
+  } catch {
+    return null;
   }
 }
 

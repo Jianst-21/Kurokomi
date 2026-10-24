@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Menu, ArrowLeft } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Menu, ArrowLeft, ChevronDown } from 'lucide-react';
 
 interface ReaderHUDProps {
   visible: boolean;
@@ -94,7 +94,7 @@ export function ReaderHUD({
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold shadow-md shadow-blue-600/30 transition-all shrink-0"
           >
             <span>Ch. {currentChapter}</span>
-            <span className="text-[10px] opacity-80">▾</span>
+            <ChevronDown className="w-3 h-3 opacity-80" />
           </button>
 
           {/* Next Chapter Button */}

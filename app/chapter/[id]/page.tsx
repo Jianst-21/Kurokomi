@@ -12,7 +12,13 @@ import {
   Check,
 } from 'lucide-react';
 import { ChapterItem, ComicDetail } from '@/lib/types';
-import { fetchChapterPages, fetchComicChapters, fetchComicDetail } from '@/lib/mangadex';
+import {
+  fetchChapterPages,
+  fetchComicChapters,
+  fetchComicDetail,
+  fetchMangaIdFromChapter,
+  sortChapters,
+} from '@/lib/mangadex';
 import { saveHistory } from '@/lib/storage';
 import { ReaderHUD } from '@/components/ReaderHUD';
 import { ReaderImage } from '@/components/ReaderImage';
@@ -23,8 +29,9 @@ export default function ReaderPage() {
   const router = useRouter();
 
   const chapterId = params?.id as string;
-  const mangaId = searchParams.get('mangaId') || '';
+  const initialMangaId = searchParams.get('mangaId') || '';
 
+  const [mangaId, setMangaId] = useState(initialMangaId);
   const [pages, setPages] = useState<string[]>([]);
   const [comic, setComic] = useState<ComicDetail | null>(null);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
@@ -46,18 +53,28 @@ export default function ReaderPage() {
       }
       setPages(pageUrls);
 
-      // Load manga details & chapter list if not already loaded
-      if (mangaId) {
+      // Auto-resolve mangaId if missing
+      let targetMangaId = mangaId;
+      if (!targetMangaId) {
+        const resolved = await fetchMangaIdFromChapter(chapterId);
+        if (resolved) {
+          targetMangaId = resolved;
+          setMangaId(resolved);
+        }
+      }
+
+      // Load manga details & chapter list
+      if (targetMangaId) {
         const [detailData, chaptersData] = await Promise.all([
-          comic ? Promise.resolve(comic) : fetchComicDetail(mangaId),
-          chapters.length ? Promise.resolve(chapters) : fetchComicChapters(mangaId),
+          comic ? Promise.resolve(comic) : fetchComicDetail(targetMangaId),
+          chapters.length ? Promise.resolve(chapters) : fetchComicChapters(targetMangaId),
         ]);
 
         if (detailData) setComic(detailData);
         if (chaptersData) setChapters(chaptersData);
 
         // Save to reading history
-        const currentCh = chaptersData.find(c => c.id === chapterId);
+        const currentCh = chaptersData?.find(c => c.id === chapterId);
         if (detailData) {
           saveHistory({
             mangaId: detailData.id,
@@ -82,14 +99,8 @@ export default function ReaderPage() {
     loadChapter();
   }, [chapterId]);
 
-  // Determine current chapter index in sorted list (ascending)
-  // chapters from fetchComicChapters are sorted desc by default, let's sort them asc for sequential reading
-  const ascChapters = [...chapters].sort((a, b) => {
-    const numA = parseFloat(a.chapter);
-    const numB = parseFloat(b.chapter);
-    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-    return a.chapter.localeCompare(b.chapter, undefined, { numeric: true });
-  });
+  // Sort chapters ascending for sequential reading
+  const ascChapters = sortChapters(chapters, true);
 
   const currentIndex = ascChapters.findIndex(c => c.id === chapterId);
   const currentChapter = currentIndex >= 0 ? ascChapters[currentIndex] : null;
@@ -117,13 +128,22 @@ export default function ReaderPage() {
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-4 text-center">
         <AlertCircle className="w-10 h-10 text-rose-500" />
         <p className="text-sm text-zinc-300 max-w-xs">{error || 'Chapter tidak ditemukan'}</p>
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Kembali</span>
+          </button>
+          <button
+            onClick={() => loadChapter()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Coba Lagi</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -173,13 +193,15 @@ export default function ReaderPage() {
             </span>
           )}
 
-          <Link
-            href={`/manga/${mangaId}`}
-            onClick={e => e.stopPropagation()}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            Kembali ke Daftar Chapter
-          </Link>
+          {mangaId && (
+            <Link
+              href={`/manga/${mangaId}`}
+              onClick={e => e.stopPropagation()}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              Kembali ke Daftar Chapter
+            </Link>
+          )}
         </div>
       </main>
 

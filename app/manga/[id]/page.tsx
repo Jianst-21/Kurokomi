@@ -95,13 +95,22 @@ export default function MangaDetailPage() {
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-4 text-center">
         <AlertCircle className="w-10 h-10 text-rose-500" />
         <p className="text-sm text-zinc-300 max-w-xs">{error || 'Komik tidak ditemukan'}</p>
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
-        >
-          <ArrowLeft className="w-3.5 h-3.5" />
-          <span>Kembali</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Kembali</span>
+          </button>
+          <button
+            onClick={() => loadData()}
+            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Coba Lagi</span>
+          </button>
+        </div>
       </div>
     );
   }

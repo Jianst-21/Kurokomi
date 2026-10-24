@@ -1,9 +1,10 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import {
   deduplicateChapters,
   sortChapters,
   getComicTypeFromLanguage,
   buildSearchQueryUrl,
+  searchComics,
 } from '@/lib/mangadex';
 import { ChapterItem } from '@/lib/types';
 
@@ -46,7 +47,6 @@ describe('MangaDex Helpers & Utilities', () => {
     const deduplicated = deduplicateChapters(chapters);
     expect(deduplicated.length).toBe(2);
     expect(deduplicated.map(c => c.chapter)).toEqual(['1', '2']);
-    // Prioritizes newer publish date
     expect(deduplicated[0].id).toBe('c1-group-b');
   });
 
@@ -76,7 +76,18 @@ describe('MangaDex Helpers & Utilities', () => {
     expect(url).toContain('api.mangadex.org/manga');
     expect(url).toContain('availableTranslatedLanguage%5B%5D=id');
     expect(url).toContain('originalLanguage%5B%5D=ko');
-    // Full color tag UUID: f4122d1c-3b44-44d0-9936-ff7502c39ad3
     expect(url).toContain('f4122d1c-3b44-44d0-9936-ff7502c39ad3');
+  });
+
+  it('throws descriptive error on 429 rate limit or HTTP failure in searchComics', async () => {
+    const originalFetch = global.fetch;
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+    });
+
+    await expect(searchComics('test')).rejects.toThrow(/429|Batas akses/i);
+
+    global.fetch = originalFetch;
   });
 });
