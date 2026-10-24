@@ -28,12 +28,6 @@ body {
   scrollbar-width: none;
 }
 
-/* Optimize reader rendering performance for 100+ images */
-.reader-panel {
-  content-visibility: auto;
-  contain-intrinsic-size: 800px;
-}
-
 /* Prevent accidental pull-to-refresh when scrolling fast in mobile browsers */
 .reader-container {
   overscroll-behavior-y: contain;
