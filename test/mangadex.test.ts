@@ -5,6 +5,7 @@ import {
   getComicTypeFromLanguage,
   buildSearchQueryUrl,
   searchComics,
+  getEnglishTitle,
 } from '@/lib/mangadex';
 import { ChapterItem } from '@/lib/types';
 
@@ -15,6 +16,26 @@ describe('MangaDex Helpers & Utilities', () => {
     expect(getComicTypeFromLanguage('zh')).toBe('manhua');
     expect(getComicTypeFromLanguage('zh-hk')).toBe('manhua');
     expect(getComicTypeFromLanguage('en')).toBe('other');
+  });
+
+  it('prefers English title from main title or altTitles', () => {
+    const attr1 = {
+      title: { 'ko-ro': 'Na Honjaman Level-Up' },
+      altTitles: [{ ja: '...' }, { en: 'Solo Leveling' }],
+    };
+    expect(getEnglishTitle(attr1)).toBe('Solo Leveling');
+
+    const attr2 = {
+      title: { en: 'One Piece' },
+      altTitles: [],
+    };
+    expect(getEnglishTitle(attr2)).toBe('One Piece');
+
+    const attr3 = {
+      title: { 'ja-ro': 'Kimetsu no Yaiba' },
+      altTitles: [{ en: 'Demon Slayer: Kimetsu no Yaiba' }],
+    };
+    expect(getEnglishTitle(attr3)).toBe('Demon Slayer: Kimetsu no Yaiba');
   });
 
   it('deduplicates multiple scanlation releases for the same chapter number', () => {

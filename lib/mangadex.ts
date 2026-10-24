@@ -2,6 +2,7 @@ import {
   ComicCardItem,
   ComicDetail,
   ChapterItem,
+  ChapterPageItem,
   FilterOptions,
   ComicType,
 } from './types';
@@ -74,6 +75,39 @@ export function sortChapters(chapters: ChapterItem[], ascending: boolean = false
   });
 }
 
+export function getEnglishTitle(attr: {
+  title?: Record<string, string | undefined>;
+  altTitles?: Array<Record<string, string | undefined>>;
+} | null | undefined): string {
+  if (!attr) return 'Judul Tidak Diketahui';
+
+  // 1. Check if 'en' exists in main title
+  if (attr.title?.en && typeof attr.title.en === 'string' && attr.title.en.trim()) {
+    return attr.title.en.trim();
+  }
+
+  // 2. Look for 'en' in altTitles array: [ { en: "English Title" }, ... ]
+  if (Array.isArray(attr.altTitles)) {
+    for (const alt of attr.altTitles) {
+      if (alt && alt.en && typeof alt.en === 'string' && alt.en.trim()) {
+        return alt.en.trim();
+      }
+    }
+  }
+
+  // 3. Fallback to romanized Japanese/Korean/Chinese or first available title
+  const mainTitles = attr.title || {};
+  return (
+    mainTitles['en'] ||
+    mainTitles['ja-ro'] ||
+    mainTitles['ko-ro'] ||
+    mainTitles['zh-ro'] ||
+    mainTitles['id'] ||
+    Object.values(mainTitles)[0] ||
+    'Judul Tidak Diketahui'
+  );
+}
+
 export function buildSearchQueryUrl(options: {
   query?: string;
   type?: ComicType;
@@ -137,10 +171,13 @@ export function buildSearchQueryUrl(options: {
   return `${base}/manga?${params.toString()}`;
 }
 
-export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardItem[]> {
+export async function fetchLatestUpdates(limit: number = 60, offset: number = 0): Promise<ComicCardItem[]> {
   try {
     const params = new URLSearchParams();
     params.set('limit', String(limit));
+    if (offset > 0) {
+      params.set('offset', String(offset));
+    }
     params.append('translatedLanguage[]', 'id');
     params.set('order[readableAt]', 'desc');
     params.append('includes[]', 'manga');
@@ -166,11 +203,7 @@ export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardI
       seenManga.add(mangaRel.id);
 
       const mangaAttr = mangaRel.attributes || {};
-      const title =
-        mangaAttr.title?.id ||
-        mangaAttr.title?.en ||
-        Object.values(mangaAttr.title || {})[0] ||
-        'Judul Tidak Diketahui';
+      const title = getEnglishTitle(mangaAttr);
 
       const type = getComicTypeFromLanguage(mangaAttr.originalLanguage);
 
@@ -244,7 +277,7 @@ export async function searchComics(
       type: options?.type,
       isColor: options?.isColor,
       genre: options?.genre,
-      limit: options?.limit || 24,
+      limit: options?.limit || 30,
       offset: options?.offset || 0,
     });
 
@@ -261,11 +294,7 @@ export async function searchComics(
 
     for (const m of data.data || []) {
       const attr = m.attributes || {};
-      const title =
-        attr.title?.id ||
-        attr.title?.en ||
-        Object.values(attr.title || {})[0] ||
-        'Judul Tidak Diketahui';
+      const title = getEnglishTitle(attr);
 
       const type = getComicTypeFromLanguage(attr.originalLanguage);
 
@@ -311,11 +340,7 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
     if (!data) return null;
 
     const attr = data.attributes || {};
-    const title =
-      attr.title?.id ||
-      attr.title?.en ||
-      Object.values(attr.title || {})[0] ||
-      'Judul Tidak Diketahui';
+    const title = getEnglishTitle(attr);
 
     const altTitles: string[] = (attr.altTitles || []).map((t: Record<string, string>) => Object.values(t)[0]).filter(Boolean);
     const description = attr.description?.id || attr.description?.en || Object.values(attr.description || {})[0] || 'Tidak ada sinopsis.';
@@ -415,7 +440,7 @@ export async function fetchMangaIdFromChapter(chapterId: string): Promise<string
   }
 }
 
-export async function fetchChapterPages(chapterId: string): Promise<string[]> {
+export async function fetchChapterPages(chapterId: string): Promise<ChapterPageItem[]> {
   try {
     const res = await fetch(`${getApiBase()}/at-home/server/${chapterId}`);
     if (!res.ok) {
@@ -429,7 +454,10 @@ export async function fetchChapterPages(chapterId: string): Promise<string[]> {
 
     if (!baseUrl || !hash || !files.length) return [];
 
-    return files.map(file => `${baseUrl}/data/${hash}/${file}`);
+    return files.map(file => ({
+      url: `${baseUrl}/data/${hash}/${file}`,
+      fallbackUrl: `https://uploads.mangadex.org/data/${hash}/${file}`,
+    }));
   } catch (err) {
     console.error('fetchChapterPages error:', err);
     return [];

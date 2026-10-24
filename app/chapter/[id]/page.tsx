@@ -11,7 +11,7 @@ import {
   ChevronRight,
   Check,
 } from 'lucide-react';
-import { ChapterItem, ComicDetail } from '@/lib/types';
+import { ChapterItem, ChapterPageItem, ComicDetail } from '@/lib/types';
 import {
   fetchChapterPages,
   fetchComicChapters,
@@ -32,7 +32,7 @@ export default function ReaderPage() {
   const initialMangaId = searchParams.get('mangaId') || '';
 
   const [mangaId, setMangaId] = useState(initialMangaId);
-  const [pages, setPages] = useState<string[]>([]);
+  const [pages, setPages] = useState<ChapterPageItem[]>([]);
   const [comic, setComic] = useState<ComicDetail | null>(null);
   const [chapters, setChapters] = useState<ChapterItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -168,8 +168,13 @@ export default function ReaderPage() {
         onClick={toggleHUD}
         className="flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-1"
       >
-        {pages.map((url, idx) => (
-          <ReaderImage key={url} src={url} pageIndex={idx} />
+        {pages.map((item, idx) => (
+          <ReaderImage
+            key={item.url}
+            src={item.url}
+            fallbackSrc={item.fallbackUrl}
+            pageIndex={idx}
+          />
         ))}
 
         {/* End of Chapter Section */}

@@ -1,22 +1,46 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AlertCircle, RotateCw } from 'lucide-react';
 
 interface ReaderImageProps {
   src: string;
+  fallbackSrc?: string;
   pageIndex: number;
 }
 
-export function ReaderImage({ src, pageIndex }: ReaderImageProps) {
+export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
+  const [currentSrc, setCurrentSrc] = useState(src);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    setCurrentSrc(src);
+    setLoaded(false);
+    setError(false);
+    setHasTriedFallback(false);
+  }, [src]);
+
+  const handleImageError = () => {
+    // If the community @home volunteer node 404s/fails, fallback immediately to official MangaDex origin
+    if (fallbackSrc && !hasTriedFallback && currentSrc !== fallbackSrc) {
+      setHasTriedFallback(true);
+      setCurrentSrc(fallbackSrc);
+    } else {
+      setError(true);
+    }
+  };
 
   const handleRetry = (e: React.MouseEvent) => {
     e.stopPropagation();
     setError(false);
     setLoaded(false);
+    if (fallbackSrc) {
+      setCurrentSrc(fallbackSrc);
+      setHasTriedFallback(true);
+    }
     setRetryKey(k => k + 1);
   };
 
@@ -48,13 +72,13 @@ export function ReaderImage({ src, pageIndex }: ReaderImageProps) {
       {!error && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          key={retryKey}
-          src={src}
+          key={`${currentSrc}-${retryKey}`}
+          src={currentSrc}
           alt={`Halaman ${pageIndex + 1}`}
           loading="lazy"
           referrerPolicy="no-referrer"
           onLoad={() => setLoaded(true)}
-          onError={() => setError(true)}
+          onError={handleImageError}
           className={`w-full h-auto block select-none transition-opacity duration-200 ${
             loaded ? 'opacity-100' : 'opacity-0'
           }`}

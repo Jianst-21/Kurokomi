@@ -34,6 +34,11 @@ export interface ChapterItem {
   pagesCount: number;
 }
 
+export interface ChapterPageItem {
+  url: string;
+  fallbackUrl: string;
+}
+
 export interface FilterOptions {
   type?: ComicType;
   isColor?: boolean;
