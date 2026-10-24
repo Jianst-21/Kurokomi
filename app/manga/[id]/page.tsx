@@ -1,0 +1,269 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import {
+  ArrowLeft,
+  Bookmark,
+  BookOpen,
+  Play,
+  Palette,
+  User,
+  Calendar,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
+import { ComicDetail, ChapterItem } from '@/lib/types';
+import { fetchComicDetail, fetchComicChapters } from '@/lib/mangadex';
+import { toggleFavorite, isFavorite, getComicLastRead } from '@/lib/storage';
+import { ChapterList } from '@/components/ChapterList';
+
+export default function MangaDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const mangaId = params?.id as string;
+
+  const [comic, setComic] = useState<ComicDetail | null>(null);
+  const [chapters, setChapters] = useState<ChapterItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [favorited, setFavorited] = useState(false);
+  const [lastReadChapter, setLastReadChapter] = useState<{ chapterId: string; chapterNumber: string } | null>(null);
+  const [synopsisExpanded, setSynopsisExpanded] = useState(false);
+
+  const loadData = async () => {
+    if (!mangaId) return;
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const [detailData, chaptersData] = await Promise.all([
+        fetchComicDetail(mangaId),
+        fetchComicChapters(mangaId),
+      ]);
+
+      if (!detailData) {
+        setError('Komik tidak ditemukan atau telah dihapus.');
+      } else {
+        setComic(detailData);
+        setChapters(chaptersData);
+        setFavorited(isFavorite(mangaId));
+
+        const historyItem = getComicLastRead(mangaId);
+        if (historyItem) {
+          setLastReadChapter({
+            chapterId: historyItem.chapterId,
+            chapterNumber: historyItem.chapterNumber,
+          });
+        }
+      }
+    } catch {
+      setError('Gagal memuat detail komik. Silakan coba kembali.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, [mangaId]);
+
+  const handleToggleFavorite = () => {
+    if (!comic) return;
+    const newState = toggleFavorite({
+      id: comic.id,
+      title: comic.title,
+      coverUrl: comic.coverUrl,
+      type: comic.type,
+      isFullColor: comic.isFullColor,
+    });
+    setFavorited(newState);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-3">
+        <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+        <span className="text-xs text-zinc-400">Memuat detail komik...</span>
+      </div>
+    );
+  }
+
+  if (error || !comic) {
+    return (
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-4 text-center">
+        <AlertCircle className="w-10 h-10 text-rose-500" />
+        <p className="text-sm text-zinc-300 max-w-xs">{error || 'Komik tidak ditemukan'}</p>
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Kembali</span>
+        </button>
+      </div>
+    );
+  }
+
+  const firstChapter = chapters.length > 0 ? chapters[chapters.length - 1] : null;
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-16">
+      {/* Top Floating App Bar */}
+      <header className="sticky top-0 z-30 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => router.back()}
+          aria-label="Kembali"
+          className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+        </button>
+        <h1 className="text-xs font-bold text-zinc-200 line-clamp-1 max-w-[200px] text-center">
+          {comic.title}
+        </h1>
+        <button
+          onClick={handleToggleFavorite}
+          aria-label="Favorit"
+          className={`p-1.5 rounded-lg border transition-colors ${
+            favorited
+              ? 'bg-blue-600 border-blue-500 text-white'
+              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+          }`}
+        >
+          <Bookmark className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
+        </button>
+      </header>
+
+      {/* Main Container */}
+      <main className="max-w-md mx-auto w-full px-4 pt-4 flex flex-col gap-5">
+        {/* Comic Presentation Card */}
+        <div className="flex gap-4 items-start">
+          {/* Cover Image */}
+          <div className="w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-lg relative">
+            {comic.coverUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={comic.coverUrl}
+                alt={comic.title}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                <BookOpen className="w-8 h-8 opacity-40" />
+              </div>
+            )}
+          </div>
+
+          {/* Details Column */}
+          <div className="flex flex-col flex-1 min-w-0 gap-1.5">
+            <h2 className="text-base font-bold text-zinc-100 leading-snug">
+              {comic.title}
+            </h2>
+
+            {/* Type & Status Badges */}
+            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-900">
+                {comic.type}
+              </span>
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+                {comic.status === 'completed' ? 'Tamat' : 'Ongoing'}
+              </span>
+              {comic.isFullColor && (
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1">
+                  <Palette className="w-2.5 h-2.5" />
+                  <span>Warna</span>
+                </span>
+              )}
+            </div>
+
+            {/* Author / Year */}
+            <div className="flex flex-col gap-0.5 text-[11px] text-zinc-400 mt-1">
+              {comic.author && (
+                <div className="flex items-center gap-1 line-clamp-1">
+                  <User className="w-3 h-3 text-zinc-500 shrink-0" />
+                  <span>{comic.author}</span>
+                </div>
+              )}
+              {comic.year && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-zinc-500 shrink-0" />
+                  <span>{comic.year}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Button: Lanjut Baca / Mulai Baca */}
+        {lastReadChapter ? (
+          <Link
+            href={`/chapter/${lastReadChapter.chapterId}?mangaId=${comic.id}`}
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Lanjut Baca Chapter {lastReadChapter.chapterNumber}</span>
+          </Link>
+        ) : firstChapter ? (
+          <Link
+            href={`/chapter/${firstChapter.id}?mangaId=${comic.id}`}
+            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Mulai Baca Chapter {firstChapter.chapter}</span>
+          </Link>
+        ) : null}
+
+        {/* Genres Chips */}
+        {comic.genres.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {comic.genres.map(g => (
+              <span
+                key={g}
+                className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400"
+              >
+                {g}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Synopsis Section */}
+        {comic.description && (
+          <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
+            <span className="text-xs font-bold text-zinc-300">Sinopsis</span>
+            <p
+              className={`text-xs text-zinc-400 leading-relaxed ${
+                synopsisExpanded ? '' : 'line-clamp-3'
+              }`}
+            >
+              {comic.description}
+            </p>
+            {comic.description.length > 150 && (
+              <button
+                onClick={() => setSynopsisExpanded(!synopsisExpanded)}
+                className="text-[11px] text-blue-400 hover:text-blue-300 font-medium self-start mt-0.5"
+              >
+                {synopsisExpanded ? 'Sembunyikan' : 'Baca Selengkapnya...'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Chapter List Section */}
+        {chapters.length > 0 ? (
+          <ChapterList
+            mangaId={comic.id}
+            chapters={chapters}
+            lastReadChapterId={lastReadChapter?.chapterId}
+          />
+        ) : (
+          <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center text-xs text-zinc-500">
+            Belum ada chapter Bahasa Indonesia yang tersedia untuk komik ini.
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
