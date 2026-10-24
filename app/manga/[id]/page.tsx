@@ -19,6 +19,7 @@ import { ComicDetail, ChapterItem } from '@/lib/types';
 import { fetchComicDetail, fetchComicChapters } from '@/lib/mangadex';
 import { toggleFavorite, isFavorite, getComicLastRead } from '@/lib/storage';
 import { ChapterList } from '@/components/ChapterList';
+import { BottomNav } from '@/components/BottomNav';
 
 export default function MangaDetailPage() {
   const params = useParams();
@@ -123,6 +124,14 @@ export default function MangaDetailPage() {
     setFavorited(newState);
   };
 
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && document.referrer && document.referrer.includes('/search')) {
+      router.push('/search');
+    } else {
+      router.push('/');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-3">
@@ -139,7 +148,7 @@ export default function MangaDetailPage() {
         <p className="text-sm text-zinc-300 max-w-xs">{error || 'Komik tidak ditemukan'}</p>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => router.back()}
+            onClick={handleBack}
             className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -161,11 +170,11 @@ export default function MangaDetailPage() {
   const firstChapter = activeChapters.length > 0 ? activeChapters[activeChapters.length - 1] : null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-16">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
       {/* Top Floating App Bar */}
       <header className="sticky top-0 z-30 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3 flex items-center justify-between">
         <button
-          onClick={() => router.back()}
+          onClick={handleBack}
           aria-label="Kembali"
           className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors"
         >
@@ -354,6 +363,9 @@ export default function MangaDetailPage() {
           </div>
         )}
       </main>
+
+      {/* Persistent Bottom Navigation (Home, Search, Favorit, History) */}
+      <BottomNav />
     </div>
   );
 }
