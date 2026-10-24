@@ -23,13 +23,74 @@ export const GENRE_TAG_IDS: Record<string, string> = {
   action: '391b0423-d847-456f-aff0-8b0cfc03066b',
   adventure: '87cc87cd-a395-47af-b27a-93258283bbc6',
   comedy: '4d32cc48-9f00-4cca-9b5a-a839f0764984',
-  fantasy: 'cdc58593-87dd-415e-bbc0-2ec27bf4044f',
-  romance: '423e2eae-a7a2-4a8b-ac03-a8351462d71d',
-  isekai: 'ace04997-f6bd-436e-b261-779182193d3d',
+  crime: '5ca48985-9a9d-4bd8-be29-80dc0303db72',
+  demons: '39730448-9a5f-48a2-85b0-a70db87b1233',
   drama: 'b9af3a63-f058-46de-a9a0-e0c13906197a',
-  mystery: 'ee9634b1-638e-4a35-baeb-23975250b93b',
-  scifi: '25632c36-7755-4361-b88d-1b69ca57dda3',
+  fantasy: 'cdc58593-87dd-415e-bbc0-2ec27bf404cc',
+  harem: 'aafb99c1-7f60-43fa-b75f-fc9502ce29c7',
+  historical: '33771934-028e-4cb3-8744-691e866a923e',
+  horror: 'cdad7e68-1419-41dd-bdce-27753074a640',
+  isekai: 'ace04997-f6bd-436e-b261-779182193d3d',
+  magic: 'a1f53773-c69a-4ce5-8cab-fffcd90b1565',
+  martialarts: '799c202e-7daa-44eb-9cf7-8a3c0441531e',
+  mecha: '50880a9d-5440-4732-9afb-8f457127e836',
+  medical: 'c8cbe35b-1b2b-4a3f-9c37-db84c4514856',
+  military: 'ac72833b-c4e9-4878-b9db-6c8a4a99444a',
+  monsters: '36fd93ea-e8b8-445e-b836-358f02b3d33d',
+  mystery: 'ee968100-4191-4968-93d3-f82d72be7e46',
+  psychological: '3b60b75c-a2d7-4860-ab56-05f391bb889c',
+  reincarnation: '0bc90acb-ccc1-44ca-a34a-b9f3a73259d0',
+  romance: '423e2eae-a7a2-4a8b-ac03-a8351462d71d',
+  schoollife: 'caaa44eb-cd40-4177-b930-79d3ef2afe87',
+  scifi: '256c8bd9-4904-4360-bf4f-508a76d67183',
   sliceoflife: 'e5301a23-ebd9-49dd-a0cb-2add944c7fe9',
+  sports: '69964a64-2f90-4d33-beeb-f3ed2875eb4c',
+  supernatural: 'eabc5b4c-6aff-42f3-b657-3e90cbd00b75',
+  survival: '5fff9cde-849c-4d78-aab0-0d52b2ee1d25',
+  thriller: '07251805-a27e-4d59-b488-f0bfbec15168',
+  timetravel: '292e862b-2d17-4062-90a2-0356caa4ae27',
+  tragedy: 'f8f62932-27da-4fe4-8ee1-6779a8c5edba',
+  vampires: 'd7d1730f-6eb0-4ba6-9437-602cac38664c',
+  videogames: '9438db5a-7e2a-4ac0-b39e-e0d95a34b8a8',
+  villainess: 'd14322ac-4d6f-4e9b-afd9-629d5f4d8a41',
+  wuxia: 'acc803a4-c95a-4c22-86fc-eb6b582d82a2',
+};
+
+export const GENRE_LABELS: Record<string, string> = {
+  action: 'Action',
+  adventure: 'Adventure',
+  comedy: 'Comedy',
+  crime: 'Crime',
+  demons: 'Demons',
+  drama: 'Drama',
+  fantasy: 'Fantasy',
+  harem: 'Harem',
+  historical: 'Historical',
+  horror: 'Horror',
+  isekai: 'Isekai',
+  magic: 'Magic',
+  martialarts: 'Martial Arts',
+  mecha: 'Mecha',
+  medical: 'Medical',
+  military: 'Military',
+  monsters: 'Monsters',
+  mystery: 'Mystery',
+  psychological: 'Psychological',
+  reincarnation: 'Reincarnation',
+  romance: 'Romance',
+  schoollife: 'School Life',
+  scifi: 'Sci-Fi',
+  sliceoflife: 'Slice of Life',
+  sports: 'Sports',
+  supernatural: 'Supernatural',
+  survival: 'Survival',
+  thriller: 'Thriller',
+  timetravel: 'Time Travel',
+  tragedy: 'Tragedy',
+  vampires: 'Vampires',
+  videogames: 'Video Games',
+  villainess: 'Villainess',
+  wuxia: 'Wuxia',
 };
 
 export function getComicTypeFromLanguage(originalLanguage?: string): 'manga' | 'manhwa' | 'manhua' | 'other' {
@@ -456,9 +517,12 @@ export async function fetchMangaIdFromChapter(chapterId: string): Promise<string
 
 export async function fetchChapterPages(chapterId: string): Promise<ChapterPageItem[]> {
   try {
-    // If chapter ID is from Komiku provider (komiku:slug:chapterNum)
-    if (chapterId.startsWith('komiku:')) {
-      const parts = chapterId.split(':');
+    const decodedId = decodeURIComponent(chapterId || '');
+
+    // If chapter ID is from Komiku provider (komiku--slug--chapterNum or komiku:slug:chapterNum)
+    if (decodedId.startsWith('komiku--') || decodedId.startsWith('komiku:')) {
+      const delimiter = decodedId.includes('--') ? '--' : ':';
+      const parts = decodedId.split(delimiter);
       const slug = parts[1];
       const chapterNum = parts[2] || '1';
 
@@ -475,7 +539,7 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
       return [];
     }
 
-    const res = await fetch(`${getApiBase()}/at-home/server/${chapterId}`);
+    const res = await fetch(`${getApiBase()}/at-home/server/${decodedId}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter server: ${res.status}`);
     }

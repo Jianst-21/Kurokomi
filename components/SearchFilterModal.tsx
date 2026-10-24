@@ -3,7 +3,7 @@
 import React from 'react';
 import { X, Palette, Check, RotateCcw } from 'lucide-react';
 import { ComicType } from '@/lib/types';
-import { GENRE_TAG_IDS } from '@/lib/mangadex';
+import { GENRE_TAG_IDS, GENRE_LABELS } from '@/lib/mangadex';
 
 interface SearchFilterModalProps {
   isOpen: boolean;
@@ -26,7 +26,7 @@ const TYPE_OPTIONS: { label: string; value: ComicType }[] = [
 
 const GENRES = Object.keys(GENRE_TAG_IDS).map(g => ({
   value: g,
-  label: g.charAt(0).toUpperCase() + g.slice(1),
+  label: GENRE_LABELS[g] || g.charAt(0).toUpperCase() + g.slice(1),
 }));
 
 export function SearchFilterModal({

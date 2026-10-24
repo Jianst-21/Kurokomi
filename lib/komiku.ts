@@ -49,7 +49,7 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
     for (const m of matches) {
       const chapterNum = m[2];
       chapters.push({
-        id: `komiku:${slug}:${chapterNum}`,
+        id: `komiku--${slug}--${chapterNum}`,
         chapter: chapterNum,
         title: `Chapter ${chapterNum}`,
         scanlationGroup: 'Komiku Sub Indo',

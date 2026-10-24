@@ -28,7 +28,8 @@ export default function ReaderPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const chapterId = params?.id as string;
+  const rawChapterId = params?.id as string;
+  const chapterId = decodeURIComponent(rawChapterId || '');
   const initialMangaId = searchParams.get('mangaId') || '';
 
   const [mangaId, setMangaId] = useState(initialMangaId);
@@ -54,8 +55,9 @@ export default function ReaderPage() {
       setPages(pageUrls);
 
       // Handle Komiku chapter source
-      if (chapterId.startsWith('komiku:')) {
-        const parts = chapterId.split(':');
+      if (chapterId.startsWith('komiku--') || chapterId.startsWith('komiku:')) {
+        const delimiter = chapterId.includes('--') ? '--' : ':';
+        const parts = chapterId.split(delimiter);
         const slug = parts[1];
         const chapterNum = parts[2] || '1';
 
