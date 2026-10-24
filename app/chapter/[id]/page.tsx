@@ -56,17 +56,29 @@ export default function ReaderPage() {
 
       // Handle Komiku chapter source
       if (chapterId.startsWith('komiku--') || chapterId.startsWith('komiku:')) {
-        const delimiter = chapterId.includes('--') ? '--' : ':';
-        const parts = chapterId.split(delimiter);
-        const slug = parts[1];
-        const chapterNum = parts[2] || '1';
+        const chapterSlug = chapterId.replace(/^komiku(--|:)/, '');
+        const numMatch = chapterSlug.match(/chapter-([0-9.]+)/i);
+        const chapterNum = numMatch ? numMatch[1] : '?';
 
-        if (chapters.length === 0) {
+        if (chapters.length === 0 && mangaId) {
           try {
-            const chapRes = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}`);
-            if (chapRes.ok) {
-              const { chapters: komikuChaps } = await chapRes.json();
-              if (komikuChaps) setChapters(komikuChaps);
+            const detailData = comic ? comic : await fetchComicDetail(mangaId);
+            if (detailData) {
+              setComic(detailData);
+              const altTitlesParam = (detailData.altTitles || []).slice(0, 3).join('|');
+              const searchRes = await fetch(
+                `/api/komiku?action=search&title=${encodeURIComponent(detailData.title)}&altTitles=${encodeURIComponent(altTitlesParam)}`
+              );
+              if (searchRes.ok) {
+                const { slug } = await searchRes.json();
+                if (slug) {
+                  const chapRes = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}`);
+                  if (chapRes.ok) {
+                    const { chapters: komikuChaps } = await chapRes.json();
+                    if (komikuChaps) setChapters(komikuChaps);
+                  }
+                }
+              }
             }
           } catch (e) {
             console.error('Failed to load komiku chapters:', e);

@@ -25,9 +25,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === 'pages') {
-      const slug = searchParams.get('slug') || '';
-      const chapter = searchParams.get('chapter') || '1';
-      const pages = await fetchKomikuChapterImages(slug, chapter);
+      const chapterSlug = searchParams.get('chapter') || searchParams.get('slug') || '';
+      const fallbackNum = searchParams.get('num') || undefined;
+      const pages = await fetchKomikuChapterImages(chapterSlug, fallbackNum);
       return NextResponse.json({ pages }, { headers: CACHE_HEADERS });
     }
 

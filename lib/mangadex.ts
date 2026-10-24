@@ -519,22 +519,19 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
   try {
     const decodedId = decodeURIComponent(chapterId || '');
 
-    // If chapter ID is from Komiku provider (komiku--slug--chapterNum or komiku:slug:chapterNum)
+    // If chapter ID is from Komiku provider (komiku--chapterSlug or komiku:...)
     if (decodedId.startsWith('komiku--') || decodedId.startsWith('komiku:')) {
-      const delimiter = decodedId.includes('--') ? '--' : ':';
-      const parts = decodedId.split(delimiter);
-      const slug = parts[1];
-      const chapterNum = parts[2] || '1';
+      const chapterSlug = decodedId.replace(/^komiku(--|:)/, '');
 
       if (typeof window !== 'undefined') {
-        const res = await fetch(`/api/komiku?action=pages&slug=${encodeURIComponent(slug)}&chapter=${encodeURIComponent(chapterNum)}`);
+        const res = await fetch(`/api/komiku?action=pages&chapter=${encodeURIComponent(chapterSlug)}`);
         if (res.ok) {
           const data = await res.json();
           return data.pages || [];
         }
       } else {
         const { fetchKomikuChapterImages } = await import('./komiku');
-        return await fetchKomikuChapterImages(slug, chapterNum);
+        return await fetchKomikuChapterImages(chapterSlug);
       }
       return [];
     }

@@ -43,13 +43,15 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
     if (!res.ok) return [];
 
     const html = await res.text();
-    const matches = [...html.matchAll(/href="(\/[^"]*chapter-([0-9.]+)[^"]*)"/g)];
+    // Matches href="/[chapter-slug]/" and captures exact chapter path and chapter number
+    const matches = [...html.matchAll(/href="(\/([^"]*chapter-([0-9.]+)[^"]*))"/g)];
     const chapters: ChapterItem[] = [];
 
     for (const m of matches) {
-      const chapterNum = m[2];
+      const exactChapterSlug = m[2].replace(/\/$/, '');
+      const chapterNum = m[3];
       chapters.push({
-        id: `komiku--${slug}--${chapterNum}`,
+        id: `komiku--${exactChapterSlug}`,
         chapter: chapterNum,
         title: `Chapter ${chapterNum}`,
         scanlationGroup: 'Komiku Sub Indo',
@@ -65,13 +67,32 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
   }
 }
 
-export async function fetchKomikuChapterImages(slug: string, chapterNum: string): Promise<ChapterPageItem[]> {
+export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChapterNum?: string): Promise<ChapterPageItem[]> {
   try {
-    const url = `${KOMIKU_BASE}/${slug}-chapter-${chapterNum}/`;
-    const res = await fetch(url, {
+    let cleanSlug = chapterSlug.replace(/^\//, '').replace(/\/$/, '');
+
+    if (cleanSlug.startsWith('komiku--')) {
+      cleanSlug = cleanSlug.replace(/^komiku--/, '');
+    }
+
+    // 1. Fetch using exact chapter slug
+    let url = `${KOMIKU_BASE}/${cleanSlug}/`;
+    let res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
       next: { revalidate: 300 },
     });
+
+    // 2. If 404 and cleanSlug has parts, try alternative reconstructed URL
+    if (!res.ok && cleanSlug.includes('--')) {
+      const parts = cleanSlug.split('--');
+      const s = parts[0];
+      const ch = parts[1] || fallbackChapterNum;
+      url = `${KOMIKU_BASE}/${s}-chapter-${ch}/`;
+      res = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        next: { revalidate: 300 },
+      });
+    }
 
     if (!res.ok) return [];
 
