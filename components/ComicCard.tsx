@@ -34,6 +34,7 @@ export function ComicCard({ comic }: ComicCardProps) {
             src={comic.coverUrl}
             alt={comic.title}
             loading="lazy"
+            decoding="async"
             referrerPolicy="no-referrer"
             onError={() => setImageError(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

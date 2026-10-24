@@ -24,7 +24,6 @@ export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
   }, [src]);
 
   const handleImageError = () => {
-    // If the community @home volunteer node 404s/fails, fallback immediately to official MangaDex origin
     if (fallbackSrc && !hasTriedFallback && currentSrc !== fallbackSrc) {
       setHasTriedFallback(true);
       setCurrentSrc(fallbackSrc);
@@ -44,8 +43,11 @@ export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
     setRetryKey(k => k + 1);
   };
 
+  // Prioritize the first 3 images so the chapter opens immediately
+  const isPriority = pageIndex < 3;
+
   return (
-    <div className="relative w-full min-h-[300px] flex items-center justify-center bg-zinc-950">
+    <div className="reader-panel relative w-full min-h-[300px] flex items-center justify-center bg-zinc-950">
       {/* Loading Skeleton */}
       {!loaded && !error && (
         <div className="absolute inset-0 bg-zinc-900/60 animate-pulse flex items-center justify-center">
@@ -75,11 +77,12 @@ export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
           key={`${currentSrc}-${retryKey}`}
           src={currentSrc}
           alt={`Halaman ${pageIndex + 1}`}
-          loading="lazy"
+          loading={isPriority ? 'eager' : 'lazy'}
+          decoding="async"
           referrerPolicy="no-referrer"
           onLoad={() => setLoaded(true)}
           onError={handleImageError}
-          className={`w-full h-auto block select-none transition-opacity duration-200 ${
+          className={`w-full h-auto block select-none transition-opacity duration-150 ${
             loaded ? 'opacity-100' : 'opacity-0'
           }`}
         />

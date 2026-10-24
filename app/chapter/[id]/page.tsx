@@ -203,7 +203,7 @@ export default function ReaderPage() {
       {/* Main Comic Image Stream (Webtoon Scroll) */}
       <main
         onClick={toggleHUD}
-        className="flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-1"
+        className="reader-container flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-1"
       >
         {pages.map((item, idx) => (
           <ReaderImage
