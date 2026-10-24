@@ -10,12 +10,16 @@
   --accent-hover: #1d4ed8;
 }
 
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
   -webkit-tap-highlight-color: transparent;
-  user-select: none;
   min-height: 100vh;
 }
 
@@ -26,6 +30,12 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Isolate paint and layout per comic card to prevent scroll layout thrashing */
+.comic-grid-card {
+  contain: paint layout;
+  transform: translateZ(0);
 }
 
 /* Prevent accidental pull-to-refresh when scrolling fast in mobile browsers */

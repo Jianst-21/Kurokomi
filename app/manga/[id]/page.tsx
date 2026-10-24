@@ -172,7 +172,7 @@ export default function MangaDetailPage() {
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
       {/* Top Floating App Bar */}
-      <header className="sticky top-0 z-30 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 bg-zinc-950 border-b border-zinc-850 px-4 py-3 flex items-center justify-between shadow-md">
         <button
           onClick={handleBack}
           aria-label="Kembali"

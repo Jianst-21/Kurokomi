@@ -108,7 +108,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 flex flex-col">
       {/* Top Header */}
-      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3">
+      <header className="sticky top-0 z-30 bg-zinc-950 border-b border-zinc-850 px-4 py-3 shadow-md">
         <div className="max-w-md mx-auto flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
