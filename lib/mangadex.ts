@@ -1,0 +1,407 @@
+import {
+  ComicCardItem,
+  ComicDetail,
+  ChapterItem,
+  FilterOptions,
+  ComicType,
+} from './types';
+
+export const MANGADEX_API_BASE = 'https://api.mangadex.org';
+export const MANGADEX_COVER_BASE = 'https://uploads.mangadex.org/covers';
+
+export const FULL_COLOR_TAG_ID = 'f4122d1c-3b44-44d0-9936-ff7502c39ad3';
+
+export const GENRE_TAG_IDS: Record<string, string> = {
+  action: '391b0423-d847-456f-aff0-8b0cfc03066b',
+  adventure: '87cc87cd-a395-47af-b27a-93258283bbc6',
+  comedy: '4d32cc48-9f00-4cca-9b5a-a839f0764984',
+  fantasy: 'cdc58593-87dd-415e-bbc0-2ec27bf4044f',
+  romance: '423e2eae-a7a2-4a8b-ac03-a8351462d71d',
+  isekai: 'ace04997-f6bd-436e-b261-779182193d3d',
+  drama: 'b9af3a63-f058-46de-a9a0-e0c13906197a',
+  mystery: 'ee9634b1-638e-4a35-baeb-23975250b93b',
+  scifi: '25632c36-7755-4361-b88d-1b69ca57dda3',
+  sliceoflife: 'e5301a23-ebd9-49dd-a0cb-2add944c7fe9',
+};
+
+export function getComicTypeFromLanguage(originalLanguage?: string): 'manga' | 'manhwa' | 'manhua' | 'other' {
+  if (!originalLanguage) return 'other';
+  const lang = originalLanguage.toLowerCase();
+  if (lang === 'ja') return 'manga';
+  if (lang === 'ko') return 'manhwa';
+  if (lang === 'zh' || lang === 'zh-hk') return 'manhua';
+  return 'other';
+}
+
+export function deduplicateChapters(chapters: ChapterItem[]): ChapterItem[] {
+  const map = new Map<string, ChapterItem>();
+
+  for (const item of chapters) {
+    const key = item.chapter.trim();
+    const existing = map.get(key);
+    if (!existing) {
+      map.set(key, item);
+    } else {
+      // Pick the newer publish date
+      if (new Date(item.publishAt).getTime() > new Date(existing.publishAt).getTime()) {
+        map.set(key, item);
+      }
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+export function sortChapters(chapters: ChapterItem[], ascending: boolean = false): ChapterItem[] {
+  return [...chapters].sort((a, b) => {
+    const numA = parseFloat(a.chapter);
+    const numB = parseFloat(b.chapter);
+
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return ascending ? numA - numB : numB - numA;
+    }
+
+    return ascending
+      ? a.chapter.localeCompare(b.chapter, undefined, { numeric: true })
+      : b.chapter.localeCompare(a.chapter, undefined, { numeric: true });
+  });
+}
+
+export function buildSearchQueryUrl(options: {
+  query?: string;
+  type?: ComicType;
+  isColor?: boolean;
+  genre?: string;
+  limit?: number;
+  offset?: number;
+}): string {
+  const params = new URLSearchParams();
+
+  // Indonesian translated chapters filter
+  params.append('availableTranslatedLanguage[]', 'id');
+  params.append('includes[]', 'cover_art');
+  params.append('contentRating[]', 'safe');
+  params.append('contentRating[]', 'suggestive');
+  params.append('contentRating[]', 'erotica');
+
+  if (options.query && options.query.trim()) {
+    params.set('title', options.query.trim());
+  }
+
+  if (options.limit) {
+    params.set('limit', String(options.limit));
+  } else {
+    params.set('limit', '24');
+  }
+
+  if (options.offset) {
+    params.set('offset', String(options.offset));
+  }
+
+  // Type filter
+  if (options.type && options.type !== 'all') {
+    if (options.type === 'manga') params.append('originalLanguage[]', 'ja');
+    if (options.type === 'manhwa') params.append('originalLanguage[]', 'ko');
+    if (options.type === 'manhua') {
+      params.append('originalLanguage[]', 'zh');
+      params.append('originalLanguage[]', 'zh-hk');
+    }
+  }
+
+  // Tags filter (Full color & genres)
+  const includedTags: string[] = [];
+  if (options.isColor) {
+    includedTags.push(FULL_COLOR_TAG_ID);
+  }
+
+  if (options.genre && GENRE_TAG_IDS[options.genre.toLowerCase()]) {
+    includedTags.push(GENRE_TAG_IDS[options.genre.toLowerCase()]);
+  }
+
+  for (const tagId of includedTags) {
+    params.append('includedTags[]', tagId);
+  }
+
+  return `${MANGADEX_API_BASE}/manga?${params.toString()}`;
+}
+
+export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardItem[]> {
+  try {
+    const params = new URLSearchParams();
+    params.set('limit', String(limit));
+    params.append('translatedLanguage[]', 'id');
+    params.set('order[readableAt]', 'desc');
+    params.append('includes[]', 'manga');
+
+    const res = await fetch(`${MANGADEX_API_BASE}/chapter?${params.toString()}`, {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) {
+      throw new Error(`Failed to fetch updates: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const items: ComicCardItem[] = [];
+    const seenManga = new Set<string>();
+
+    for (const ch of data.data || []) {
+      const mangaRel = ch.relationships?.find((r: { type: string }) => r.type === 'manga');
+      if (!mangaRel || seenManga.has(mangaRel.id)) continue;
+      seenManga.add(mangaRel.id);
+
+      const mangaAttr = mangaRel.attributes || {};
+      const title =
+        mangaAttr.title?.id ||
+        mangaAttr.title?.en ||
+        Object.values(mangaAttr.title || {})[0] ||
+        'Judul Tidak Diketahui';
+
+      const type = getComicTypeFromLanguage(mangaAttr.originalLanguage);
+
+      items.push({
+        id: mangaRel.id,
+        title: String(title),
+        coverUrl: '', // Will be resolved or lazy loaded with placeholder
+        type,
+        latestChapter: ch.attributes?.chapter ? `Ch. ${ch.attributes.chapter}` : undefined,
+        updatedAt: ch.attributes?.readableAt || ch.attributes?.publishAt,
+      });
+    }
+
+    // Now resolve covers for these manga in one batch
+    if (items.length > 0) {
+      const mangaIds = items.map(i => i.id);
+      const coverMap = await fetchCoversForManga(mangaIds);
+      for (const item of items) {
+        if (coverMap.has(item.id)) {
+          item.coverUrl = coverMap.get(item.id)!;
+        }
+      }
+    }
+
+    return items;
+  } catch (err) {
+    console.error('fetchLatestUpdates error:', err);
+    return [];
+  }
+}
+
+export async function fetchCoversForManga(mangaIds: string[]): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (!mangaIds.length) return map;
+
+  try {
+    const params = new URLSearchParams();
+    params.set('limit', '100');
+    for (const id of mangaIds) {
+      params.append('manga[]', id);
+    }
+
+    const res = await fetch(`${MANGADEX_API_BASE}/cover?${params.toString()}`, {
+      next: { revalidate: 300 },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      for (const cover of data.data || []) {
+        const mangaRel = cover.relationships?.find((r: { type: string }) => r.type === 'manga');
+        if (mangaRel && cover.attributes?.fileName) {
+          const coverUrl = `${MANGADEX_COVER_BASE}/${mangaRel.id}/${cover.attributes.fileName}.256.jpg`;
+          map.set(mangaRel.id, coverUrl);
+        }
+      }
+    }
+  } catch (e) {
+    console.error('fetchCovers error:', e);
+  }
+
+  return map;
+}
+
+export async function searchComics(
+  query: string,
+  options?: FilterOptions
+): Promise<ComicCardItem[]> {
+  try {
+    const url = buildSearchQueryUrl({
+      query,
+      type: options?.type,
+      isColor: options?.isColor,
+      genre: options?.genre,
+      limit: options?.limit || 24,
+      offset: options?.offset || 0,
+    });
+
+    const res = await fetch(url, { next: { revalidate: 60 } });
+    if (!res.ok) {
+      throw new Error(`Failed to search comics: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const items: ComicCardItem[] = [];
+
+    for (const m of data.data || []) {
+      const attr = m.attributes || {};
+      const title =
+        attr.title?.id ||
+        attr.title?.en ||
+        Object.values(attr.title || {})[0] ||
+        'Judul Tidak Diketahui';
+
+      const type = getComicTypeFromLanguage(attr.originalLanguage);
+
+      // Extract cover art relationship
+      const coverRel = m.relationships?.find((r: { type: string }) => r.type === 'cover_art');
+      const coverFileName = coverRel?.attributes?.fileName;
+      const coverUrl = coverFileName
+        ? `${MANGADEX_COVER_BASE}/${m.id}/${coverFileName}.256.jpg`
+        : '';
+
+      const isFullColor = attr.tags?.some((t: { id: string }) => t.id === FULL_COLOR_TAG_ID);
+
+      items.push({
+        id: m.id,
+        title: String(title),
+        coverUrl,
+        type,
+        isFullColor,
+      });
+    }
+
+    return items;
+  } catch (err) {
+    console.error('searchComics error:', err);
+    return [];
+  }
+}
+
+export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | null> {
+  try {
+    const params = new URLSearchParams();
+    params.append('includes[]', 'cover_art');
+    params.append('includes[]', 'author');
+    params.append('includes[]', 'artist');
+
+    const res = await fetch(`${MANGADEX_API_BASE}/manga/${mangaId}?${params.toString()}`, {
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return null;
+    const json = await res.json();
+    const data = json.data;
+    if (!data) return null;
+
+    const attr = data.attributes || {};
+    const title =
+      attr.title?.id ||
+      attr.title?.en ||
+      Object.values(attr.title || {})[0] ||
+      'Judul Tidak Diketahui';
+
+    const altTitles: string[] = (attr.altTitles || []).map((t: Record<string, string>) => Object.values(t)[0]).filter(Boolean);
+    const description = attr.description?.id || attr.description?.en || Object.values(attr.description || {})[0] || 'Tidak ada sinopsis.';
+
+    const coverRel = data.relationships?.find((r: { type: string }) => r.type === 'cover_art');
+    const coverFileName = coverRel?.attributes?.fileName;
+    const coverUrl = coverFileName ? `${MANGADEX_COVER_BASE}/${data.id}/${coverFileName}.512.jpg` : '';
+
+    const authorRel = data.relationships?.find((r: { type: string }) => r.type === 'author');
+    const artistRel = data.relationships?.find((r: { type: string }) => r.type === 'artist');
+
+    const genres: string[] = (attr.tags || [])
+      .filter((t: { attributes?: { group: string } }) => t.attributes?.group === 'genre')
+      .map((t: { attributes?: { name: { en?: string } } }) => t.attributes?.name?.en)
+      .filter(Boolean);
+
+    const isFullColor = (attr.tags || []).some((t: { id: string }) => t.id === FULL_COLOR_TAG_ID);
+
+    return {
+      id: data.id,
+      title: String(title),
+      altTitles,
+      description: String(description),
+      coverUrl,
+      type: getComicTypeFromLanguage(attr.originalLanguage),
+      status: attr.status || 'ongoing',
+      genres,
+      isFullColor,
+      author: authorRel?.attributes?.name,
+      artist: artistRel?.attributes?.name,
+      year: attr.year,
+    };
+  } catch (err) {
+    console.error('fetchComicDetail error:', err);
+    return null;
+  }
+}
+
+export async function fetchComicChapters(mangaId: string): Promise<ChapterItem[]> {
+  try {
+    const chapters: ChapterItem[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
+
+    while (hasMore) {
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      params.append('translatedLanguage[]', 'id');
+      params.set('order[chapter]', 'desc');
+      params.append('includes[]', 'scanlation_group');
+
+      const res = await fetch(`${MANGADEX_API_BASE}/manga/${mangaId}/feed?${params.toString()}`, {
+        next: { revalidate: 60 },
+      });
+
+      if (!res.ok) break;
+
+      const data = await res.json();
+      const list = data.data || [];
+
+      for (const ch of list) {
+        const groupRel = ch.relationships?.find((r: { type: string }) => r.type === 'scanlation_group');
+        chapters.push({
+          id: ch.id,
+          chapter: ch.attributes?.chapter || '0',
+          title: ch.attributes?.title || undefined,
+          scanlationGroup: groupRel?.attributes?.name || 'Komunitas',
+          publishAt: ch.attributes?.publishAt || ch.attributes?.readableAt,
+          pagesCount: ch.attributes?.pages || 0,
+        });
+      }
+
+      offset += limit;
+      if (list.length < limit || offset >= (data.total || 0) || offset >= 500) {
+        hasMore = false;
+      }
+    }
+
+    return deduplicateChapters(chapters);
+  } catch (err) {
+    console.error('fetchComicChapters error:', err);
+    return [];
+  }
+}
+
+export async function fetchChapterPages(chapterId: string): Promise<string[]> {
+  try {
+    const res = await fetch(`${MANGADEX_API_BASE}/at-home/server/${chapterId}`);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch chapter server: ${res.status}`);
+    }
+
+    const data = await res.json();
+    const baseUrl = data.baseUrl;
+    const hash = data.chapter?.hash;
+    const files: string[] = data.chapter?.data || [];
+
+    if (!baseUrl || !hash || !files.length) return [];
+
+    return files.map(file => `${baseUrl}/data/${hash}/${file}`);
+  } catch (err) {
+    console.error('fetchChapterPages error:', err);
+    return [];
+  }
+}
