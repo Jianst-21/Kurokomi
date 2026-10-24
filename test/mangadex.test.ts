@@ -71,6 +71,7 @@ describe('MangaDex Helpers & Utilities', () => {
       type: 'manhwa',
       isColor: true,
       genre: 'action',
+      baseUrl: 'https://api.mangadex.org',
     });
 
     expect(url).toContain('api.mangadex.org/manga');

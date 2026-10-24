@@ -9,6 +9,13 @@ import {
 export const MANGADEX_API_BASE = 'https://api.mangadex.org';
 export const MANGADEX_COVER_BASE = 'https://uploads.mangadex.org/covers';
 
+export function getApiBase(): string {
+  if (typeof window !== 'undefined') {
+    return '/api/mangadex';
+  }
+  return MANGADEX_API_BASE;
+}
+
 export const FULL_COLOR_TAG_ID = 'f4122d1c-3b44-44d0-9936-ff7502c39ad3';
 
 export const GENRE_TAG_IDS: Record<string, string> = {
@@ -74,6 +81,7 @@ export function buildSearchQueryUrl(options: {
   genre?: string;
   limit?: number;
   offset?: number;
+  baseUrl?: string;
 }): string {
   const params = new URLSearchParams();
 
@@ -125,7 +133,8 @@ export function buildSearchQueryUrl(options: {
     params.append('includedTags[]', tagId);
   }
 
-  return `${MANGADEX_API_BASE}/manga?${params.toString()}`;
+  const base = options.baseUrl || getApiBase();
+  return `${base}/manga?${params.toString()}`;
 }
 
 export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardItem[]> {
@@ -136,7 +145,7 @@ export async function fetchLatestUpdates(limit: number = 24): Promise<ComicCardI
     params.set('order[readableAt]', 'desc');
     params.append('includes[]', 'manga');
 
-    const res = await fetch(`${MANGADEX_API_BASE}/chapter?${params.toString()}`, {
+    const res = await fetch(`${getApiBase()}/chapter?${params.toString()}`, {
       next: { revalidate: 60 },
     });
 
@@ -204,7 +213,7 @@ export async function fetchCoversForManga(mangaIds: string[]): Promise<Map<strin
       params.append('manga[]', id);
     }
 
-    const res = await fetch(`${MANGADEX_API_BASE}/cover?${params.toString()}`, {
+    const res = await fetch(`${getApiBase()}/cover?${params.toString()}`, {
       next: { revalidate: 300 },
     });
 
@@ -292,7 +301,7 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
     params.append('includes[]', 'author');
     params.append('includes[]', 'artist');
 
-    const res = await fetch(`${MANGADEX_API_BASE}/manga/${mangaId}?${params.toString()}`, {
+    const res = await fetch(`${getApiBase()}/manga/${mangaId}?${params.toString()}`, {
       next: { revalidate: 60 },
     });
 
@@ -360,7 +369,7 @@ export async function fetchComicChapters(mangaId: string): Promise<ChapterItem[]
       params.set('order[chapter]', 'desc');
       params.append('includes[]', 'scanlation_group');
 
-      const res = await fetch(`${MANGADEX_API_BASE}/manga/${mangaId}/feed?${params.toString()}`, {
+      const res = await fetch(`${getApiBase()}/manga/${mangaId}/feed?${params.toString()}`, {
         next: { revalidate: 60 },
       });
 
@@ -396,7 +405,7 @@ export async function fetchComicChapters(mangaId: string): Promise<ChapterItem[]
 
 export async function fetchMangaIdFromChapter(chapterId: string): Promise<string | null> {
   try {
-    const res = await fetch(`${MANGADEX_API_BASE}/chapter/${chapterId}`);
+    const res = await fetch(`${getApiBase()}/chapter/${chapterId}`);
     if (!res.ok) return null;
     const data = await res.json();
     const mangaRel = data.data?.relationships?.find((r: { type: string }) => r.type === 'manga');
@@ -408,7 +417,7 @@ export async function fetchMangaIdFromChapter(chapterId: string): Promise<string
 
 export async function fetchChapterPages(chapterId: string): Promise<string[]> {
   try {
-    const res = await fetch(`${MANGADEX_API_BASE}/at-home/server/${chapterId}`);
+    const res = await fetch(`${getApiBase()}/at-home/server/${chapterId}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter server: ${res.status}`);
     }
