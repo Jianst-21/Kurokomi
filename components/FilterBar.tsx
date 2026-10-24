@@ -15,10 +15,10 @@ interface FilterBarProps {
 }
 
 const TYPE_OPTIONS: { label: string; value: ComicType }[] = [
-  { label: 'Semua', value: 'all' },
-  { label: 'Manhwa', value: 'manhwa' },
-  { label: 'Manga', value: 'manga' },
-  { label: 'Manhua', value: 'manhua' },
+  { label: 'Home', value: 'all' },
+  { label: 'Top Manga', value: 'manga' },
+  { label: 'Top Manhwa', value: 'manhwa' },
+  { label: 'Top Manhua', value: 'manhua' },
 ];
 
 const GENRES = Object.keys(GENRE_TAG_IDS).map(g => ({

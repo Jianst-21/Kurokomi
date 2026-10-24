@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { Search, X, RefreshCw, AlertCircle, Sparkles, Flame, Clock, ChevronDown } from 'lucide-react';
+import { Search, X, RefreshCw, AlertCircle, Flame, Clock, ChevronDown } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchLatestUpdates, searchComics } from '@/lib/mangadex';
 import { FilterBar } from '@/components/FilterBar';
@@ -24,6 +24,25 @@ export default function ExplorePage() {
   const [, startTransition] = useTransition();
 
   const isFiltering = Boolean(searchQuery.trim() || activeType !== 'all' || isColor || activeGenre);
+
+  const getSectionTitle = () => {
+    if (searchQuery.trim()) {
+      return `Hasil Pencarian "${searchQuery.trim()}"`;
+    }
+    if (activeType === 'manga') {
+      return 'Top Manga Populer';
+    }
+    if (activeType === 'manhwa') {
+      return 'Top Manhwa Populer';
+    }
+    if (activeType === 'manhua') {
+      return 'Top Manhua Populer';
+    }
+    if (activeGenre || isColor) {
+      return 'Hasil Filter Komik';
+    }
+    return feedMode === 'popular' ? 'Rekomendasi Pilihan' : 'Rilis Terbaru Hari Ini';
+  };
 
   const loadData = async (reset: boolean = true) => {
     if (reset) {
@@ -138,8 +157,8 @@ export default function ExplorePage() {
             onGenreChange={setActiveGenre}
           />
 
-          {/* Tab Mode (Populer vs Terbaru) - only shown when not filtering */}
-          {!isFiltering && (
+          {/* Tab Mode (Rekomendasi vs Terbaru) - only on Home without search */}
+          {!searchQuery.trim() && activeType === 'all' && (
             <div className="flex items-center gap-2 pt-1 border-t border-zinc-850">
               <button
                 onClick={() => setFeedMode('popular')}
@@ -150,7 +169,7 @@ export default function ExplorePage() {
                 }`}
               >
                 <Flame className="w-3.5 h-3.5" />
-                <span>Paling Populer</span>
+                <span>Rekomendasi</span>
               </button>
 
               <button
@@ -173,17 +192,10 @@ export default function ExplorePage() {
       <main className="flex-1 max-w-md mx-auto w-full px-4 pt-3">
         {/* Section Title */}
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-blue-400" />
-            <span>
-              {isFiltering
-                ? 'Hasil Filter & Pencarian'
-                : feedMode === 'popular'
-                ? 'Daftar Komik Populer'
-                : 'Rilis Terbaru Hari Ini'}
-            </span>
+          <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+            {getSectionTitle()}
           </h2>
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-zinc-500 font-medium">
             {isLoading ? 'Memuat...' : `${comics.length} judul`}
           </span>
         </div>

@@ -93,6 +93,7 @@ describe('MangaDex Helpers & Utilities', () => {
       isColor: true,
       genre: 'action',
       baseUrl: 'https://api.mangadex.org',
+      requireIndonesian: true,
     });
 
     expect(url).toContain('api.mangadex.org/manga');

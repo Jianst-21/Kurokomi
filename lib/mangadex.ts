@@ -116,11 +116,15 @@ export function buildSearchQueryUrl(options: {
   limit?: number;
   offset?: number;
   baseUrl?: string;
+  requireIndonesian?: boolean;
 }): string {
   const params = new URLSearchParams();
 
-  // Indonesian translated chapters filter
-  params.append('availableTranslatedLanguage[]', 'id');
+  // If explicitly requested, filter by Indonesian
+  if (options.requireIndonesian) {
+    params.append('availableTranslatedLanguage[]', 'id');
+  }
+
   params.append('includes[]', 'cover_art');
   params.append('contentRating[]', 'safe');
   params.append('contentRating[]', 'suggestive');
@@ -379,49 +383,71 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
   }
 }
 
-export async function fetchComicChapters(mangaId: string): Promise<ChapterItem[]> {
+export async function fetchComicChapters(
+  mangaId: string,
+  preferredLanguage: string = 'id'
+): Promise<ChapterItem[]> {
   try {
-    const chapters: ChapterItem[] = [];
-    let offset = 0;
-    const limit = 100;
-    let hasMore = true;
+    const fetchWithLang = async (lang?: string): Promise<ChapterItem[]> => {
+      const chapters: ChapterItem[] = [];
+      let offset = 0;
+      const limit = 100;
+      let hasMore = true;
 
-    while (hasMore) {
-      const params = new URLSearchParams();
-      params.set('limit', String(limit));
-      params.set('offset', String(offset));
-      params.append('translatedLanguage[]', 'id');
-      params.set('order[chapter]', 'desc');
-      params.append('includes[]', 'scanlation_group');
+      while (hasMore) {
+        const params = new URLSearchParams();
+        params.set('limit', String(limit));
+        params.set('offset', String(offset));
+        if (lang) {
+          params.append('translatedLanguage[]', lang);
+        }
+        params.set('order[chapter]', 'desc');
+        params.append('includes[]', 'scanlation_group');
 
-      const res = await fetch(`${getApiBase()}/manga/${mangaId}/feed?${params.toString()}`, {
-        next: { revalidate: 60 },
-      });
-
-      if (!res.ok) break;
-
-      const data = await res.json();
-      const list = data.data || [];
-
-      for (const ch of list) {
-        const groupRel = ch.relationships?.find((r: { type: string }) => r.type === 'scanlation_group');
-        chapters.push({
-          id: ch.id,
-          chapter: ch.attributes?.chapter || '0',
-          title: ch.attributes?.title || undefined,
-          scanlationGroup: groupRel?.attributes?.name || 'Komunitas',
-          publishAt: ch.attributes?.publishAt || ch.attributes?.readableAt,
-          pagesCount: ch.attributes?.pages || 0,
+        const res = await fetch(`${getApiBase()}/manga/${mangaId}/feed?${params.toString()}`, {
+          next: { revalidate: 60 },
         });
+
+        if (!res.ok) break;
+
+        const data = await res.json();
+        const list = data.data || [];
+
+        for (const ch of list) {
+          const groupRel = ch.relationships?.find((r: { type: string }) => r.type === 'scanlation_group');
+          chapters.push({
+            id: ch.id,
+            chapter: ch.attributes?.chapter || '0',
+            title: ch.attributes?.title || undefined,
+            scanlationGroup: groupRel?.attributes?.name || 'Komunitas',
+            publishAt: ch.attributes?.publishAt || ch.attributes?.readableAt,
+            pagesCount: ch.attributes?.pages || 0,
+          });
+        }
+
+        offset += limit;
+        if (list.length < limit || offset >= (data.total || 0) || offset >= 500) {
+          hasMore = false;
+        }
       }
 
-      offset += limit;
-      if (list.length < limit || offset >= (data.total || 0) || offset >= 500) {
-        hasMore = false;
-      }
+      return deduplicateChapters(chapters);
+    };
+
+    // 1. Try preferred language (e.g. Indonesian)
+    let results = await fetchWithLang(preferredLanguage);
+
+    // 2. If 0 chapters found and preferred was 'id', fallback to English
+    if (results.length === 0 && preferredLanguage !== 'en') {
+      results = await fetchWithLang('en');
     }
 
-    return deduplicateChapters(chapters);
+    // 3. If still 0, fallback to any available language
+    if (results.length === 0) {
+      results = await fetchWithLang();
+    }
+
+    return results;
   } catch (err) {
     console.error('fetchComicChapters error:', err);
     return [];

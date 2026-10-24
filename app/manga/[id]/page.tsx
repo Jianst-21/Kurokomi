@@ -13,6 +13,7 @@ import {
   Calendar,
   AlertCircle,
   RefreshCw,
+  Languages,
 } from 'lucide-react';
 import { ComicDetail, ChapterItem } from '@/lib/types';
 import { fetchComicDetail, fetchComicChapters } from '@/lib/mangadex';
@@ -31,16 +32,17 @@ export default function MangaDetailPage() {
   const [favorited, setFavorited] = useState(false);
   const [lastReadChapter, setLastReadChapter] = useState<{ chapterId: string; chapterNumber: string } | null>(null);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
+  const [selectedLang, setSelectedLang] = useState<'id' | 'en'>('id');
 
-  const loadData = async () => {
+  const loadData = async (lang: string = selectedLang) => {
     if (!mangaId) return;
     setIsLoading(true);
     setError(null);
 
     try {
       const [detailData, chaptersData] = await Promise.all([
-        fetchComicDetail(mangaId),
-        fetchComicChapters(mangaId),
+        comic ? Promise.resolve(comic) : fetchComicDetail(mangaId),
+        fetchComicChapters(mangaId, lang),
       ]);
 
       if (!detailData) {
@@ -66,8 +68,8 @@ export default function MangaDetailPage() {
   };
 
   useEffect(() => {
-    loadData();
-  }, [mangaId]);
+    loadData(selectedLang);
+  }, [mangaId, selectedLang]);
 
   const handleToggleFavorite = () => {
     if (!comic) return;
@@ -260,6 +262,32 @@ export default function MangaDetailPage() {
           </div>
         )}
 
+        {/* Language Selection Bar */}
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 rounded-xl border border-zinc-800 self-start">
+          <button
+            onClick={() => setSelectedLang('id')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              selectedLang === 'id'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span>Indonesia</span>
+          </button>
+          <button
+            onClick={() => setSelectedLang('en')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              selectedLang === 'en'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Languages className="w-3.5 h-3.5" />
+            <span>English (Lengkap)</span>
+          </button>
+        </div>
+
         {/* Chapter List Section */}
         {chapters.length > 0 ? (
           <ChapterList
@@ -269,7 +297,7 @@ export default function MangaDetailPage() {
           />
         ) : (
           <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center text-xs text-zinc-500">
-            Belum ada chapter Bahasa Indonesia yang tersedia untuk komik ini.
+            Belum ada chapter yang tersedia untuk bahasa ini.
           </div>
         )}
       </main>
