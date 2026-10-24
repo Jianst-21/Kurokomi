@@ -8,7 +8,9 @@ export async function GET(req: NextRequest) {
   try {
     if (action === 'search') {
       const title = searchParams.get('title') || '';
-      const slug = await findKomikuSlug(title);
+      const altTitlesRaw = searchParams.get('altTitles') || '';
+      const altTitles = altTitlesRaw ? altTitlesRaw.split('|').filter(Boolean) : [];
+      const slug = await findKomikuSlug(title, altTitles);
       return NextResponse.json({ slug });
     }
 

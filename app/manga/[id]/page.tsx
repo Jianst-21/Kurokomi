@@ -70,7 +70,10 @@ export default function MangaDetailPage() {
       // Search Indonesian multi-source provider (Komiku) for up-to-date Indonesian chapters
       let combinedIdChaps = mdIdChaps;
       try {
-        const searchRes = await fetch(`/api/komiku?action=search&title=${encodeURIComponent(detailData.title)}`);
+        const altTitlesParam = (detailData.altTitles || []).slice(0, 3).join('|');
+        const searchRes = await fetch(
+          `/api/komiku?action=search&title=${encodeURIComponent(detailData.title)}&altTitles=${encodeURIComponent(altTitlesParam)}`
+        );
         if (searchRes.ok) {
           const { slug } = await searchRes.json();
           if (slug) {
