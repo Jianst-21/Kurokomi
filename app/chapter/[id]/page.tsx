@@ -53,38 +53,73 @@ export default function ReaderPage() {
       }
       setPages(pageUrls);
 
-      // Auto-resolve mangaId if missing
-      let targetMangaId = mangaId;
-      if (!targetMangaId) {
-        const resolved = await fetchMangaIdFromChapter(chapterId);
-        if (resolved) {
-          targetMangaId = resolved;
-          setMangaId(resolved);
+      // Handle Komiku chapter source
+      if (chapterId.startsWith('komiku:')) {
+        const parts = chapterId.split(':');
+        const slug = parts[1];
+        const chapterNum = parts[2] || '1';
+
+        if (chapters.length === 0) {
+          try {
+            const chapRes = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}`);
+            if (chapRes.ok) {
+              const { chapters: komikuChaps } = await chapRes.json();
+              if (komikuChaps) setChapters(komikuChaps);
+            }
+          } catch (e) {
+            console.error('Failed to load komiku chapters:', e);
+          }
         }
-      }
 
-      // Load manga details & chapter list
-      if (targetMangaId) {
-        const [detailData, chaptersData] = await Promise.all([
-          comic ? Promise.resolve(comic) : fetchComicDetail(targetMangaId),
-          chapters.length ? Promise.resolve(chapters) : fetchComicChapters(targetMangaId),
-        ]);
+        if (mangaId) {
+          const detailData = comic ? comic : await fetchComicDetail(mangaId);
+          if (detailData) {
+            setComic(detailData);
+            saveHistory({
+              mangaId: detailData.id,
+              title: detailData.title,
+              coverUrl: detailData.coverUrl,
+              type: detailData.type,
+              chapterId: chapterId,
+              chapterNumber: chapterNum,
+              readAt: new Date().toISOString(),
+            });
+          }
+        }
+      } else {
+        // Auto-resolve mangaId if missing
+        let targetMangaId = mangaId;
+        if (!targetMangaId) {
+          const resolved = await fetchMangaIdFromChapter(chapterId);
+          if (resolved) {
+            targetMangaId = resolved;
+            setMangaId(resolved);
+          }
+        }
 
-        if (detailData) setComic(detailData);
-        if (chaptersData) setChapters(chaptersData);
+        // Load manga details & chapter list
+        if (targetMangaId) {
+          const [detailData, chaptersData] = await Promise.all([
+            comic ? Promise.resolve(comic) : fetchComicDetail(targetMangaId),
+            chapters.length ? Promise.resolve(chapters) : fetchComicChapters(targetMangaId),
+          ]);
 
-        // Save to reading history
-        const currentCh = chaptersData?.find(c => c.id === chapterId);
-        if (detailData) {
-          saveHistory({
-            mangaId: detailData.id,
-            title: detailData.title,
-            coverUrl: detailData.coverUrl,
-            type: detailData.type,
-            chapterId: chapterId,
-            chapterNumber: currentCh?.chapter || '?',
-            readAt: new Date().toISOString(),
-          });
+          if (detailData) setComic(detailData);
+          if (chaptersData) setChapters(chaptersData);
+
+          // Save to reading history
+          const currentCh = chaptersData?.find(c => c.id === chapterId);
+          if (detailData) {
+            saveHistory({
+              mangaId: detailData.id,
+              title: detailData.title,
+              coverUrl: detailData.coverUrl,
+              type: detailData.type,
+              chapterId: chapterId,
+              chapterNumber: currentCh?.chapter || '?',
+              readAt: new Date().toISOString(),
+            });
+          }
         }
       }
     } catch {

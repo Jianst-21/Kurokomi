@@ -434,20 +434,8 @@ export async function fetchComicChapters(
       return deduplicateChapters(chapters);
     };
 
-    // 1. Try preferred language (e.g. Indonesian)
-    let results = await fetchWithLang(preferredLanguage);
-
-    // 2. If 0 chapters found and preferred was 'id', fallback to English
-    if (results.length === 0 && preferredLanguage !== 'en') {
-      results = await fetchWithLang('en');
-    }
-
-    // 3. If still 0, fallback to any available language
-    if (results.length === 0) {
-      results = await fetchWithLang();
-    }
-
-    return results;
+    // Return chapters strictly matching the requested language
+    return await fetchWithLang(preferredLanguage);
   } catch (err) {
     console.error('fetchComicChapters error:', err);
     return [];
@@ -468,6 +456,25 @@ export async function fetchMangaIdFromChapter(chapterId: string): Promise<string
 
 export async function fetchChapterPages(chapterId: string): Promise<ChapterPageItem[]> {
   try {
+    // If chapter ID is from Komiku provider (komiku:slug:chapterNum)
+    if (chapterId.startsWith('komiku:')) {
+      const parts = chapterId.split(':');
+      const slug = parts[1];
+      const chapterNum = parts[2] || '1';
+
+      if (typeof window !== 'undefined') {
+        const res = await fetch(`/api/komiku?action=pages&slug=${encodeURIComponent(slug)}&chapter=${encodeURIComponent(chapterNum)}`);
+        if (res.ok) {
+          const data = await res.json();
+          return data.pages || [];
+        }
+      } else {
+        const { fetchKomikuChapterImages } = await import('./komiku');
+        return await fetchKomikuChapterImages(slug, chapterNum);
+      }
+      return [];
+    }
+
     const res = await fetch(`${getApiBase()}/at-home/server/${chapterId}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter server: ${res.status}`);

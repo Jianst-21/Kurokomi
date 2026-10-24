@@ -3,15 +3,16 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Compass, Bookmark, Clock } from 'lucide-react';
+import { Home, Search, Bookmark, Clock } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Jelajah', href: '/', icon: Compass },
+    { label: 'Home', href: '/', icon: Home },
+    { label: 'Search', href: '/search', icon: Search },
     { label: 'Favorit', href: '/favorites', icon: Bookmark },
-    { label: 'Riwayat', href: '/history', icon: Clock },
+    { label: 'History', href: '/history', icon: Clock },
   ];
 
   return (

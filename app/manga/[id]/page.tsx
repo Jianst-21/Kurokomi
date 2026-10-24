@@ -26,39 +26,76 @@ export default function MangaDetailPage() {
   const mangaId = params?.id as string;
 
   const [comic, setComic] = useState<ComicDetail | null>(null);
-  const [chapters, setChapters] = useState<ChapterItem[]>([]);
+  const [idChapters, setIdChapters] = useState<ChapterItem[]>([]);
+  const [enChapters, setEnChapters] = useState<ChapterItem[]>([]);
+  const [selectedLang, setSelectedLang] = useState<'id' | 'en'>('id');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
   const [lastReadChapter, setLastReadChapter] = useState<{ chapterId: string; chapterNumber: string } | null>(null);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
-  const [selectedLang, setSelectedLang] = useState<'id' | 'en'>('id');
 
-  const loadData = async (lang: string = selectedLang) => {
+  const loadData = async () => {
     if (!mangaId) return;
     setIsLoading(true);
     setError(null);
 
     try {
-      const [detailData, chaptersData] = await Promise.all([
-        comic ? Promise.resolve(comic) : fetchComicDetail(mangaId),
-        fetchComicChapters(mangaId, lang),
-      ]);
-
+      const detailData = await fetchComicDetail(mangaId);
       if (!detailData) {
         setError('Komik tidak ditemukan atau telah dihapus.');
-      } else {
-        setComic(detailData);
-        setChapters(chaptersData);
-        setFavorited(isFavorite(mangaId));
+        setIsLoading(false);
+        return;
+      }
 
-        const historyItem = getComicLastRead(mangaId);
-        if (historyItem) {
-          setLastReadChapter({
-            chapterId: historyItem.chapterId,
-            chapterNumber: historyItem.chapterNumber,
-          });
+      setComic(detailData);
+      setFavorited(isFavorite(mangaId));
+
+      const historyItem = getComicLastRead(mangaId);
+      if (historyItem) {
+        setLastReadChapter({
+          chapterId: historyItem.chapterId,
+          chapterNumber: historyItem.chapterNumber,
+        });
+      }
+
+      // Concurrently fetch MangaDex Indonesian and English chapters
+      const [mdIdChaps, mdEnChaps] = await Promise.all([
+        fetchComicChapters(mangaId, 'id'),
+        fetchComicChapters(mangaId, 'en'),
+      ]);
+
+      setEnChapters(mdEnChaps);
+
+      // Search Indonesian multi-source provider (Komiku) for up-to-date Indonesian chapters
+      let combinedIdChaps = mdIdChaps;
+      try {
+        const searchRes = await fetch(`/api/komiku?action=search&title=${encodeURIComponent(detailData.title)}`);
+        if (searchRes.ok) {
+          const { slug } = await searchRes.json();
+          if (slug) {
+            const chapRes = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}`);
+            if (chapRes.ok) {
+              const { chapters: komikuChaps } = await chapRes.json();
+              if (komikuChaps && komikuChaps.length > 0) {
+                if (komikuChaps.length >= mdIdChaps.length) {
+                  combinedIdChaps = komikuChaps;
+                }
+              }
+            }
+          }
         }
+      } catch (e) {
+        console.error('Komiku multi-source provider error:', e);
+      }
+
+      setIdChapters(combinedIdChaps);
+
+      // Prioritize Indonesian if chapters exist; otherwise fallback to English
+      if (combinedIdChaps.length > 0) {
+        setSelectedLang('id');
+      } else if (mdEnChaps.length > 0) {
+        setSelectedLang('en');
       }
     } catch {
       setError('Gagal memuat detail komik. Silakan coba kembali.');
@@ -68,8 +105,8 @@ export default function MangaDetailPage() {
   };
 
   useEffect(() => {
-    loadData(selectedLang);
-  }, [mangaId, selectedLang]);
+    loadData();
+  }, [mangaId]);
 
   const handleToggleFavorite = () => {
     if (!comic) return;
@@ -117,7 +154,8 @@ export default function MangaDetailPage() {
     );
   }
 
-  const firstChapter = chapters.length > 0 ? chapters[chapters.length - 1] : null;
+  const activeChapters = selectedLang === 'id' ? idChapters : enChapters;
+  const firstChapter = activeChapters.length > 0 ? activeChapters[activeChapters.length - 1] : null;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-16">
@@ -262,42 +300,54 @@ export default function MangaDetailPage() {
           </div>
         )}
 
-        {/* Language Selection Bar */}
+        {/* Language Selection Tabs */}
         <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 rounded-xl border border-zinc-800 self-start">
           <button
             onClick={() => setSelectedLang('id')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               selectedLang === 'id'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Languages className="w-3.5 h-3.5" />
-            <span>Indonesia</span>
+            <span>Indonesia {idChapters.length > 0 ? `(${idChapters.length})` : ''}</span>
           </button>
           <button
             onClick={() => setSelectedLang('en')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
               selectedLang === 'en'
-                ? 'bg-blue-600 text-white shadow-sm'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
             <Languages className="w-3.5 h-3.5" />
-            <span>English (Lengkap)</span>
+            <span>English (Lengkap) {enChapters.length > 0 ? `(${enChapters.length})` : ''}</span>
           </button>
         </div>
 
         {/* Chapter List Section */}
-        {chapters.length > 0 ? (
+        {activeChapters.length > 0 ? (
           <ChapterList
             mangaId={comic.id}
-            chapters={chapters}
+            chapters={activeChapters}
             lastReadChapterId={lastReadChapter?.chapterId}
           />
         ) : (
-          <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center text-xs text-zinc-500">
-            Belum ada chapter yang tersedia untuk bahasa ini.
+          <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center flex flex-col items-center gap-2">
+            <p className="text-xs text-zinc-400">
+              {selectedLang === 'id'
+                ? 'Belum ada chapter Bahasa Indonesia untuk judul ini.'
+                : 'Belum ada chapter Bahasa Inggris untuk judul ini.'}
+            </p>
+            {selectedLang === 'id' && enChapters.length > 0 && (
+              <button
+                onClick={() => setSelectedLang('en')}
+                className="mt-1 text-xs text-blue-400 hover:underline font-semibold"
+              >
+                Beralih ke English ({enChapters.length} chapter tersedia)
+              </button>
+            )}
           </div>
         )}
       </main>

@@ -1,20 +1,30 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
-import { Search, X, RefreshCw, AlertCircle, Flame, Clock, ChevronDown } from 'lucide-react';
+import { RefreshCw, AlertCircle, ChevronDown, Flame, BookOpen, Crown, Clock } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchLatestUpdates, searchComics } from '@/lib/mangadex';
-import { FilterBar } from '@/components/FilterBar';
 import { ComicCard } from '@/components/ComicCard';
 import { BottomNav } from '@/components/BottomNav';
 
-export default function ExplorePage() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeType, setActiveType] = useState<ComicType>('all');
-  const [isColor, setIsColor] = useState(false);
-  const [activeGenre, setActiveGenre] = useState('');
+type HomeCategory = 'recommended' | 'manga' | 'manhwa' | 'manhua' | 'latest';
 
-  const [feedMode, setFeedMode] = useState<'popular' | 'latest'>('popular');
+interface CategoryTab {
+  id: HomeCategory;
+  label: string;
+  icon: React.ElementType;
+}
+
+const CATEGORIES: CategoryTab[] = [
+  { id: 'recommended', label: 'Rekomendasi', icon: Flame },
+  { id: 'manhwa', label: 'Top Manhwa', icon: Crown },
+  { id: 'manga', label: 'Top Manga', icon: BookOpen },
+  { id: 'manhua', label: 'Top Manhua', icon: Crown },
+  { id: 'latest', label: 'Rilis Terbaru', icon: Clock },
+];
+
+export default function HomePage() {
+  const [activeCategory, setActiveCategory] = useState<HomeCategory>('recommended');
   const [comics, setComics] = useState<ComicCardItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -22,27 +32,6 @@ export default function ExplorePage() {
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
-
-  const isFiltering = Boolean(searchQuery.trim() || activeType !== 'all' || isColor || activeGenre);
-
-  const getSectionTitle = () => {
-    if (searchQuery.trim()) {
-      return `Hasil Pencarian "${searchQuery.trim()}"`;
-    }
-    if (activeType === 'manga') {
-      return 'Top Manga Populer';
-    }
-    if (activeType === 'manhwa') {
-      return 'Top Manhwa Populer';
-    }
-    if (activeType === 'manhua') {
-      return 'Top Manhua Populer';
-    }
-    if (activeGenre || isColor) {
-      return 'Hasil Filter Komik';
-    }
-    return feedMode === 'popular' ? 'Rekomendasi Pilihan' : 'Rilis Terbaru Hari Ini';
-  };
 
   const loadData = async (reset: boolean = true) => {
     if (reset) {
@@ -60,17 +49,19 @@ export default function ExplorePage() {
     try {
       let results: ComicCardItem[] = [];
 
-      if (isFiltering || feedMode === 'popular') {
-        results = await searchComics(searchQuery, {
-          type: activeType,
-          isColor,
-          genre: activeGenre,
+      if (activeCategory === 'latest') {
+        results = await fetchLatestUpdates(60, currentOffset);
+      } else {
+        let type: ComicType | undefined = undefined;
+        if (activeCategory === 'manga') type = 'manga';
+        if (activeCategory === 'manhwa') type = 'manhwa';
+        if (activeCategory === 'manhua') type = 'manhua';
+
+        results = await searchComics('', {
+          type,
           limit: PAGE_LIMIT,
           offset: currentOffset,
         });
-      } else {
-        // Latest updates feed
-        results = await fetchLatestUpdates(60, currentOffset);
       }
 
       if (reset) {
@@ -86,7 +77,7 @@ export default function ExplorePage() {
       setOffset(currentOffset + PAGE_LIMIT);
       setHasMore(results.length >= 10);
     } catch {
-      setError('Gagal memuat data komik. Silakan coba kembali.');
+      setError('Gagal memuat komik. Silakan coba kembali.');
     } finally {
       setIsLoading(false);
       setIsLoadingMore(false);
@@ -94,26 +85,37 @@ export default function ExplorePage() {
   };
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      startTransition(() => {
-        loadData(true);
-      });
-    }, searchQuery ? 400 : 0);
+    startTransition(() => {
+      loadData(true);
+    });
+  }, [activeCategory]);
 
-    return () => clearTimeout(timer);
-  }, [searchQuery, activeType, isColor, activeGenre, feedMode]);
+  const getCategoryTitle = () => {
+    switch (activeCategory) {
+      case 'recommended':
+        return 'Rekomendasi Populer';
+      case 'manhwa':
+        return 'Peringkat Top Manhwa (Korea)';
+      case 'manga':
+        return 'Peringkat Top Manga (Jepang)';
+      case 'manhua':
+        return 'Peringkat Top Manhua (China)';
+      case 'latest':
+        return 'Rilis Terbaru Hari Ini';
+    }
+  };
 
   return (
     <div className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 flex flex-col">
-      {/* Top App Header */}
+      {/* Top Header */}
       <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3">
-        <div className="max-w-md mx-auto flex flex-col gap-2.5">
+        <div className="max-w-md mx-auto flex flex-col gap-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base font-extrabold tracking-wider bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent">
                 KUROKOMI
               </span>
-              <span className="text-[10px] font-semibold bg-zinc-800 text-blue-400 border border-zinc-700 px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-semibold bg-zinc-850 text-blue-400 border border-zinc-750 px-2 py-0.5 rounded-full">
                 ID Sub
               </span>
             </div>
@@ -126,74 +128,36 @@ export default function ExplorePage() {
             </button>
           </div>
 
-          {/* Search Box */}
-          <div className="relative flex items-center">
-            <Search className="absolute left-3 w-4 h-4 text-zinc-500 pointer-events-none" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Cari komik (contoh: Solo Leveling, One Piece)..."
-              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-9 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600 transition-colors"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                aria-label="Hapus pencarian"
-                className="absolute right-3 text-zinc-500 hover:text-zinc-300"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
+          {/* Top Category Segment Bar */}
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+            {CATEGORIES.map(cat => {
+              const Icon = cat.icon;
+              const isActive = activeCategory === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setActiveCategory(cat.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                      : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200 hover:bg-zinc-850'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
           </div>
-
-          {/* Filter Bar */}
-          <FilterBar
-            activeType={activeType}
-            isColor={isColor}
-            activeGenre={activeGenre}
-            onTypeChange={setActiveType}
-            onColorToggle={() => setIsColor(!isColor)}
-            onGenreChange={setActiveGenre}
-          />
-
-          {/* Tab Mode (Rekomendasi vs Terbaru) - only on Home without search */}
-          {!searchQuery.trim() && activeType === 'all' && (
-            <div className="flex items-center gap-2 pt-1 border-t border-zinc-850">
-              <button
-                onClick={() => setFeedMode('popular')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  feedMode === 'popular'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
-                    : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200'
-                }`}
-              >
-                <Flame className="w-3.5 h-3.5" />
-                <span>Rekomendasi</span>
-              </button>
-
-              <button
-                onClick={() => setFeedMode('latest')}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  feedMode === 'latest'
-                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
-                    : 'bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-200'
-                }`}
-              >
-                <Clock className="w-3.5 h-3.5" />
-                <span>Rilis Terbaru</span>
-              </button>
-            </div>
-          )}
         </div>
       </header>
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-md mx-auto w-full px-4 pt-3">
-        {/* Section Title */}
+        {/* Section Header */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-            {getSectionTitle()}
+            {getCategoryTitle()}
           </h2>
           <span className="text-[11px] text-zinc-500 font-medium">
             {isLoading ? 'Memuat...' : `${comics.length} judul`}
@@ -234,21 +198,8 @@ export default function ExplorePage() {
           <div className="flex flex-col items-center justify-center p-8 bg-zinc-900/40 rounded-2xl border border-zinc-800/80 text-center my-6 gap-2">
             <span className="text-sm font-semibold text-zinc-300">Tidak ada komik yang ditemukan</span>
             <p className="text-xs text-zinc-500 max-w-xs">
-              Coba ganti kata kunci pencarian atau ubah kombinasi filter genre/tipe.
+              Silakan coba muat ulang atau pilih kategori lain.
             </p>
-            {isFiltering && (
-              <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setActiveType('all');
-                  setIsColor(false);
-                  setActiveGenre('');
-                }}
-                className="mt-2 text-xs font-medium text-blue-400 hover:text-blue-300 underline underline-offset-4"
-              >
-                Reset Semua Filter
-              </button>
-            )}
           </div>
         )}
 
@@ -287,7 +238,7 @@ export default function ExplorePage() {
         )}
       </main>
 
-      {/* Fixed Bottom Navigation */}
+      {/* Bottom Nav with 4 items: Home, Search, Favorit, History */}
       <BottomNav />
     </div>
   );
