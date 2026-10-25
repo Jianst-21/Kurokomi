@@ -202,7 +202,17 @@ export default function MangaDetailPage() {
 
             {/* Type & Status Badges */}
             <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-              <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-900">
+              <span
+                className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
+                  comic.type === 'manhwa'
+                    ? 'bg-blue-950 text-blue-400 border-blue-900'
+                    : comic.type === 'manhua'
+                    ? 'bg-amber-950 text-amber-400 border-amber-900'
+                    : comic.type === 'manga'
+                    ? 'bg-rose-950 text-rose-400 border-rose-900'
+                    : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                }`}
+              >
                 {comic.type}
               </span>
               <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">

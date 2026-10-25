@@ -3,6 +3,7 @@ import {
   parseKomikuSearchResults,
   parseKomikuLatestUpdates,
   parseKomikuChapters,
+  parseKomikuDetail,
   scoreTitleMatch,
   generateSearchQueries,
 } from '@/lib/komiku';
@@ -154,5 +155,57 @@ describe('Komiku Provider Smart Parsers & Matchers', () => {
       genres: ['Romantis'],
       isFullColor: true,
     });
+  });
+
+  it('parses Komiku detail correctly for Manhua without being fooled by manhwa links in navigation', () => {
+    const sampleManhuaDetailHtml = `
+      <nav>
+        <ul>
+          <li><a href="https://komiku.org/pustaka/?tipe=manhwa">Baca Manhwa</a></li>
+          <li><a href="https://komiku.org/pustaka/?tipe=manga">Baca Manga</a></li>
+        </ul>
+      </nav>
+      <header>
+        <h1 itemprop="name">Komik King Account At The Start</h1>
+      </header>
+      <div class="ims">
+        <img src="https://thumbnail.komiku.to/king.jpg" />
+      </div>
+      <p class="desc">Sinopsis petualangan seru.</p>
+      <table class="inftable">
+        <tr><td>Judul:</td><td>King Account At The Start</td></tr>
+        <tr><td>Judul Alternatif:</td><td>Raja Akun Di Awal</td></tr>
+        <tr><td>Tipe:</td><td><strong>Manhua</strong></td></tr>
+        <tr><td>Author:</td><td>Anselmo Sound</td></tr>
+        <tr><td>Status:</td><td>Ongoing</td></tr>
+      </table>
+      <ul class="genre">
+        <li class="genre"><a href="/genre/action/">Action</a></li>
+        <li class="genre"><a href="/genre/fantasy/">Fantasy</a></li>
+      </ul>
+    `;
+
+    const detail = parseKomikuDetail(sampleManhuaDetailHtml, 'king-account-at-the-start');
+    expect(detail).not.toBeNull();
+    expect(detail?.title).toBe('King Account At The Start');
+    expect(detail?.type).toBe('manhua');
+    expect(detail?.altTitles).toContain('Raja Akun Di Awal');
+    expect(detail?.author).toBe('Anselmo Sound');
+    expect(detail?.status).toBe('ongoing');
+    expect(detail?.genres).toEqual(['Action', 'Fantasy']);
+    expect(detail?.isFullColor).toBe(true);
+  });
+
+  it('parses Komiku detail correctly for Manga', () => {
+    const sampleMangaDetailHtml = `
+      <h1 itemprop="name">Isekai Yakkyoku</h1>
+      <table class="inftable">
+        <tr><td>Tipe:</td><td><strong>Manga</strong></td></tr>
+        <tr><td>Status:</td><td>Tamat</td></tr>
+      </table>
+    `;
+    const detail = parseKomikuDetail(sampleMangaDetailHtml, 'isekai-yakkyoku');
+    expect(detail?.type).toBe('manga');
+    expect(detail?.status).toBe('completed');
   });
 });

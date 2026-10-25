@@ -189,11 +189,12 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
       status = 'completed';
     }
 
-    // Type
+    // Type: handles both <span><b>Jenis Komik:</b> <a href="...">Manhua</a></span> and plain text
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
-    const typeMatch = html.match(/<b>Jenis Komik:<\/b>\s*([^<]+)/i);
+    const typeMatch = html.match(/<b>Jenis Komik:<\/b>([\s\S]*?)<\/span>/i) ||
+                      html.match(/class="typeflag\s+([^"]+)"/i);
     if (typeMatch) {
-      const raw = typeMatch[1].toLowerCase();
+      const raw = typeMatch[1].replace(/<[^>]+>/g, '').toLowerCase().trim();
       if (raw.includes('manhwa')) type = 'manhwa';
       else if (raw.includes('manhua')) type = 'manhua';
       else if (raw.includes('manga')) type = 'manga';
@@ -207,6 +208,18 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
     let artist: string | undefined = undefined;
     const artistMatch = html.match(/<b>Artis:<\/b>\s*([^<]+)/i);
     if (artistMatch) artist = artistMatch[1].trim();
+
+    // Alt Titles
+    const altTitles: string[] = [];
+    const altMatch = html.match(/<b>Judul Alternatif:<\/b>([\s\S]*?)<\/span>/i);
+    if (altMatch) {
+      const rawAlts = altMatch[1].replace(/<[^>]+>/g, '').split(',').map(s => s.trim()).filter(Boolean);
+      for (const a of rawAlts) {
+        if (a && a !== '-' && a !== title && !altTitles.includes(a)) {
+          altTitles.push(a);
+        }
+      }
+    }
 
     // Genres
     const genres: string[] = [];
@@ -222,7 +235,7 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
     return {
       id: `komikindo--${slug}`,
       title,
-      altTitles: [],
+      altTitles,
       description,
       coverUrl,
       type,

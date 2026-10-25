@@ -132,6 +132,23 @@ describe('Komikindo Provider Parsers', () => {
     expect(detail?.description).toContain('10 tahun yang lalu');
   });
 
+  it('parses detail with linked type tags correctly for Manhua', () => {
+    const sampleManhuaDetail = `
+      <h1 class="entry-title">Scoring the Sacred Body</h1>
+      <div class="spe">
+        <span><b>Judul Alternatif:</b> Kaiju Qiandao, Ancient Holy Body</span>
+        <span><b>Status:</b> Berjalan</span>
+        <span><b>Pengarang:</b> Xingkong</span>
+        <span><b>Jenis Komik:</b> <a href="/manhua">Manhua</a></span>
+      </div>
+    `;
+    const detail = parseKomikindoDetail(sampleManhuaDetail, 'scoring-the-sacred-body');
+    expect(detail?.type).toBe('manhua');
+    expect(detail?.altTitles).toContain('Ancient Holy Body');
+    expect(detail?.author).toBe('Xingkong');
+    expect(detail?.status).toBe('ongoing');
+  });
+
   const sampleChapterListHtml = `
     <div class="bxcl" id="chapter_list">
       <ul>

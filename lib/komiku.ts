@@ -259,15 +259,58 @@ export function parseKomikuDetail(html: string, slug: string): ComicDetail | nul
       description = descMatch[1].replace(/<[^>]+>/g, '').trim();
     }
 
+    // Status: check inftable row first, fallback to text
     let status: 'ongoing' | 'completed' | 'hiatus' | 'cancelled' = 'ongoing';
-    if (html.toLowerCase().includes('tamat') || html.toLowerCase().includes('completed')) {
+    const statusMatch = html.match(/<td>Status:<\/td>\s*<td>([\s\S]*?)<\/td>/i);
+    if (statusMatch) {
+      const statusText = statusMatch[1].replace(/<[^>]+>/g, '').toLowerCase().trim();
+      if (statusText.includes('tamat') || statusText.includes('completed') || statusText.includes('end')) {
+        status = 'completed';
+      }
+    } else if (html.toLowerCase().includes('tamat') || html.toLowerCase().includes('completed')) {
       status = 'completed';
     }
 
+    // Exact Comic Type: check inftable row or post meta, NEVER the entire HTML (to avoid navbar links)
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
-    if (html.toLowerCase().includes('manhwa')) type = 'manhwa';
-    else if (html.toLowerCase().includes('manhua')) type = 'manhua';
-    else if (html.toLowerCase().includes('manga')) type = 'manga';
+    const typeMatch =
+      html.match(/<td>Tipe:<\/td>\s*<td>([\s\S]*?)<\/td>/i) ||
+      html.match(/<td>Jenis Komik:<\/td>\s*<td>([\s\S]*?)<\/td>/i) ||
+      html.match(/<div class="tpe1_inf"[^>]*>[\s\S]*?<b>\s*(Manga|Manhwa|Manhua)\s*<\/b>/i);
+    if (typeMatch) {
+      const raw = typeMatch[1].replace(/<[^>]+>/g, '').toLowerCase().trim();
+      if (raw.includes('manhwa')) type = 'manhwa';
+      else if (raw.includes('manhua')) type = 'manhua';
+      else if (raw.includes('manga')) type = 'manga';
+    } else {
+      // Fallback: check breadcrumb area only
+      const breadcrumbMatch = html.match(/<ul id="breadcrumb"[\s\S]*?<\/ul>/i);
+      if (breadcrumbMatch) {
+        const bText = breadcrumbMatch[0].toLowerCase();
+        if (bText.includes('manhwa')) type = 'manhwa';
+        else if (bText.includes('manhua')) type = 'manhua';
+        else if (bText.includes('manga')) type = 'manga';
+      }
+    }
+
+    // Alt Titles
+    const altTitles: string[] = [];
+    const altMatch = html.match(/<td>Judul Alternatif:<\/td>\s*<td>([\s\S]*?)<\/td>/i);
+    if (altMatch) {
+      const rawAlt = altMatch[1].replace(/<[^>]+>/g, '').trim();
+      if (rawAlt && rawAlt !== '-' && rawAlt !== title && !altTitles.includes(rawAlt)) {
+        altTitles.push(rawAlt);
+      }
+    }
+
+    // Author
+    let author: string | undefined = undefined;
+    const authorMatch = html.match(/<td>Author:<\/td>\s*<td>([\s\S]*?)<\/td>/i) ||
+                        html.match(/<td>Pengarang:<\/td>\s*<td>([\s\S]*?)<\/td>/i);
+    if (authorMatch) {
+      const rawAuthor = authorMatch[1].replace(/<[^>]+>/g, '').trim();
+      if (rawAuthor && rawAuthor !== '-') author = rawAuthor;
+    }
 
     const genres: string[] = [];
     const genreMatches = [...html.matchAll(/<ul class="genre"[^>]*>([\s\S]*?)<\/ul>/gi)];
@@ -279,16 +322,23 @@ export function parseKomikuDetail(html: string, slug: string): ComicDetail | nul
       }
     }
 
+    const isFullColor = Boolean(
+      type === 'manhwa' ||
+      type === 'manhua' ||
+      html.toLowerCase().includes('berwarna')
+    );
+
     return {
       id: `komiku--${slug}`,
       title,
-      altTitles: [],
+      altTitles,
       description,
       coverUrl,
       type,
       status,
       genres,
-      isFullColor: false,
+      isFullColor,
+      author,
     };
   } catch (e) {
     console.error('parseKomikuDetail error:', e);
