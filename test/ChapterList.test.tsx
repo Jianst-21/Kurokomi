@@ -33,4 +33,11 @@ describe('ChapterList Component', () => {
     render(<ChapterList mangaId="m1" chapters={mockChapters} lastReadChapterId="c2" />);
     expect(screen.getByText(/Terakhir Dibaca/i)).toBeInTheDocument();
   });
+
+  it('renders release date in DD/MM/YYYY format for chapters', () => {
+    render(<ChapterList mangaId="m1" chapters={mockChapters} />);
+    expect(screen.getByText('01/01/2023')).toBeInTheDocument();
+    expect(screen.getByText('02/01/2023')).toBeInTheDocument();
+    expect(screen.getByText('03/01/2023')).toBeInTheDocument();
+  });
 });

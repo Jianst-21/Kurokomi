@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowUpDown, BookOpen, Clock, ChevronRight } from 'lucide-react';
 import { ChapterItem } from '@/lib/types';
 import { sortChapters } from '@/lib/mangadex';
+import { formatChapterDate } from '@/lib/date';
 
 interface ChapterListProps {
   mangaId: string;
@@ -39,13 +40,7 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
       <div className="flex flex-col gap-1.5">
         {sorted.map(ch => {
           const isLastRead = ch.id === lastReadChapterId;
-          const formattedDate = ch.publishAt
-            ? new Date(ch.publishAt).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })
-            : '';
+          const formattedDate = formatChapterDate(ch.publishAt);
 
           return (
             <Link
