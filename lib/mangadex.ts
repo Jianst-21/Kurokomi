@@ -240,7 +240,11 @@ export function buildSearchQueryUrl(options: {
   params.append('contentRating[]', 'suggestive');
   params.append('contentRating[]', 'erotica');
 
-  if (options.query && options.query.trim()) {
+  if (options.order) {
+    for (const [key, dir] of Object.entries(options.order)) {
+      params.set(`order[${key}]`, dir);
+    }
+  } else if (options.query && options.query.trim()) {
     params.set('title', options.query.trim());
   } else {
     // Default to most followed/popular if no query text
@@ -422,6 +426,11 @@ export async function searchComics(
 
       const isFullColor = attr.tags?.some((t: { id: string }) => t.id === FULL_COLOR_TAG_ID);
 
+      const genres: string[] = (attr.tags || [])
+        .filter((t: { attributes?: { group: string } }) => t.attributes?.group === 'genre')
+        .map((t: { attributes?: { name: { en?: string } } }) => t.attributes?.name?.en)
+        .filter(Boolean);
+
       items.push({
         id: m.id,
         title: String(title),
@@ -429,6 +438,7 @@ export async function searchComics(
         coverUrl,
         type,
         isFullColor,
+        genres,
       });
     }
 
@@ -437,6 +447,32 @@ export async function searchComics(
     console.error('searchComics error:', err);
     throw err;
   }
+}
+
+export async function fetchLatestComicsByType(
+  type: ComicType = 'all',
+  limit: number = 10,
+  offset: number = 0
+): Promise<ComicCardItem[]> {
+  return await searchComics('', {
+    type,
+    limit,
+    offset,
+    order: { latestUploadedChapter: 'desc' },
+  });
+}
+
+export async function fetchTopComics(
+  type: ComicType = 'all',
+  limit: number = 15,
+  offset: number = 0
+): Promise<ComicCardItem[]> {
+  return await searchComics('', {
+    type,
+    limit,
+    offset,
+    order: { followedCount: 'desc' },
+  });
 }
 
 export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | null> {

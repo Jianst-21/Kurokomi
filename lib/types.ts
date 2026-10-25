@@ -9,6 +9,7 @@ export interface ComicCardItem {
   latestChapter?: string;
   updatedAt?: string;
   isFullColor?: boolean;
+  genres?: string[];
 }
 
 export interface ComicDetail {
@@ -46,6 +47,7 @@ export interface FilterOptions {
   genre?: string;
   limit?: number;
   offset?: number;
+  order?: Record<string, 'asc' | 'desc'>;
 }
 
 export interface ReadingHistoryItem {
