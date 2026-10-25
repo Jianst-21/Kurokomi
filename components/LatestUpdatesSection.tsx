@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchLatestComicsByType } from '@/lib/mangadex';
@@ -20,7 +20,6 @@ export function LatestUpdatesSection() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const PAGE_LIMIT = 10;
 
   const loadLatestComics = useCallback(async (type: ComicType, pageNum: number) => {
@@ -31,9 +30,6 @@ export function LatestUpdatesSection() {
     try {
       const results = await fetchLatestComicsByType(type, PAGE_LIMIT, offset);
       setComics(results);
-      if (scrollContainerRef.current) {
-        scrollContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-      }
     } catch {
       setError('Gagal memuat update terbaru.');
     } finally {
@@ -113,10 +109,7 @@ export function LatestUpdatesSection() {
             Belum ada update komik untuk kategori ini.
           </div>
         ) : (
-          <div
-            ref={scrollContainerRef}
-            className="flex gap-3 overflow-x-auto snap-x-mandatory no-scrollbar pb-1"
-          >
+          <div className="flex flex-col gap-2.5">
             {comics.map(comic => (
               <HorizontalComicCard key={comic.id} comic={comic} />
             ))}

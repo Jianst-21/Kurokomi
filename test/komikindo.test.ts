@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseKomikindoSearchResults,
+  parseKomikindoLatestUpdates,
   parseKomikindoDetail,
   parseKomikindoChapters,
   parseKomikindoImages,
@@ -56,6 +57,45 @@ describe('Komikindo Provider Parsers', () => {
     });
     expect(results[1].id).toBe('komikindo--229848-solo-leveling');
     expect(results[1].title).toBe('Solo Leveling');
+  });
+
+  const sampleLatestHtml = `
+    <div class="animepost">
+      <div class="animposx">
+        <a href="https://komikindo.ch/komik/steel-eating-player/" title="Komik Steel-Eating Player">
+          <div class="warnalabel">Warna</div>
+          <span class="typeflag Manhwa"></span>
+          <img src="https://komikindo.ch/wp-content/uploads/steel.jpg" />
+        </a>
+        <div class="bigors">
+          <div class="tt">
+            <h3>
+              <a href="https://komikindo.ch/komik/steel-eating-player/">Steel-Eating Player</a>
+            </h3>
+          </div>
+          <div class="adds">
+            <div class="lsch">
+              <a href="https://komikindo.ch/steel-eating-player-chapter-103/">Ch. 103</a>
+              <span class="datech">3 menit lalu</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  it('parses latest updates with chapter, relative date and full color', () => {
+    const items = parseKomikindoLatestUpdates(sampleLatestHtml);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({
+      id: 'komikindo--steel-eating-player',
+      title: 'Steel-Eating Player',
+      coverUrl: 'https://komikindo.ch/wp-content/uploads/steel.jpg',
+      type: 'manhwa',
+      latestChapter: 'Ch. 103',
+      updatedAt: '3 menit lalu',
+      isFullColor: true,
+    });
   });
 
   const sampleDetailHtml = `

@@ -451,10 +451,37 @@ export async function searchComics(
 }
 
 export async function fetchLatestComicsByType(
-  type: ComicType = 'all',
+  type: ComicType = 'manhwa',
   limit: number = 10,
   offset: number = 0
 ): Promise<ComicCardItem[]> {
+  const page = Math.floor(offset / limit) + 1;
+  const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
+
+  if (isBrowser) {
+    try {
+      const res = await fetch(`/api/komikindo?action=latest&type=${type}&page=${page}&limit=${limit}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.comics && json.comics.length > 0) {
+          return json.comics;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  } else {
+    try {
+      const { fetchKomikindoLatest } = await import('./komikindo');
+      const items = await fetchKomikindoLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page, limit);
+      if (items && items.length > 0) {
+        return items;
+      }
+    } catch {
+      // fallback
+    }
+  }
+
   return await searchComics('', {
     type,
     limit,

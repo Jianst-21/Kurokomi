@@ -13,7 +13,11 @@ interface HorizontalComicCardProps {
 export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   const [imgError, setImgError] = useState(false);
 
-  const formattedDate = comic.updatedAt ? formatChapterDate(comic.updatedAt) : '';
+  const formattedDate = comic.updatedAt
+    ? comic.updatedAt.includes('lalu')
+      ? comic.updatedAt
+      : formatChapterDate(comic.updatedAt)
+    : '';
 
   const typeBadgeColors: Record<string, string> = {
     manga: 'bg-rose-950 text-rose-400 border-rose-900',
@@ -28,7 +32,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
     <Link
       href={`/manga/${comic.id}`}
       aria-label={comic.title}
-      className="w-full shrink-0 snap-center bg-zinc-900/90 border border-zinc-800 rounded-2xl p-3 flex gap-3 shadow-lg hover:border-zinc-750 transition-all group"
+      className="w-full bg-zinc-900/90 border border-zinc-800 rounded-2xl p-3 flex gap-3 shadow-lg hover:border-zinc-750 transition-all group"
     >
       {/* Left: Comic Cover Poster */}
       <div className="w-24 h-36 shrink-0 rounded-xl overflow-hidden bg-zinc-800/80 border border-zinc-750/60 relative shadow-md">

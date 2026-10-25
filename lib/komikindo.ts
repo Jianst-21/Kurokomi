@@ -73,6 +73,92 @@ export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
   return items;
 }
 
+export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
+  const items: ComicCardItem[] = [];
+  const cardRegex = /<div class="animepost">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g;
+  let match;
+
+  while ((match = cardRegex.exec(html)) !== null) {
+    const block = match[1];
+
+    const linkMatch = block.match(/href="https?:\/\/komikindo\.ch\/komik\/([^\/"]+)\/?"/);
+    if (!linkMatch) continue;
+    const slug = linkMatch[1];
+
+    let title = slug;
+    const titleMatch = block.match(/<h3>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
+    if (titleMatch) {
+      title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/^Komik\s+/i, '').trim();
+    }
+
+    const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
+    const coverUrl = imgMatch ? imgMatch[1] : '';
+
+    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
+    const typeMatch = block.match(/class="typeflag\s+([^"]+)"/i);
+    if (typeMatch) {
+      const rawType = typeMatch[1].toLowerCase();
+      if (rawType.includes('manhwa')) type = 'manhwa';
+      else if (rawType.includes('manhua')) type = 'manhua';
+      else if (rawType.includes('manga')) type = 'manga';
+    }
+
+    const chMatch = block.match(/class="lsch"[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
+    const latestChapter = chMatch ? chMatch[1].replace(/<[^>]+>/g, '').trim() : undefined;
+
+    const dateMatch = block.match(/class="datech">([\s\S]*?)<\/span>/i);
+    const updatedAt = dateMatch ? dateMatch[1].replace(/<[^>]+>/g, '').trim() : undefined;
+
+    const isFullColor = block.includes('warnalabel') || block.includes('Warna');
+
+    items.push({
+      id: `komikindo--${slug}`,
+      title,
+      coverUrl,
+      type,
+      latestChapter,
+      updatedAt,
+      isFullColor,
+    });
+  }
+
+  return items;
+}
+
+export async function fetchKomikindoLatest(
+  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'manhwa',
+  page: number = 1,
+  limit: number = 10
+): Promise<ComicCardItem[]> {
+  try {
+    const komikindoPage = Math.floor(((page - 1) * limit) / 40) + 1;
+    const pageOffset = ((page - 1) * limit) % 40;
+
+    let path = 'komik-terbaru';
+    if (type === 'manhwa') path = 'manhwa';
+    else if (type === 'manga') path = 'manga';
+    else if (type === 'manhua') path = 'manhua';
+
+    const url = komikindoPage > 1
+      ? `${KOMIKINDO_BASE}/${path}/page/${komikindoPage}/`
+      : `${KOMIKINDO_BASE}/${path}/`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return [];
+    const html = await res.text();
+    const all = parseKomikindoLatestUpdates(html);
+    return all.slice(pageOffset, pageOffset + limit);
+  } catch (e) {
+    console.error('fetchKomikindoLatest error:', e);
+    return [];
+  }
+}
+
 export function parseKomikindoDetail(html: string, slug: string): ComicDetail | null {
   try {
     // Title
