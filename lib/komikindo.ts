@@ -1,0 +1,316 @@
+import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
+import { deduplicateChapters, sortChapters } from './mangadex';
+
+export const KOMIKINDO_BASE = 'https://komikindo.ch';
+const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
+  const items: ComicCardItem[] = [];
+  const cardRegex = /<div class="animepost">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/g;
+  let match;
+
+  while ((match = cardRegex.exec(html)) !== null) {
+    const block = match[1];
+
+    // Extract link & slug
+    const linkMatch = block.match(/href="https?:\/\/komikindo\.ch\/komik\/([^\/"]+)\/?"/);
+    if (!linkMatch) continue;
+    const slug = linkMatch[1];
+
+    // Extract title
+    let title = '';
+    const titleMatch = block.match(/<h3>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/h3>/i);
+    if (titleMatch) {
+      title = titleMatch[1].replace(/<[^>]+>/g, '').trim();
+    } else {
+      const altMatch = block.match(/title="Komik\s+([^"]+)"/i) || block.match(/title="([^"]+)"/);
+      title = altMatch ? altMatch[1].trim() : slug;
+    }
+    title = title.replace(/^Komik\s+/i, '').trim();
+
+    // Extract image
+    const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
+    const coverUrl = imgMatch ? imgMatch[1] : '';
+
+    // Extract comic type
+    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
+    const typeMatch = block.match(/class="typeflag\s+([^"]+)"/i);
+    if (typeMatch) {
+      const rawType = typeMatch[1].toLowerCase();
+      if (rawType.includes('manhwa')) type = 'manhwa';
+      else if (rawType.includes('manhua')) type = 'manhua';
+      else if (rawType.includes('manga')) type = 'manga';
+    }
+
+    items.push({
+      id: `komikindo--${slug}`,
+      title,
+      coverUrl,
+      type,
+      isFullColor: false,
+    });
+  }
+
+  // Fallback: if regex didn't catch nested divs, match animposx directly
+  if (items.length === 0) {
+    const fallbackMatches = [...html.matchAll(/<div class="animposx">[\s\S]*?<a href="https?:\/\/komikindo\.ch\/komik\/([^\/"]+)\/?"[\s\S]*?<img[^>]+src="([^"]+)"[\s\S]*?<h3>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/gi)];
+    for (const m of fallbackMatches) {
+      const slug = m[1];
+      const coverUrl = m[2];
+      const title = m[3].replace(/<[^>]+>/g, '').replace(/^Komik\s+/i, '').trim();
+      items.push({
+        id: `komikindo--${slug}`,
+        title,
+        coverUrl,
+        type: 'other',
+        isFullColor: false,
+      });
+    }
+  }
+
+  return items;
+}
+
+export function parseKomikindoDetail(html: string, slug: string): ComicDetail | null {
+  try {
+    // Title
+    let title = '';
+    const titleMatch = html.match(/<h1[^>]*class="[^"]*entry-title[^"]*"[^>]*>([\s\S]*?)<\/h1>/i) ||
+                       html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (titleMatch) {
+      title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/^Komik\s+/i, '').trim();
+    } else {
+      title = slug;
+    }
+
+    // Cover
+    const coverMatch = html.match(/<div class="thumb"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i);
+    const coverUrl = coverMatch ? coverMatch[1] : '';
+
+    // Description / Synopsis
+    let description = 'Tidak ada sinopsis.';
+    const descMatch = html.match(/<div[^>]*class="[^"]*entry-content[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    if (descMatch) {
+      description = descMatch[1].replace(/<[^>]+>/g, '').trim();
+    }
+
+    // Status
+    let status: 'ongoing' | 'completed' | 'hiatus' | 'cancelled' = 'ongoing';
+    const statusMatch = html.match(/<b>Status:<\/b>\s*([^<]+)/i);
+    if (statusMatch && statusMatch[1].toLowerCase().includes('completed')) {
+      status = 'completed';
+    }
+
+    // Type
+    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
+    const typeMatch = html.match(/<b>Jenis Komik:<\/b>\s*([^<]+)/i);
+    if (typeMatch) {
+      const raw = typeMatch[1].toLowerCase();
+      if (raw.includes('manhwa')) type = 'manhwa';
+      else if (raw.includes('manhua')) type = 'manhua';
+      else if (raw.includes('manga')) type = 'manga';
+    }
+
+    // Author & Artist
+    let author: string | undefined = undefined;
+    const authorMatch = html.match(/<b>Pengarang:<\/b>\s*([^<]+)/i);
+    if (authorMatch) author = authorMatch[1].trim();
+
+    let artist: string | undefined = undefined;
+    const artistMatch = html.match(/<b>Artis:<\/b>\s*([^<]+)/i);
+    if (artistMatch) artist = artistMatch[1].trim();
+
+    // Genres
+    const genres: string[] = [];
+    const genreMatches = [...html.matchAll(/<div class="genre-info"[^>]*>([\s\S]*?)<\/div>/gi)];
+    if (genreMatches[0]) {
+      const aMatches = [...genreMatches[0][1].matchAll(/<a[^>]*>([^<]+)<\/a>/gi)];
+      for (const gm of aMatches) {
+        const g = gm[1].trim();
+        if (g) genres.push(g);
+      }
+    }
+
+    return {
+      id: `komikindo--${slug}`,
+      title,
+      altTitles: [],
+      description,
+      coverUrl,
+      type,
+      status,
+      genres,
+      isFullColor: false,
+      author,
+      artist,
+    };
+  } catch (e) {
+    console.error('parseKomikindoDetail error:', e);
+    return null;
+  }
+}
+
+export function parseKomikindoChapters(html: string): ChapterItem[] {
+  const chapters: ChapterItem[] = [];
+  // Matches list items in chapter_list or bxcl
+  const liMatches = [...html.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)];
+
+  for (const li of liMatches) {
+    const content = li[1];
+    const linkMatch = content.match(/<span class="lchx"[^>]*>[\s\S]*?<a href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/i);
+    if (!linkMatch) continue;
+
+    const href = linkMatch[1];
+    const rawChapterTitle = linkMatch[2].replace(/<[^>]+>/g, '').trim();
+
+    // Extract chapter number
+    const numMatch = rawChapterTitle.match(/Chapter\s+([0-9.]+)/i) || href.match(/chapter-([0-9.]+)/i);
+    const chapterNum = numMatch ? numMatch[1] : '0';
+
+    // Extract exact chapter slug from URL
+    const cleanChapterSlug = href.replace(/^https?:\/\/komikindo\.ch\/?/, '').replace(/^\//, '').replace(/\/$/, '');
+
+    // Extract publish date if present
+    let publishAt = '';
+    const dateMatch = content.match(/<span class="dt">([\s\S]*?)<\/span>/i);
+    if (dateMatch) {
+      publishAt = dateMatch[1].replace(/<[^>]+>/g, '').trim();
+    }
+
+    chapters.push({
+      id: `komikindo--${cleanChapterSlug}`,
+      chapter: chapterNum,
+      title: `Chapter ${chapterNum}`,
+      scanlationGroup: 'Komikindo Sub Indo',
+      publishAt,
+      pagesCount: 0,
+    });
+  }
+
+  return sortChapters(deduplicateChapters(chapters), false);
+}
+
+export function parseKomikindoImages(html: string): ChapterPageItem[] {
+  const pages: ChapterPageItem[] = [];
+
+  const readerMatch = html.match(/<div[^>]*id="readerarea"[^>]*>([\s\S]*?)<\/div>/i);
+  const targetArea = readerMatch ? readerMatch[1] : html;
+
+  const imgMatches = [...targetArea.matchAll(/<img[^>]+src="([^"]+)"/gi)];
+  const urls: string[] = [];
+
+  for (const m of imgMatches) {
+    const src = m[1];
+    if (
+      src &&
+      src.startsWith('http') &&
+      !src.includes('fav.png') &&
+      !src.includes('komikindo-') &&
+      !src.includes('iklan') &&
+      !src.includes('promosi') &&
+      !src.includes('logo')
+    ) {
+      urls.push(src);
+    }
+  }
+
+  return urls.map(u => ({
+    url: u,
+    fallbackUrl: u,
+  }));
+}
+
+export async function searchKomikindo(query: string): Promise<ComicCardItem[]> {
+  try {
+    const res = await fetch(`${KOMIKINDO_BASE}/?s=${encodeURIComponent(query)}`, {
+      headers: { 'User-Agent': USER_AGENT },
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    return parseKomikindoSearchResults(html);
+  } catch (e) {
+    console.error('searchKomikindo error:', e);
+    return [];
+  }
+}
+
+export async function fetchKomikindoDetail(slug: string): Promise<ComicDetail | null> {
+  try {
+    const res = await fetch(`${KOMIKINDO_BASE}/komik/${slug}/`, {
+      headers: { 'User-Agent': USER_AGENT },
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+    return parseKomikindoDetail(html, slug);
+  } catch (e) {
+    console.error('fetchKomikindoDetail error:', e);
+    return null;
+  }
+}
+
+export async function fetchKomikindoChapters(slug: string): Promise<ChapterItem[]> {
+  try {
+    const res = await fetch(`${KOMIKINDO_BASE}/komik/${slug}/`, {
+      headers: { 'User-Agent': USER_AGENT },
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    return parseKomikindoChapters(html);
+  } catch (e) {
+    console.error('fetchKomikindoChapters error:', e);
+    return [];
+  }
+}
+
+export async function fetchKomikindoChapterImages(chapterSlug: string): Promise<ChapterPageItem[]> {
+  try {
+    let cleanSlug = chapterSlug.replace(/^komikindo--/, '').replace(/^\//, '').replace(/\/$/, '');
+    const url = `${KOMIKINDO_BASE}/${cleanSlug}/`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const html = await res.text();
+    return parseKomikindoImages(html);
+  } catch (e) {
+    console.error('fetchKomikindoChapterImages error:', e);
+    return [];
+  }
+}
+
+export async function findKomikindoSlug(title: string, altTitles?: string[]): Promise<string | null> {
+  const titlesToTry = [title, ...(altTitles || [])].filter(Boolean);
+
+  for (const t of titlesToTry) {
+    const results = await searchKomikindo(t);
+    if (!results || results.length === 0) continue;
+
+    const normalizedQuery = t.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // 1. Look for exact title match
+    const exactMatch = results.find(
+      r => r.title.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedQuery
+    );
+    if (exactMatch) {
+      return exactMatch.id.replace(/^komikindo--/, '');
+    }
+
+    // 2. Otherwise pick closest result that contains query and does not include extra subtitle like ": Ragnarok"
+    const containsMatch = results.find(r => {
+      const normCard = r.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return normCard.includes(normalizedQuery);
+    });
+    if (containsMatch) {
+      return containsMatch.id.replace(/^komikindo--/, '');
+    }
+
+    // Fallback to first result
+    return results[0].id.replace(/^komikindo--/, '');
+  }
+
+  return null;
+}
