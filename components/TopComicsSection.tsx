@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { RefreshCw, AlertCircle, BookOpen, Flame, Crown, Sparkles } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
@@ -25,7 +25,15 @@ export function TopComicsSection() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
+  const sectionRef = useRef<HTMLElement>(null);
   const PAGE_LIMIT = 15;
+
+  const scrollToTop = () => {
+    if (sectionRef.current && typeof window !== 'undefined') {
+      const top = sectionRef.current.getBoundingClientRect().top + window.scrollY - 60;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }
+  };
 
   const loadTopComics = useCallback(async (cat: ComicType, pageNum: number) => {
     setIsLoading(true);
@@ -50,18 +58,21 @@ export function TopComicsSection() {
     if (cat === activeCategory) return;
     setActiveCategory(cat);
     setPage(1);
+    scrollToTop();
   };
 
   const handlePrev = () => {
     setPage(prev => Math.max(1, prev - 1));
+    scrollToTop();
   };
 
   const handleNext = () => {
     setPage(prev => prev + 1);
+    scrollToTop();
   };
 
   return (
-    <section className="flex flex-col gap-3 pt-2">
+    <section ref={sectionRef} className="flex flex-col gap-3 pt-2">
       {/* Section Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

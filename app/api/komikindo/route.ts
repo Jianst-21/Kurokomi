@@ -12,6 +12,10 @@ const CACHE_HEADERS = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
 };
 
+const LATEST_CACHE_HEADERS = {
+  'Cache-Control': 'public, s-maxage=60, max-age=60, stale-while-revalidate=120',
+};
+
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get('action');
@@ -42,7 +46,7 @@ export async function GET(req: NextRequest) {
       const page = parseInt(searchParams.get('page') || '1', 10);
       const limit = parseInt(searchParams.get('limit') || '10', 10);
       const comics = await fetchKomikindoLatest(type, page, limit);
-      return NextResponse.json({ comics }, { headers: CACHE_HEADERS });
+      return NextResponse.json({ comics }, { headers: LATEST_CACHE_HEADERS });
     }
 
     if (action === 'chapters') {

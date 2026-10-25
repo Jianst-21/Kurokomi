@@ -458,32 +458,7 @@ export async function fetchLatestComicsByType(
   const page = Math.floor(offset / limit) + 1;
   const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
 
-  // 1. Primary: Komiku real-time updates (ultra-fast, 10 items/page, has exact relative update time)
-  if (isBrowser) {
-    try {
-      const res = await fetch(`/api/komiku?action=latest&type=${type}&page=${page}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.comics && json.comics.length > 0) {
-          return json.comics;
-        }
-      }
-    } catch {
-      // fallback to komikindo
-    }
-  } else {
-    try {
-      const { fetchKomikuLatest } = await import('./komiku');
-      const items = await fetchKomikuLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page);
-      if (items && items.length > 0) {
-        return items;
-      }
-    } catch {
-      // fallback to komikindo
-    }
-  }
-
-  // 2. Secondary: Komikindo real-time updates
+  // 1. Primary: Komikindo live real-time stream (fast, strictly chronological, beautiful portrait covers)
   if (isBrowser) {
     try {
       const res = await fetch(`/api/komikindo?action=latest&type=${type}&page=${page}&limit=${limit}`);
@@ -494,7 +469,7 @@ export async function fetchLatestComicsByType(
         }
       }
     } catch {
-      // fallback to mangadex
+      // fallback to komiku
     }
   } else {
     try {
@@ -504,16 +479,36 @@ export async function fetchLatestComicsByType(
         return items;
       }
     } catch {
-      // fallback to mangadex
+      // fallback to komiku
     }
   }
 
-  return await searchComics('', {
-    type,
-    limit,
-    offset,
-    order: { latestUploadedChapter: 'desc' },
-  });
+  // 2. Secondary: Komiku real-time stream
+  if (isBrowser) {
+    try {
+      const res = await fetch(`/api/komiku?action=latest&type=${type}&page=${page}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.comics && json.comics.length > 0) {
+          return json.comics;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  } else {
+    try {
+      const { fetchKomikuLatest } = await import('./komiku');
+      const items = await fetchKomikuLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page);
+      if (items && items.length > 0) {
+        return items;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return [];
 }
 
 export async function fetchTopComics(
