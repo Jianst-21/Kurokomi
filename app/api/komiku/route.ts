@@ -4,6 +4,7 @@ import {
   fetchKomikuChapters,
   fetchKomikuChapterImages,
   fetchKomikuDetail,
+  fetchKomikuLatest,
   searchKomiku,
 } from '@/lib/komiku';
 
@@ -34,6 +35,13 @@ export async function GET(req: NextRequest) {
       const slug = searchParams.get('slug') || '';
       const detail = await fetchKomikuDetail(slug);
       return NextResponse.json({ detail }, { headers: CACHE_HEADERS });
+    }
+
+    if (action === 'latest') {
+      const type = (searchParams.get('type') || 'all') as 'manga' | 'manhwa' | 'manhua' | 'all';
+      const page = parseInt(searchParams.get('page') || '1', 10);
+      const comics = await fetchKomikuLatest(type, page);
+      return NextResponse.json({ comics }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'chapters') {

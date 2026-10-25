@@ -89,6 +89,111 @@ export function parseKomikuSearchResults(html: string): ComicCardItem[] {
   return items;
 }
 
+export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
+  const items: ComicCardItem[] = [];
+  const bgeRegex = /<div class="bge">([\s\S]*?)<\/div>\s*<\/div>/g;
+  let match;
+
+  while ((match = bgeRegex.exec(html)) !== null) {
+    const block = match[1];
+
+    const linkMatch = block.match(/<a href="([^"]+)"/);
+    if (!linkMatch) continue;
+    const href = linkMatch[1];
+    const slug = href.replace(/^https?:\/\/komiku\.org/, '').replace(/^\/manga\//, '').replace(/\/$/, '');
+
+    let title = slug;
+    const titleMatch = block.match(/<h3>\s*([^<]+)\s*<\/h3>/i);
+    if (titleMatch) {
+      title = titleMatch[1].trim();
+    }
+
+    const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
+    const coverUrl = imgMatch ? imgMatch[1] : '';
+
+    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
+    const typeMatch = block.match(/<b>\s*(Manga|Manhwa|Manhua)\s*<\/b>/i);
+    if (typeMatch) {
+      const raw = typeMatch[1].toLowerCase();
+      if (raw.includes('manhwa')) type = 'manhwa';
+      else if (raw.includes('manhua')) type = 'manhua';
+      else if (raw.includes('manga')) type = 'manga';
+    }
+
+    // Latest chapter from "Terbaru"
+    let latestChapter: string | undefined;
+    const chMatch =
+      block.match(/<span>Terbaru:\s*<\/span>\s*<span>([^<]+)<\/span>/i) ||
+      block.match(/title="[^"]*(Chapter\s*[0-9.]+)[^"]*"/i);
+    if (chMatch) {
+      const rawCh = chMatch[1].trim();
+      latestChapter = rawCh.toLowerCase().startsWith('chapter') || rawCh.toLowerCase().startsWith('ch')
+        ? rawCh
+        : `Ch. ${rawCh}`;
+    }
+
+    // Time & Genres from judul2
+    let updatedAt: string | undefined;
+    const genres: string[] = [];
+    const judul2Match = block.match(/<span class="judul2">([\s\S]*?)<\/span>/i);
+    if (judul2Match) {
+      const parts = judul2Match[1].split('|').map(p => p.trim()).filter(Boolean);
+      for (const p of parts) {
+        if (
+          p.toLowerCase().includes('lalu') ||
+          p.toLowerCase().includes('hari') ||
+          p.toLowerCase().includes('jam') ||
+          p.toLowerCase().includes('menit') ||
+          p.toLowerCase().includes('detik')
+        ) {
+          updatedAt = p;
+        } else if (p.toLowerCase() !== 'berwarna') {
+          genres.push(p);
+        }
+      }
+    }
+
+    const isFullColor = block.toLowerCase().includes('berwarna');
+
+    items.push({
+      id: `komiku--${slug}`,
+      title,
+      coverUrl,
+      type,
+      latestChapter,
+      updatedAt,
+      genres,
+      isFullColor,
+    });
+  }
+
+  return items;
+}
+
+export async function fetchKomikuLatest(
+  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'manhwa',
+  page: number = 1
+): Promise<ComicCardItem[]> {
+  try {
+    const tipeParam = type && type !== 'all' ? `&tipe=${type}` : '';
+    const pagedParam = page > 1 ? `&paged=${page}` : '';
+    const url = `${KOMIKU_API_SEARCH}/?post_type=manga&orderby=modified${tipeParam}${pagedParam}`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      next: { revalidate: 60 },
+    });
+
+    if (!res.ok) return [];
+    const html = await res.text();
+    return parseKomikuLatestUpdates(html);
+  } catch (e) {
+    console.error('fetchKomikuLatest error:', e);
+    return [];
+  }
+}
+
 export function parseKomikuChapters(html: string): ChapterItem[] {
   const chapters: ChapterItem[] = [];
 

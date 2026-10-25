@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   parseKomikuSearchResults,
+  parseKomikuLatestUpdates,
   parseKomikuChapters,
   scoreTitleMatch,
   generateSearchQueries,
@@ -115,5 +116,43 @@ describe('Komiku Provider Smart Parsers & Matchers', () => {
     expect(queries).toContain("The Evil Alchemist Can");
     // Must generate 3-word prefix
     expect(queries).toContain("The Evil Alchemist");
+  });
+
+  const sampleLatestHtml = `
+    <div class="bge">
+      <div class="bgei">
+        <a href="https://komiku.org/manga/the-terminally-ill-lady/">
+          <img src="https://thumbnail.komiku.org/lady.jpg" class="sd rd">
+          <div class="tpe1_inf"><b>Manhwa</b> Romantis</div>
+        </a>
+      </div>
+      <div class="kan">
+        <a href="https://komiku.org/manga/the-terminally-ill-lady/">
+          <h3>The Terminally Ill Lady</h3>
+        </a>
+        <span class="judul2">Romantis | 25 menit lalu | Berwarna</span>
+        <div class="new1">
+          <a href="/the-terminally-ill-lady-chapter-1/"><span>Awal: </span><span>Chapter 1</span></a>
+        </div>
+        <div class="new1">
+          <a href="/the-terminally-ill-lady-chapter-19/"><span>Terbaru: </span><span>Chapter 19</span></a>
+        </div>
+      </div>
+    </div>
+  `;
+
+  it('parses latest updates with latest chapter, time, and genres', () => {
+    const items = parseKomikuLatestUpdates(sampleLatestHtml);
+    expect(items).toHaveLength(1);
+    expect(items[0]).toEqual({
+      id: 'komiku--the-terminally-ill-lady',
+      title: 'The Terminally Ill Lady',
+      coverUrl: 'https://thumbnail.komiku.org/lady.jpg',
+      type: 'manhwa',
+      latestChapter: 'Chapter 19',
+      updatedAt: '25 menit lalu',
+      genres: ['Romantis'],
+      isFullColor: true,
+    });
   });
 });
