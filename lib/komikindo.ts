@@ -1,6 +1,6 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
-import { scoreTitleMatch } from './komiku';
+import { scoreTitleMatch, generateSearchQueries } from './komiku';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -289,23 +289,26 @@ export async function fetchKomikindoChapterImages(chapterSlug: string): Promise<
 }
 
 export async function findKomikindoSlug(title: string, altTitles?: string[]): Promise<string | null> {
-  const titlesToTry = [title, ...(altTitles || [])].filter(Boolean);
+  const titlesToTry = generateSearchQueries(title, altTitles);
+  const targets = [title, ...(altTitles || [])].filter(Boolean);
   let bestSlug: string | null = null;
   let highestScore = 0;
 
-  for (const t of titlesToTry.slice(0, 6)) {
+  for (const t of titlesToTry.slice(0, 10)) {
     try {
       const results = await searchKomikindo(t);
       if (!results || results.length === 0) continue;
 
       for (const card of results) {
-        const score = scoreTitleMatch(t, card.title);
-        if (score === 100) {
-          return card.id.replace(/^komikindo--/, '');
-        }
-        if (score > highestScore && score >= 60) {
-          highestScore = score;
-          bestSlug = card.id.replace(/^komikindo--/, '');
+        for (const target of targets) {
+          const score = scoreTitleMatch(target, card.title);
+          if (score === 100) {
+            return card.id.replace(/^komikindo--/, '');
+          }
+          if (score > highestScore && score >= 60) {
+            highestScore = score;
+            bestSlug = card.id.replace(/^komikindo--/, '');
+          }
         }
       }
 

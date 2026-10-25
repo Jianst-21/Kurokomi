@@ -3,6 +3,7 @@ import {
   parseKomikuSearchResults,
   parseKomikuChapters,
   scoreTitleMatch,
+  generateSearchQueries,
 } from '@/lib/komiku';
 
 describe('Komiku Provider Smart Parsers & Matchers', () => {
@@ -85,5 +86,18 @@ describe('Komiku Provider Smart Parsers & Matchers', () => {
     expect(chapters[1].id).toBe('komiku--one-piece-chapter-1099');
     expect(chapters[1].chapter).toBe('1099');
     expect(chapters[1].publishAt).toBe('13/10/2026');
+  });
+
+  it('generates queries with curly apostrophes and shortened prefixes for complex titles', () => {
+    const queries = generateSearchQueries(
+      "Xie'e Lianjin Shushi Gao Buding Ziji De Shiyan Ti",
+      ["The Evil Alchemist Can't Handle His Own Experiment"]
+    );
+    // Must generate curly apostrophe variant to match WordPress MySQL LIKE '%...%'
+    expect(queries).toContain("The Evil Alchemist Can’t Handle His Own Experiment");
+    // Must generate prefix without contraction
+    expect(queries).toContain("The Evil Alchemist Can");
+    // Must generate 3-word prefix
+    expect(queries).toContain("The Evil Alchemist");
   });
 });

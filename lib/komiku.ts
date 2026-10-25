@@ -221,39 +221,100 @@ export async function fetchKomikuDetail(slug: string): Promise<ComicDetail | nul
   }
 }
 
-export async function findKomikuSlug(title: string, altTitles?: string[]): Promise<string | null> {
-  // Filter for titles that have Latin/ASCII characters
-  const rawTitles = [title, ...(altTitles || [])].filter(Boolean);
-  const titlesToTry: string[] = [];
+export function generateSearchQueries(title: string, altTitles?: string[]): string[] {
+  const rawList = [title, ...(altTitles || [])].filter(Boolean);
+  const queries = new Set<string>();
 
-  for (const t of rawTitles) {
-    const clean = t.trim();
-    // Prioritize titles with Latin characters
-    if (/[a-zA-Z]/.test(clean)) {
-      titlesToTry.push(clean);
-      const normalized = clean.replace(/\(.*?\)/g, '').replace(/[:\-]/g, ' ').replace(/\s+/g, ' ').trim();
-      if (normalized && normalized !== clean && !titlesToTry.includes(normalized)) {
-        titlesToTry.push(normalized);
+  function addClean(q?: string) {
+    if (!q) return;
+    const clean = q.trim();
+    if (clean.length >= 4 && /[a-zA-Z]/.test(clean)) {
+      queries.add(clean);
+    }
+  }
+
+  // Prioritize ASCII/English titles before titles with tone marks/accents
+  const asciiList: string[] = [];
+  const otherList: string[] = [];
+
+  for (const raw of rawList) {
+    const clean = raw.trim();
+    if (!/[a-zA-Z]/.test(clean)) continue;
+    if (/^[\x00-\x7F\u2019\u2018\u201C\u201D]+$/.test(clean)) {
+      asciiList.push(clean);
+    } else {
+      otherList.push(clean);
+    }
+  }
+
+  const sortedRaw = [...asciiList, ...otherList];
+
+  for (const clean of sortedRaw) {
+    // 1. Full clean title
+    addClean(clean);
+
+    // 2. Straight / Curly apostrophe conversion
+    if (clean.includes("'")) {
+      addClean(clean.replace(/'/g, '’'));
+    }
+    if (clean.includes('’')) {
+      addClean(clean.replace(/’/g, "'"));
+    }
+
+    // 3. Substring before punctuation (: , - , ( , [)
+    const punctMatch = clean.match(/^([^:\-\(\[\/]+)/);
+    if (punctMatch && punctMatch[1]) {
+      const p = punctMatch[1].trim();
+      if (p !== clean && p.split(/\s+/).length >= 2) {
+        addClean(p);
+      }
+    }
+
+    // 4. Substring before apostrophe / contraction
+    const aposMatch = clean.match(/^([^'’]+)/);
+    if (aposMatch && aposMatch[1]) {
+      const a = aposMatch[1].trim();
+      if (a !== clean && a.split(/\s+/).length >= 2) {
+        addClean(a);
+      }
+    }
+
+    // 5. Shorten long titles to first 3-4 words
+    const words = clean.replace(/[:\-]/g, ' ').split(/\s+/).filter(Boolean);
+    if (words.length > 3) {
+      addClean(words.slice(0, 3).join(' '));
+      addClean(words.slice(0, 4).join(' '));
+      if (words[0].toLowerCase() === 'the' && words.length > 2) {
+        addClean(words.slice(1, 4).join(' '));
       }
     }
   }
 
+  return Array.from(queries);
+}
+
+export async function findKomikuSlug(title: string, altTitles?: string[]): Promise<string | null> {
+  const titlesToTry = generateSearchQueries(title, altTitles);
+  const targets = [title, ...(altTitles || [])].filter(Boolean);
+
   let bestSlug: string | null = null;
   let highestScore = 0;
 
-  for (const t of titlesToTry.slice(0, 6)) {
+  for (const t of titlesToTry.slice(0, 10)) {
     try {
       const candidates = await searchKomiku(t);
       if (!candidates || candidates.length === 0) continue;
 
       for (const card of candidates) {
-        const score = scoreTitleMatch(t, card.title);
-        if (score === 100) {
-          return card.id.replace(/^komiku--/, '');
-        }
-        if (score > highestScore && score >= 60) {
-          highestScore = score;
-          bestSlug = card.id.replace(/^komiku--/, '');
+        for (const target of targets) {
+          const score = scoreTitleMatch(target, card.title);
+          if (score === 100) {
+            return card.id.replace(/^komiku--/, '');
+          }
+          if (score > highestScore && score >= 60) {
+            highestScore = score;
+            bestSlug = card.id.replace(/^komiku--/, '');
+          }
         }
       }
 

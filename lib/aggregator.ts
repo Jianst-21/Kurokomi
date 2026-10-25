@@ -209,7 +209,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
       : import('./komiku').then(m => m.fetchKomikuChapters(slug));
   } else {
     // Search Komiku by title + altTitles
-    const altParam = (comic.altTitles || []).slice(0, 5).join('|');
+    const altParam = (comic.altTitles || []).slice(0, 10).join('|');
     komikuPromise = isBrowser
       ? fetch(`/api/komiku?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`)
           .then(r => r.ok ? r.json() : { slug: null })
@@ -238,7 +238,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
       : import('./komikindo').then(m => m.fetchKomikindoChapters(slug));
   } else {
     // Search Komikindo by title + altTitles
-    const altParam = (comic.altTitles || []).slice(0, 5).join('|');
+    const altParam = (comic.altTitles || []).slice(0, 10).join('|');
     komikindoPromise = isBrowser
       ? fetch(`/api/komikindo?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`)
           .then(r => r.ok ? r.json() : { slug: null })

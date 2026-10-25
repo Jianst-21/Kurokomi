@@ -417,7 +417,12 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
     const attr = data.attributes || {};
     const title = getEnglishTitle(attr);
 
-    const altTitles: string[] = (attr.altTitles || []).map((t: Record<string, string>) => Object.values(t)[0]).filter(Boolean);
+    const rawAltTitles: string[] = (attr.altTitles || []).map((t: Record<string, string>) => Object.values(t)[0]).filter(Boolean);
+    const altTitles = rawAltTitles.sort((a, b) => {
+      const aIsAscii = /^[\x00-\x7F\u2019\u2018\u201C\u201D]+$/.test(a) ? 2 : (/[a-zA-Z]/.test(a) ? 1 : 0);
+      const bIsAscii = /^[\x00-\x7F\u2019\u2018\u201C\u201D]+$/.test(b) ? 2 : (/[a-zA-Z]/.test(b) ? 1 : 0);
+      return bIsAscii - aIsAscii;
+    });
     const description = attr.description?.id || attr.description?.en || Object.values(attr.description || {})[0] || 'Tidak ada sinopsis.';
 
     const coverRel = data.relationships?.find((r: { type: string }) => r.type === 'cover_art');
