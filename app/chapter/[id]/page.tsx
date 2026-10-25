@@ -125,6 +125,34 @@ export default function ReaderPage() {
     setHudVisible(prev => !prev);
   };
 
+  // Auto-hide HUD after 2.5s on initial chapter load
+  useEffect(() => {
+    if (!isLoading && pages.length > 0) {
+      const timer = setTimeout(() => {
+        setHudVisible(false);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading, pages.length]);
+
+  // Auto-hide HUD immediately whenever user scrolls
+  useEffect(() => {
+    let lastScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      if (Math.abs(currentScrollY - lastScrollY) > 6) {
+        setHudVisible(false);
+        lastScrollY = currentScrollY;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-3">

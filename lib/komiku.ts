@@ -92,14 +92,18 @@ export function parseKomikuSearchResults(html: string): ComicCardItem[] {
 export function parseKomikuChapters(html: string): ChapterItem[] {
   const chapters: ChapterItem[] = [];
 
-  // 1. Try parsing table format with tanggal
-  const tableRowMatches = [...html.matchAll(/<tr>[\s\S]*?<td class="judulseries">[\s\S]*?<a href="(\/([^"]*chapter-([0-9.]+)[^"]*))"[\s\S]*?<td class="tanggalserua">([^<]+)<\/td>[\s\S]*?<\/tr>/gi)];
+  // 1. Try parsing table format with tanggal (matches both 'tanggalseries' and 'tanggalserua')
+  const tableRowMatches = [
+    ...html.matchAll(
+      /<tr[^>]*>[\s\S]*?<td class="judulseries"[^>]*>[\s\S]*?<a href="(\/([^" ?#]*chapter-([0-9.]+)[^"]*))"[^>]*>[\s\S]*?<\/td>[\s\S]*?<td class="tanggal[^"]*"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi
+    ),
+  ];
 
   if (tableRowMatches.length > 0) {
     for (const m of tableRowMatches) {
       const exactChapterSlug = m[2].replace(/\/$/, '');
       const chapterNum = m[3];
-      const publishAt = m[4].trim();
+      const publishAt = m[4].replace(/<[^>]+>/g, '').trim();
 
       chapters.push({
         id: `komiku--${exactChapterSlug}`,

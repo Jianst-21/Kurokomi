@@ -41,6 +41,13 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
         {sorted.map(ch => {
           const isLastRead = ch.id === lastReadChapterId;
           const formattedDate = formatChapterDate(ch.publishAt);
+          const hasCustomTitle = Boolean(
+            ch.title &&
+            ch.title.trim().toLowerCase() !== `chapter ${ch.chapter}`.toLowerCase() &&
+            ch.title.trim().toLowerCase() !== `ch. ${ch.chapter}`.toLowerCase() &&
+            ch.title.trim().toLowerCase() !== `ch ${ch.chapter}`.toLowerCase() &&
+            ch.title.trim() !== ch.chapter.trim()
+          );
 
           return (
             <Link
@@ -63,7 +70,7 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
                     </span>
                   )}
                 </div>
-                {ch.title && (
+                {hasCustomTitle && (
                   <span className="text-[11px] text-zinc-400 line-clamp-1">
                     {ch.title}
                   </span>

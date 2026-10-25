@@ -86,6 +86,22 @@ describe('Komiku Provider Smart Parsers & Matchers', () => {
     expect(chapters[1].id).toBe('komiku--one-piece-chapter-1099');
     expect(chapters[1].chapter).toBe('1099');
     expect(chapters[1].publishAt).toBe('13/10/2026');
+
+    const realKomikuHtml = `
+      <table id="Daftar_Chapter">
+        <tbody>
+          <tr itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+            <td class="judulseries"><meta itemprop="position" content="1"><a href="/the-extras-academy-survival-guide-chapter-129/" itemprop="url"><span itemprop="name"><b>Chapter 129</b></span></a></td>
+            <td class="tanggalseries">23/10/2026</td>
+          </tr>
+        </tbody>
+      </table>
+    `;
+    const realChapters = parseKomikuChapters(realKomikuHtml);
+    expect(realChapters).toHaveLength(1);
+    expect(realChapters[0].id).toBe('komiku--the-extras-academy-survival-guide-chapter-129');
+    expect(realChapters[0].chapter).toBe('129');
+    expect(realChapters[0].publishAt).toBe('23/10/2026');
   });
 
   it('generates queries with curly apostrophes and shortened prefixes for complex titles', () => {
