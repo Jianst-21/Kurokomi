@@ -36,6 +36,15 @@ describe('MangaDex Helpers & Utilities', () => {
       altTitles: [{ en: 'Demon Slayer: Kimetsu no Yaiba' }],
     };
     expect(getEnglishTitle(attr3)).toBe('Demon Slayer: Kimetsu no Yaiba');
+
+    const attr4 = {
+      title: { en: "Xie'e Lianjin Shushi Gao Buding Ziji De Shiyan Ti" },
+      altTitles: [
+        { 'zh-ro': "Xié'è Liànjīn Shùshì Gǎo Bùdìng Zìjǐ De Shíyàn Tǐ" },
+        { en: "The Evil Alchemist Can't Handle His Own Experiment" },
+      ],
+    };
+    expect(getEnglishTitle(attr4)).toBe("The Evil Alchemist Can't Handle His Own Experiment");
   });
 
   it('deduplicates multiple scanlation releases for the same chapter number', () => {

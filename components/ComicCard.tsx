@@ -72,10 +72,17 @@ export function ComicCard({ comic }: ComicCardProps) {
       </div>
 
       {/* Info Container */}
-      <div className="p-2 flex flex-col flex-1 justify-between">
-        <h3 className="text-xs font-semibold text-zinc-200 line-clamp-2 leading-snug">
-          {comic.title}
-        </h3>
+      <div className="p-2 flex flex-col flex-1 justify-between gap-1">
+        <div>
+          <h3 className="text-xs font-semibold text-zinc-200 line-clamp-2 leading-snug">
+            {comic.title}
+          </h3>
+          {comic.altTitle && comic.altTitle !== comic.title && (
+            <p className="text-[10px] text-zinc-500 line-clamp-1 italic mt-0.5">
+              Alt: {comic.altTitle}
+            </p>
+          )}
+        </div>
       </div>
     </Link>
   );

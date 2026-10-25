@@ -136,47 +136,86 @@ export function sortChapters(chapters: ChapterItem[], ascending: boolean = false
   });
 }
 
+function normalizeTitleForCompare(str: string): string {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
+export function resolveComicTitles(attr: {
+  title?: Record<string, string | undefined>;
+  altTitles?: Array<Record<string, string | undefined>>;
+} | null | undefined): { title: string; altTitle?: string } {
+  if (!attr) return { title: 'Judul Tidak Diketahui' };
+
+  const mainTitles = attr.title || {};
+  const altTitlesList = attr.altTitles || [];
+
+  const enAltTitles: string[] = [];
+  const idAltTitles: string[] = [];
+  const romanizedAltTitles: string[] = [];
+
+  for (const alt of altTitlesList) {
+    if (alt.id?.trim()) idAltTitles.push(alt.id.trim());
+    if (alt.en?.trim()) enAltTitles.push(alt.en.trim());
+    if (alt['zh-ro']?.trim()) romanizedAltTitles.push(alt['zh-ro'].trim());
+    if (alt['ko-ro']?.trim()) romanizedAltTitles.push(alt['ko-ro'].trim());
+    if (alt['ja-ro']?.trim()) romanizedAltTitles.push(alt['ja-ro'].trim());
+  }
+
+  const rawEn = mainTitles['en']?.trim() || '';
+  const rawId = mainTitles['id']?.trim() || '';
+  const rawRo = mainTitles['ja-ro']?.trim() || mainTitles['ko-ro']?.trim() || mainTitles['zh-ro']?.trim() || '';
+
+  // Check if rawEn is actually Romanized Pinyin / Romaja / Romaji
+  const isRawEnRomanized = Boolean(
+    (rawRo && normalizeTitleForCompare(rawEn) === normalizeTitleForCompare(rawRo)) ||
+    romanizedAltTitles.some(r => normalizeTitleForCompare(r) === normalizeTitleForCompare(rawEn))
+  );
+
+  let primary = '';
+  let tagline = '';
+
+  // 1. If altTitles has an actual English title and rawEn is either absent or Romanized Pinyin/Romaja:
+  if (enAltTitles.length > 0 && (!rawEn || isRawEnRomanized)) {
+    const realEnAlt = enAltTitles.find(t => normalizeTitleForCompare(t) !== normalizeTitleForCompare(rawEn));
+    if (realEnAlt) {
+      primary = realEnAlt;
+      tagline = rawEn || rawRo || romanizedAltTitles[0] || '';
+    }
+  }
+
+  if (!primary) {
+    if (rawId) {
+      primary = rawId;
+      tagline = rawEn || enAltTitles[0] || rawRo || '';
+    } else if (rawEn) {
+      primary = rawEn;
+      tagline = enAltTitles.find(t => t !== rawEn) || rawRo || romanizedAltTitles[0] || '';
+    } else if (enAltTitles.length > 0) {
+      primary = enAltTitles[0];
+      tagline = rawRo || romanizedAltTitles[0] || '';
+    } else if (rawRo) {
+      primary = rawRo;
+      tagline = Object.values(mainTitles)[0] || '';
+    } else {
+      primary = Object.values(mainTitles)[0] || 'Judul Tidak Diketahui';
+    }
+  }
+
+  return {
+    title: primary,
+    altTitle: tagline && tagline !== primary ? tagline : undefined,
+  };
+}
+
 export function getEnglishTitle(attr: {
   title?: Record<string, string | undefined>;
   altTitles?: Array<Record<string, string | undefined>>;
 } | null | undefined): string {
-  if (!attr) return 'Judul Tidak Diketahui';
-
-  // 1. Check if 'id' (Indonesian) exists in main title
-  if (attr.title?.id && typeof attr.title.id === 'string' && attr.title.id.trim()) {
-    return attr.title.id.trim();
-  }
-
-  // 2. Check if 'en' exists in main title
-  if (attr.title?.en && typeof attr.title.en === 'string' && attr.title.en.trim()) {
-    return attr.title.en.trim();
-  }
-
-  // 3. Look for 'id' then 'en' in altTitles array
-  if (Array.isArray(attr.altTitles)) {
-    for (const alt of attr.altTitles) {
-      if (alt && alt.id && typeof alt.id === 'string' && alt.id.trim()) {
-        return alt.id.trim();
-      }
-    }
-    for (const alt of attr.altTitles) {
-      if (alt && alt.en && typeof alt.en === 'string' && alt.en.trim()) {
-        return alt.en.trim();
-      }
-    }
-  }
-
-  // 4. Fallback to romanized Japanese/Korean/Chinese or first available title
-  const mainTitles = attr.title || {};
-  return (
-    mainTitles['id'] ||
-    mainTitles['en'] ||
-    mainTitles['ja-ro'] ||
-    mainTitles['ko-ro'] ||
-    mainTitles['zh-ro'] ||
-    Object.values(mainTitles)[0] ||
-    'Judul Tidak Diketahui'
-  );
+  return resolveComicTitles(attr).title;
 }
 
 export function buildSearchQueryUrl(options: {
@@ -278,13 +317,14 @@ export async function fetchLatestUpdates(limit: number = 60, offset: number = 0)
       seenManga.add(mangaRel.id);
 
       const mangaAttr = mangaRel.attributes || {};
-      const title = getEnglishTitle(mangaAttr);
+      const { title, altTitle } = resolveComicTitles(mangaAttr);
 
       const type = getComicTypeFromLanguage(mangaAttr.originalLanguage);
 
       items.push({
         id: mangaRel.id,
         title: String(title),
+        altTitle,
         coverUrl: '', // Will be resolved or lazy loaded with placeholder
         type,
         latestChapter: ch.attributes?.chapter ? `Ch. ${ch.attributes.chapter}` : undefined,
@@ -369,7 +409,7 @@ export async function searchComics(
 
     for (const m of data.data || []) {
       const attr = m.attributes || {};
-      const title = getEnglishTitle(attr);
+      const { title, altTitle } = resolveComicTitles(attr);
 
       const type = getComicTypeFromLanguage(attr.originalLanguage);
 
@@ -385,6 +425,7 @@ export async function searchComics(
       items.push({
         id: m.id,
         title: String(title),
+        altTitle,
         coverUrl,
         type,
         isFullColor,
@@ -415,9 +456,12 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
     if (!data) return null;
 
     const attr = data.attributes || {};
-    const title = getEnglishTitle(attr);
+    const { title, altTitle: resolvedAlt } = resolveComicTitles(attr);
 
     const rawAltTitles: string[] = (attr.altTitles || []).map((t: Record<string, string>) => Object.values(t)[0]).filter(Boolean);
+    if (resolvedAlt && !rawAltTitles.includes(resolvedAlt)) {
+      rawAltTitles.push(resolvedAlt);
+    }
     const altTitles = rawAltTitles.sort((a, b) => {
       const aIsAscii = /^[\x00-\x7F\u2019\u2018\u201C\u201D]+$/.test(a) ? 2 : (/[a-zA-Z]/.test(a) ? 1 : 0);
       const bIsAscii = /^[\x00-\x7F\u2019\u2018\u201C\u201D]+$/.test(b) ? 2 : (/[a-zA-Z]/.test(b) ? 1 : 0);

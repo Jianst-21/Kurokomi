@@ -51,4 +51,38 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
     const eleceed = deduplicated.find(c => c.title === 'Eleceed');
     expect(eleceed?.id).toBe('komikindo--eleceed');
   });
+
+  it('unifies comics that have different titles across providers when matched by altTitle', () => {
+    const cards: ComicCardItem[] = [
+      // Provider A (Komiku) uses English/Popular title
+      {
+        id: 'komiku--alchemist',
+        title: "The Evil Alchemist Can't Handle His Own Experiment",
+        coverUrl: 'http://img-k.jpg',
+        type: 'manhua',
+      },
+      // Provider B (MangaDex) has Romanized pinyin title as altTitle
+      {
+        id: 'md-uuid-alchemist',
+        title: "The Evil Alchemist Can't Handle His Own Experiment",
+        altTitle: "Xié'è Liànjīn Shùshì Gǎo Bùdìng Zìjǐ De Shíyàn Tǐ",
+        coverUrl: 'http://img-md.jpg',
+        type: 'manhua',
+      },
+      // Provider C (Komikindo) uses Pinyin title directly without altTitle
+      {
+        id: 'komikindo--xie-e-lianjin',
+        title: "Xié'è Liànjīn Shùshì Gǎo Bùdìng Zìjǐ De Shíyàn Tǐ",
+        coverUrl: 'http://img-ki.jpg',
+        type: 'manhua',
+      },
+    ];
+
+    const deduplicated = deduplicateComics(cards);
+    // All 3 should be merged into 1 card!
+    expect(deduplicated).toHaveLength(1);
+    expect(deduplicated[0].id).toBe('komiku--alchemist'); // Komiku has highest provider priority
+    expect(deduplicated[0].title).toBe("The Evil Alchemist Can't Handle His Own Experiment");
+    expect(deduplicated[0].altTitle).toBe("Xié'è Liànjīn Shùshì Gǎo Bùdìng Zìjǐ De Shíyàn Tǐ");
+  });
 });

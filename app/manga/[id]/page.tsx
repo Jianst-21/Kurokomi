@@ -193,6 +193,12 @@ export default function MangaDetailPage() {
             <h2 className="text-base font-bold text-zinc-100 leading-snug">
               {comic.title}
             </h2>
+            {comic.altTitles && comic.altTitles.filter(t => t !== comic.title).length > 0 && (
+              <p className="text-[11px] text-zinc-400 line-clamp-2 italic">
+                <span className="text-zinc-500 font-medium not-italic">Alt: </span>
+                {comic.altTitles.filter(t => t !== comic.title).slice(0, 3).join(', ')}
+              </p>
+            )}
 
             {/* Type & Status Badges */}
             <div className="flex items-center gap-1.5 flex-wrap mt-0.5">

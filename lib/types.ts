@@ -3,6 +3,7 @@ export type ComicType = 'manga' | 'manhwa' | 'manhua' | 'all';
 export interface ComicCardItem {
   id: string;
   title: string;
+  altTitle?: string;
   coverUrl: string;
   type: 'manga' | 'manhwa' | 'manhua' | 'other';
   latestChapter?: string;
