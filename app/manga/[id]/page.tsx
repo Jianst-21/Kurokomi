@@ -16,7 +16,7 @@ import {
   Languages,
 } from 'lucide-react';
 import { ComicDetail, ChapterItem } from '@/lib/types';
-import { fetchComicDetail, fetchComicChapters } from '@/lib/mangadex';
+import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
 import { toggleFavorite, isFavorite, getComicLastRead } from '@/lib/storage';
 import { ChapterList } from '@/components/ChapterList';
 import { BottomNav } from '@/components/BottomNav';
@@ -42,7 +42,7 @@ export default function MangaDetailPage() {
     setError(null);
 
     try {
-      const detailData = await fetchComicDetail(mangaId);
+      const detailData = await fetchUnifiedComicDetail(mangaId);
       if (!detailData) {
         setError('Komik tidak ditemukan atau telah dihapus.');
         setIsLoading(false);
@@ -60,43 +60,14 @@ export default function MangaDetailPage() {
         });
       }
 
-      // Concurrently fetch MangaDex Indonesian and English chapters
-      const [mdIdChaps, mdEnChaps] = await Promise.all([
-        fetchComicChapters(mangaId, 'id'),
-        fetchComicChapters(mangaId, 'en'),
-      ]);
+      // Fetch unified Indonesian chapters (merged Komiku + Komikindo + MangaDex) and English chapters
+      const { idChapters: mergedIdChapters, enChapters: mdEnChaps } = await fetchUnifiedChapters(detailData);
 
+      setIdChapters(mergedIdChapters);
       setEnChapters(mdEnChaps);
 
-      // Search Indonesian multi-source provider (Komiku) for up-to-date Indonesian chapters
-      let combinedIdChaps = mdIdChaps;
-      try {
-        const altTitlesParam = (detailData.altTitles || []).slice(0, 3).join('|');
-        const searchRes = await fetch(
-          `/api/komiku?action=search&title=${encodeURIComponent(detailData.title)}&altTitles=${encodeURIComponent(altTitlesParam)}`
-        );
-        if (searchRes.ok) {
-          const { slug } = await searchRes.json();
-          if (slug) {
-            const chapRes = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}`);
-            if (chapRes.ok) {
-              const { chapters: komikuChaps } = await chapRes.json();
-              if (komikuChaps && komikuChaps.length > 0) {
-                if (komikuChaps.length >= mdIdChaps.length) {
-                  combinedIdChaps = komikuChaps;
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Komiku multi-source provider error:', e);
-      }
-
-      setIdChapters(combinedIdChaps);
-
       // Prioritize Indonesian if chapters exist; otherwise fallback to English
-      if (combinedIdChaps.length > 0) {
+      if (mergedIdChapters.length > 0) {
         setSelectedLang('id');
       } else if (mdEnChaps.length > 0) {
         setSelectedLang('en');

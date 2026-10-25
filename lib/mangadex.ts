@@ -536,6 +536,23 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
       return [];
     }
 
+    // If chapter ID is from Komikindo provider (komikindo--chapterSlug or komikindo:...)
+    if (decodedId.startsWith('komikindo--') || decodedId.startsWith('komikindo:')) {
+      const chapterSlug = decodedId.replace(/^komikindo(--|:)/, '');
+
+      if (typeof window !== 'undefined') {
+        const res = await fetch(`/api/komikindo?action=pages&chapter=${encodeURIComponent(chapterSlug)}`);
+        if (res.ok) {
+          const data = await res.json();
+          return data.pages || [];
+        }
+      } else {
+        const { fetchKomikindoChapterImages } = await import('./komikindo');
+        return await fetchKomikindoChapterImages(chapterSlug);
+      }
+      return [];
+    }
+
     const res = await fetch(`${getApiBase()}/at-home/server/${decodedId}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter server: ${res.status}`);
