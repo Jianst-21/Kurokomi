@@ -227,6 +227,7 @@ export function buildSearchQueryUrl(options: {
   offset?: number;
   baseUrl?: string;
   requireIndonesian?: boolean;
+  order?: Record<string, string>;
 }): string {
   const params = new URLSearchParams();
 
@@ -242,7 +243,7 @@ export function buildSearchQueryUrl(options: {
 
   if (options.order) {
     for (const [key, dir] of Object.entries(options.order)) {
-      params.set(`order[${key}]`, dir);
+      params.set(`order[${key}]`, String(dir));
     }
   } else if (options.query && options.query.trim()) {
     params.set('title', options.query.trim());
