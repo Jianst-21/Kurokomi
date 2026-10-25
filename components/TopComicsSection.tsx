@@ -2,16 +2,20 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
+import { RefreshCw, AlertCircle, BookOpen, Flame, Crown, Sparkles } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchTopComics } from '@/lib/mangadex';
 import { CleanPagination } from './CleanPagination';
 
-const CATEGORIES: Array<{ id: ComicType; label: string; emoji: string }> = [
-  { id: 'all', label: 'Semua Top', emoji: '🔥' },
-  { id: 'manhwa', label: 'Top Manhwa', emoji: '⚡' },
-  { id: 'manga', label: 'Top Manga', emoji: '📖' },
-  { id: 'manhua', label: 'Top Manhua', emoji: '🐉' },
+const CATEGORIES: Array<{
+  id: ComicType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  { id: 'all', label: 'Semua Top', icon: Flame },
+  { id: 'manhwa', label: 'Top Manhwa', icon: Crown },
+  { id: 'manga', label: 'Top Manga', icon: BookOpen },
+  { id: 'manhua', label: 'Top Manhua', icon: Sparkles },
 ];
 
 export function TopComicsSection() {
@@ -70,18 +74,20 @@ export function TopComicsSection() {
       {/* Filter Chips Bar */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
         {CATEGORIES.map(c => {
+          const Icon = c.icon;
           const isActive = activeCategory === c.id;
           return (
             <button
               key={c.id}
               onClick={() => handleCategoryChange(c.id)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold shrink-0 border transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 border transition-all ${
                 isActive
                   ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
                   : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
               }`}
             >
-              <span>{c.emoji} {c.label}</span>
+              <Icon className="w-3.5 h-3.5" />
+              <span>{c.label}</span>
             </button>
           );
         })}
