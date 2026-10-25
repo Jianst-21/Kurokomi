@@ -1,6 +1,7 @@
-import { ChapterItem, ComicCardItem, ComicDetail } from './types';
-import { sortChapters } from './mangadex';
-import { normalizeTitle } from './komiku';
+import { ChapterItem, ComicCardItem, ComicDetail, FilterOptions } from './types';
+import { sortChapters, searchComics } from './mangadex';
+import { normalizeTitle, searchKomiku } from './komiku';
+import { searchKomikindo } from './komikindo';
 
 function getProviderPriority(id: string): number {
   if (id.startsWith('komiku--')) return 1;
@@ -101,6 +102,51 @@ export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
   }
 
   return Array.from(map.values());
+}
+
+export async function searchComicsUnified(
+  query: string,
+  options?: FilterOptions
+): Promise<ComicCardItem[]> {
+  const cleanQuery = (query || '').trim();
+
+  // If query is empty, browse using MangaDex with tag/genre filters
+  if (!cleanQuery) {
+    return await searchComics('', options);
+  }
+
+  const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
+
+  const komikuPromise = isBrowser
+    ? fetch(`/api/komiku?action=search&q=${encodeURIComponent(cleanQuery)}`)
+        .then(r => r.ok ? r.json() : { comics: [] })
+        .then(d => d.comics || [])
+        .catch(() => [])
+    : searchKomiku(cleanQuery).catch(() => []);
+
+  const komikindoPromise = isBrowser
+    ? fetch(`/api/komikindo?action=search&q=${encodeURIComponent(cleanQuery)}`)
+        .then(r => r.ok ? r.json() : { comics: [] })
+        .then(d => d.comics || [])
+        .catch(() => [])
+    : searchKomikindo(cleanQuery).catch(() => []);
+
+  const mdPromise = searchComics(cleanQuery, options).catch(() => []);
+
+  const [komikuRes, komikindoRes, mdRes] = await Promise.all([
+    komikuPromise,
+    komikindoPromise,
+    mdPromise,
+  ]);
+
+  let combined = [...(komikuRes || []), ...(komikindoRes || []), ...(mdRes || [])];
+
+  // Apply comic type filtering if specified
+  if (options?.type && options.type !== 'all') {
+    combined = combined.filter(c => c.type === options.type);
+  }
+
+  return deduplicateComics(combined);
 }
 
 export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {

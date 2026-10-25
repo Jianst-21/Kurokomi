@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useTransition } from 'react';
 import { Search, X, SlidersHorizontal, RefreshCw, AlertCircle, ChevronDown } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
-import { searchComics } from '@/lib/mangadex';
+import { searchComicsUnified } from '@/lib/aggregator';
 import { ComicCard } from '@/components/ComicCard';
 import { BottomNav } from '@/components/BottomNav';
 import { SearchFilterModal } from '@/components/SearchFilterModal';
@@ -40,7 +40,7 @@ export default function SearchPage() {
     const PAGE_LIMIT = 30;
 
     try {
-      const results = await searchComics(searchQuery, {
+      const results = await searchComicsUnified(searchQuery, {
         type: activeType,
         isColor,
         genre: activeGenre,

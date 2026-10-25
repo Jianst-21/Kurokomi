@@ -142,13 +142,23 @@ export function getEnglishTitle(attr: {
 } | null | undefined): string {
   if (!attr) return 'Judul Tidak Diketahui';
 
-  // 1. Check if 'en' exists in main title
+  // 1. Check if 'id' (Indonesian) exists in main title
+  if (attr.title?.id && typeof attr.title.id === 'string' && attr.title.id.trim()) {
+    return attr.title.id.trim();
+  }
+
+  // 2. Check if 'en' exists in main title
   if (attr.title?.en && typeof attr.title.en === 'string' && attr.title.en.trim()) {
     return attr.title.en.trim();
   }
 
-  // 2. Look for 'en' in altTitles array: [ { en: "English Title" }, ... ]
+  // 3. Look for 'id' then 'en' in altTitles array
   if (Array.isArray(attr.altTitles)) {
+    for (const alt of attr.altTitles) {
+      if (alt && alt.id && typeof alt.id === 'string' && alt.id.trim()) {
+        return alt.id.trim();
+      }
+    }
     for (const alt of attr.altTitles) {
       if (alt && alt.en && typeof alt.en === 'string' && alt.en.trim()) {
         return alt.en.trim();
@@ -156,14 +166,14 @@ export function getEnglishTitle(attr: {
     }
   }
 
-  // 3. Fallback to romanized Japanese/Korean/Chinese or first available title
+  // 4. Fallback to romanized Japanese/Korean/Chinese or first available title
   const mainTitles = attr.title || {};
   return (
+    mainTitles['id'] ||
     mainTitles['en'] ||
     mainTitles['ja-ro'] ||
     mainTitles['ko-ro'] ||
     mainTitles['zh-ro'] ||
-    mainTitles['id'] ||
     Object.values(mainTitles)[0] ||
     'Judul Tidak Diketahui'
   );
