@@ -30,13 +30,9 @@ describe('HorizontalComicCard', () => {
     expect(link.getAttribute('href')).toBe('/manga/md-extra-survival');
   });
 
-  it('handles wide landscape covers without zoom using object-contain', () => {
-    const wideComic: ComicCardItem = {
-      ...mockComic,
-      coverUrl: 'https://thumbnail.komiku.org/banner.jpg?resize=450,235',
-    };
-    const { container } = render(<HorizontalComicCard comic={wideComic} />);
+  it('renders cover with object-cover filling the container cleanly', () => {
+    const { container } = render(<HorizontalComicCard comic={mockComic} />);
     const img = container.querySelector('img');
-    expect(img?.className).toContain('object-contain');
+    expect(img?.className).toContain('object-cover');
   });
 });

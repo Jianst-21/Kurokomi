@@ -25,13 +25,6 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
       : formatChapterDate(comic.updatedAt)
     : '';
 
-  const isLandscape = Boolean(
-    comic.coverUrl &&
-    (comic.coverUrl.includes('manga_img_horizontal') ||
-      comic.coverUrl.includes('resize=450,235') ||
-      comic.coverUrl.includes('resize=300,180'))
-  );
-
   const typeBadgeColors: Record<string, string> = {
     manga: 'bg-rose-950 text-rose-400 border-rose-900',
     manhwa: 'bg-blue-950 text-blue-400 border-blue-900',
@@ -52,8 +45,8 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
           : 'bg-zinc-900/90 border-zinc-800 hover:border-zinc-750'
       }`}
     >
-      {/* Left: Comic Cover Poster (3:4 ratio to prevent zoom/crop) */}
-      <div className="w-24 aspect-[3/4] shrink-0 rounded-xl overflow-hidden bg-zinc-950 border border-zinc-800 relative shadow-md flex items-center justify-center">
+      {/* Left: Comic Cover Poster */}
+      <div className="w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-zinc-850 border border-zinc-750/60 relative shadow-md">
         {comic.coverUrl && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -63,9 +56,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            className={`w-full h-full ${
-              isLandscape ? 'object-contain' : 'object-cover object-top'
-            } group-hover:scale-105 transition-transform duration-300`}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-zinc-500 gap-1 bg-zinc-900">
