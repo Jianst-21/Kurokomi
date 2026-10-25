@@ -29,4 +29,14 @@ describe('HorizontalComicCard', () => {
     const link = screen.getByRole('link', { name: /The Extra's Academy Survival Guide/i });
     expect(link.getAttribute('href')).toBe('/manga/md-extra-survival');
   });
+
+  it('handles wide landscape covers without zoom using object-contain', () => {
+    const wideComic: ComicCardItem = {
+      ...mockComic,
+      coverUrl: 'https://thumbnail.komiku.org/banner.jpg?resize=450,235',
+    };
+    const { container } = render(<HorizontalComicCard comic={wideComic} />);
+    const img = container.querySelector('img');
+    expect(img?.className).toContain('object-contain');
+  });
 });

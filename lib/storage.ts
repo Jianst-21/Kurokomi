@@ -2,9 +2,42 @@ import { ComicCardItem, ReadingHistoryItem } from './types';
 
 const FAVORITES_KEY = 'kurokomi_favorites_v1';
 const HISTORY_KEY = 'kurokomi_history_v1';
+const READ_CHAPTERS_KEY = 'kurokomi_read_chapters_v1';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+export function getReadChapterIds(): string[] {
+  if (!isBrowser()) return [];
+  try {
+    const raw = localStorage.getItem(READ_CHAPTERS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function isChapterRead(chapterId: string): boolean {
+  if (!isBrowser() || !chapterId) return false;
+  const ids = getReadChapterIds();
+  return ids.includes(chapterId);
+}
+
+export function markChapterAsRead(chapterId: string): void {
+  if (!isBrowser() || !chapterId) return;
+  try {
+    const ids = getReadChapterIds();
+    if (!ids.includes(chapterId)) {
+      ids.push(chapterId);
+      if (ids.length > 500) {
+        ids.shift();
+      }
+      localStorage.setItem(READ_CHAPTERS_KEY, JSON.stringify(ids));
+    }
+  } catch (err) {
+    console.error('Failed to mark chapter as read:', err);
+  }
 }
 
 export function getFavorites(): ComicCardItem[] {
@@ -60,6 +93,10 @@ export function getComicLastRead(mangaId: string): ReadingHistoryItem | undefine
 export function saveHistory(item: ReadingHistoryItem): void {
   if (!isBrowser()) return;
   try {
+    if (item.chapterId) {
+      markChapterAsRead(item.chapterId);
+    }
+
     let list = getHistory();
     // Remove if manga already in history so we can move it to front
     list = list.filter(h => h.mangaId !== item.mangaId);

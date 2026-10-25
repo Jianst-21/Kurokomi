@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowUpDown, BookOpen, Clock, ChevronRight } from 'lucide-react';
+import { ArrowUpDown, BookOpen, Clock, ChevronRight, Check } from 'lucide-react';
 import { ChapterItem } from '@/lib/types';
 import { sortChapters } from '@/lib/mangadex';
 import { formatChapterDate } from '@/lib/date';
+import { getReadChapterIds } from '@/lib/storage';
 
 interface ChapterListProps {
   mangaId: string;
@@ -15,6 +16,11 @@ interface ChapterListProps {
 
 export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterListProps) {
   const [ascending, setAscending] = useState(false);
+  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setReadIds(new Set(getReadChapterIds()));
+  }, []);
 
   const sorted = sortChapters(chapters, ascending);
 
@@ -40,6 +46,7 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
       <div className="flex flex-col gap-1.5">
         {sorted.map(ch => {
           const isLastRead = ch.id === lastReadChapterId;
+          const isRead = isLastRead || readIds.has(ch.id);
           const formattedDate = formatChapterDate(ch.publishAt);
           const hasCustomTitle = Boolean(
             ch.title &&
@@ -56,19 +63,30 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
               className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                 isLastRead
                   ? 'bg-blue-950/40 border-blue-800/80 text-blue-200'
+                  : isRead
+                  ? 'bg-blue-950/20 border-blue-900/50 hover:bg-blue-900/30 text-blue-300'
                   : 'bg-zinc-900/60 border-zinc-850 hover:bg-zinc-850/80 text-zinc-200'
               }`}
             >
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold">
+                  <span
+                    className={`text-xs font-semibold ${
+                      isRead ? 'text-blue-400' : 'text-zinc-200'
+                    }`}
+                  >
                     Chapter {ch.chapter}
                   </span>
-                  {isLastRead && (
+                  {isLastRead ? (
                     <span className="text-[9px] font-bold bg-blue-600 text-white px-1.5 py-0.5 rounded">
                       Terakhir Dibaca
                     </span>
-                  )}
+                  ) : isRead ? (
+                    <span className="text-[9px] font-semibold bg-blue-950 text-blue-400 border border-blue-900/80 px-1.5 py-0.5 rounded flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" />
+                      <span>Sudah Dibaca</span>
+                    </span>
+                  ) : null}
                 </div>
                 {hasCustomTitle && (
                   <span className="text-[11px] text-zinc-400 line-clamp-1">
@@ -88,7 +106,11 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
                 </div>
               </div>
 
-              <ChevronRight className="w-4 h-4 text-zinc-500 shrink-0" />
+              <ChevronRight
+                className={`w-4 h-4 shrink-0 ${
+                  isRead ? 'text-blue-400' : 'text-zinc-500'
+                }`}
+              />
             </Link>
           );
         })}

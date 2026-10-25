@@ -34,6 +34,12 @@ describe('ChapterList Component', () => {
     expect(screen.getByText(/Terakhir Dibaca/i)).toBeInTheDocument();
   });
 
+  it('highlights already read chapters in blue with Sudah Dibaca badge', () => {
+    localStorage.setItem('kurokomi_read_chapters_v1', JSON.stringify(['c1']));
+    render(<ChapterList mangaId="m1" chapters={mockChapters} />);
+    expect(screen.getByText(/Sudah Dibaca/i)).toBeInTheDocument();
+  });
+
   it('renders release date in DD/MM/YYYY format for chapters', () => {
     render(<ChapterList mangaId="m1" chapters={mockChapters} />);
     expect(screen.getByText('01/01/2023')).toBeInTheDocument();

@@ -7,6 +7,9 @@ import {
   saveHistory,
   getComicLastRead,
   clearHistory,
+  markChapterAsRead,
+  isChapterRead,
+  getReadChapterIds,
 } from '@/lib/storage';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 
@@ -88,5 +91,19 @@ describe('LocalStorage Helper', () => {
 
     clearHistory();
     expect(getHistory()).toEqual([]);
+  });
+
+  it('marks and tracks read chapter IDs in localStorage', () => {
+    expect(isChapterRead('ch-100')).toBe(false);
+    expect(getReadChapterIds()).toEqual([]);
+
+    markChapterAsRead('ch-100');
+    expect(isChapterRead('ch-100')).toBe(true);
+    expect(getReadChapterIds()).toEqual(['ch-100']);
+
+    // Reading another chapter
+    markChapterAsRead('ch-101');
+    expect(isChapterRead('ch-101')).toBe(true);
+    expect(getReadChapterIds()).toEqual(['ch-100', 'ch-101']);
   });
 });
