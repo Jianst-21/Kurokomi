@@ -1,6 +1,6 @@
 import { ChapterItem, ComicCardItem, ComicDetail, FilterOptions } from './types';
 import { sortChapters, searchComics } from './mangadex';
-import { normalizeTitle, searchKomiku } from './komiku';
+import { normalizeTitle, searchKomiku, scoreTitleMatch } from './komiku';
 import { searchKomikindo } from './komikindo';
 
 function getProviderPriority(id: string): number {
@@ -146,24 +146,50 @@ export async function searchComicsUnified(
     combined = combined.filter(c => c.type === options.type);
   }
 
-  return deduplicateComics(combined);
+  const deduplicated = deduplicateComics(combined);
+
+  // Sort results by relevance to search query (exact match first)
+  return deduplicated.sort((a, b) => {
+    const scoreA = scoreTitleMatch(cleanQuery, a.title);
+    const scoreB = scoreTitleMatch(cleanQuery, b.title);
+    return scoreB - scoreA;
+  });
 }
 
 export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {
   const decodedId = decodeURIComponent(id);
+  const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
 
   if (decodedId.startsWith('komiku--')) {
     const slug = decodedId.replace(/^komiku--/, '');
-    if (typeof window !== 'undefined') {
+    let detail: ComicDetail | null = null;
+    if (isBrowser) {
       const res = await fetch(`/api/komiku?action=detail&slug=${encodeURIComponent(slug)}`);
       if (res.ok) {
         const json = await res.json();
-        return json.detail || null;
+        detail = json.detail || null;
       }
     } else {
       const { fetchKomikuDetail } = await import('./komiku');
-      return await fetchKomikuDetail(slug);
+      detail = await fetchKomikuDetail(slug);
     }
+
+    if (detail) return detail;
+
+    // Fallback if Komiku 404s (e.g. Komiku removed the comic, fallback to Komikindo)
+    try {
+      const { findKomikindoSlug, fetchKomikindoDetail } = await import('./komikindo');
+      const kiSlug = await findKomikindoSlug(slug);
+      if (kiSlug) {
+        detail = isBrowser
+          ? await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(kiSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
+          : await fetchKomikindoDetail(kiSlug);
+        if (detail) return detail;
+      }
+    } catch {
+      // ignore
+    }
+
     return null;
   }
 
