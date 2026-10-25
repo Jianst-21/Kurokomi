@@ -55,7 +55,18 @@ export function formatChapterDate(dateStr?: string): string {
     return `${padZero(d.getDate())}/${padZero(d.getMonth() + 1)}/${d.getFullYear()}`;
   }
 
-  // 2. Try parsing Indonesian format: "25 Oktober 2026" or "25 Okt 2026"
+  // 2. Try parsing DD/MM/YYYY
+  const dmyMatch = cleanStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10);
+    const year = parseInt(dmyMatch[3], 10);
+    if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+      return `${padZero(day)}/${padZero(month)}/${year}`;
+    }
+  }
+
+  // 3. Try parsing Indonesian format: "25 Oktober 2026" or "25 Okt 2026"
   const indoMatch = cleanStr.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
   if (indoMatch) {
     const day = parseInt(indoMatch[1], 10);
@@ -79,4 +90,53 @@ export function formatChapterDate(dateStr?: string): string {
   }
 
   return '';
+}
+
+export function parseDateScore(dateStr?: string): number {
+  if (!dateStr || typeof dateStr !== 'string') return 0;
+  const cleanStr = dateStr.trim();
+  if (!cleanStr) return 0;
+
+  // 1. Relative dates
+  const rel = cleanStr.match(/^(\d+)\s+(detik|menit|jam|hari|minggu|bulan|tahun)\s+(yang\s+)?lalu/i);
+  if (rel) {
+    const num = parseInt(rel[1], 10);
+    const unit = rel[2].toLowerCase();
+    const now = Date.now();
+    let ms = 0;
+    if (unit === 'detik') ms = num * 1000;
+    else if (unit === 'menit') ms = num * 60 * 1000;
+    else if (unit === 'jam') ms = num * 3600 * 1000;
+    else if (unit === 'hari') ms = num * 86400 * 1000;
+    else if (unit === 'minggu') ms = num * 7 * 86400 * 1000;
+    else if (unit === 'bulan') ms = num * 30 * 86400 * 1000;
+    else if (unit === 'tahun') ms = num * 365 * 86400 * 1000;
+    return now - ms;
+  }
+
+  // 2. DD/MM/YYYY
+  const dmyMatch = cleanStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmyMatch) {
+    const d = new Date(parseInt(dmyMatch[3], 10), parseInt(dmyMatch[2], 10) - 1, parseInt(dmyMatch[1], 10));
+    if (!isNaN(d.getTime())) return d.getTime();
+  }
+
+  // 3. Indonesian text date e.g. "25 Oktober 2026"
+  const indoMatch = cleanStr.match(/^(\d{1,2})\s+([a-zA-Z]+)\s+(\d{4})/);
+  if (indoMatch) {
+    const day = parseInt(indoMatch[1], 10);
+    const monthName = indoMatch[2].toLowerCase();
+    const year = parseInt(indoMatch[3], 10);
+    if (MONTH_MAP[monthName] !== undefined && !isNaN(day) && !isNaN(year)) {
+      return new Date(year, MONTH_MAP[monthName], day).getTime();
+    }
+  }
+
+  // 4. ISO or standard Date
+  const parsed = new Date(cleanStr);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.getTime();
+  }
+
+  return 0;
 }

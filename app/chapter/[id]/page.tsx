@@ -70,16 +70,21 @@ export default function ReaderPage() {
         if (detailData) {
           setComic(detailData);
 
-          if (chapters.length === 0) {
-            const { idChapters } = await fetchUnifiedChapters(detailData);
-            if (idChapters.length > 0) {
-              setChapters(idChapters);
+          let activeList = chapters;
+          if (activeList.length === 0) {
+            const { idChapters, enChapters } = await fetchUnifiedChapters(detailData);
+            activeList = enChapters.some(c => c.id === chapterId)
+              ? enChapters
+              : (idChapters.length > 0 ? idChapters : enChapters);
+
+            if (activeList.length > 0) {
+              setChapters(activeList);
             }
           }
 
           // Extract chapter number for history
           const numMatch = chapterId.match(/chapter-([0-9.]+)/i);
-          const currentCh = chapters.find(c => c.id === chapterId);
+          const currentCh = activeList.find(c => c.id === chapterId);
           const chNum = currentCh?.chapter || (numMatch ? numMatch[1] : '1');
 
           saveHistory({

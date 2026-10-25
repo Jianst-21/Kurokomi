@@ -1,8 +1,10 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
+import { scoreTitleMatch } from './komiku';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const FETCH_TIMEOUT_MS = 8000;
 
 export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
   const items: ComicCardItem[] = [];
@@ -224,6 +226,7 @@ export async function searchKomikindo(query: string): Promise<ComicCardItem[]> {
   try {
     const res = await fetch(`${KOMIKINDO_BASE}/?s=${encodeURIComponent(query)}`, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
@@ -239,6 +242,7 @@ export async function fetchKomikindoDetail(slug: string): Promise<ComicDetail | 
   try {
     const res = await fetch(`${KOMIKINDO_BASE}/komik/${slug}/`, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
@@ -254,6 +258,7 @@ export async function fetchKomikindoChapters(slug: string): Promise<ChapterItem[
   try {
     const res = await fetch(`${KOMIKINDO_BASE}/komik/${slug}/`, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
@@ -271,6 +276,7 @@ export async function fetchKomikindoChapterImages(chapterSlug: string): Promise<
     const url = `${KOMIKINDO_BASE}/${cleanSlug}/`;
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
@@ -284,33 +290,32 @@ export async function fetchKomikindoChapterImages(chapterSlug: string): Promise<
 
 export async function findKomikindoSlug(title: string, altTitles?: string[]): Promise<string | null> {
   const titlesToTry = [title, ...(altTitles || [])].filter(Boolean);
+  let bestSlug: string | null = null;
+  let highestScore = 0;
 
-  for (const t of titlesToTry) {
-    const results = await searchKomikindo(t);
-    if (!results || results.length === 0) continue;
+  for (const t of titlesToTry.slice(0, 6)) {
+    try {
+      const results = await searchKomikindo(t);
+      if (!results || results.length === 0) continue;
 
-    const normalizedQuery = t.toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const card of results) {
+        const score = scoreTitleMatch(t, card.title);
+        if (score === 100) {
+          return card.id.replace(/^komikindo--/, '');
+        }
+        if (score > highestScore && score >= 60) {
+          highestScore = score;
+          bestSlug = card.id.replace(/^komikindo--/, '');
+        }
+      }
 
-    // 1. Look for exact title match
-    const exactMatch = results.find(
-      r => r.title.toLowerCase().replace(/[^a-z0-9]/g, '') === normalizedQuery
-    );
-    if (exactMatch) {
-      return exactMatch.id.replace(/^komikindo--/, '');
+      if (highestScore >= 80 && bestSlug) {
+        return bestSlug;
+      }
+    } catch (e) {
+      console.error('findKomikindoSlug error:', e);
     }
-
-    // 2. Otherwise pick closest result that contains query and does not include extra subtitle like ": Ragnarok"
-    const containsMatch = results.find(r => {
-      const normCard = r.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-      return normCard.includes(normalizedQuery);
-    });
-    if (containsMatch) {
-      return containsMatch.id.replace(/^komikindo--/, '');
-    }
-
-    // Fallback to first result
-    return results[0].id.replace(/^komikindo--/, '');
   }
 
-  return null;
+  return bestSlug;
 }

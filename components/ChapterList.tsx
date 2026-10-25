@@ -69,12 +69,14 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
                   </span>
                 )}
                 <div className="flex items-center gap-2 text-[10px] text-zinc-500 mt-0.5">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-2.5 h-2.5" />
-                    {formattedDate}
-                  </span>
+                  {formattedDate && (
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-2.5 h-2.5" />
+                      {formattedDate}
+                    </span>
+                  )}
                   {ch.scanlationGroup && (
-                    <span>• {ch.scanlationGroup}</span>
+                    <span>{formattedDate ? '• ' : ''}{ch.scanlationGroup}</span>
                   )}
                 </div>
               </div>

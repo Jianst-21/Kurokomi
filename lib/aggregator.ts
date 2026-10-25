@@ -2,43 +2,16 @@ import { ChapterItem, ComicCardItem, ComicDetail, FilterOptions } from './types'
 import { sortChapters, searchComics } from './mangadex';
 import { normalizeTitle, searchKomiku, scoreTitleMatch } from './komiku';
 import { searchKomikindo } from './komikindo';
+import { parseDateScore } from './date';
+
+function isClientBrowser(): boolean {
+  return typeof window !== 'undefined' && !process.env.VITEST;
+}
 
 function getProviderPriority(id: string): number {
   if (id.startsWith('komiku--')) return 1;
   if (id.startsWith('komikindo--')) return 2;
   return 3; // MangaDex or other
-}
-
-function parseDateScore(dateStr?: string): number {
-  if (!dateStr) return 0;
-  // Try direct date parse
-  const d = new Date(dateStr);
-  if (!isNaN(d.getTime())) return d.getTime();
-
-  // Try parsing Indonesian relative date, e.g. "5 hari lalu"
-  const rel = dateStr.match(/^(\d+)\s+(detik|menit|jam|hari|minggu|bulan|tahun)\s+(yang\s+)?lalu/i);
-  if (rel) {
-    const num = parseInt(rel[1], 10);
-    const unit = rel[2].toLowerCase();
-    const now = Date.now();
-    let ms = 0;
-    if (unit === 'detik') ms = num * 1000;
-    else if (unit === 'menit') ms = num * 60 * 1000;
-    else if (unit === 'jam') ms = num * 3600 * 1000;
-    else if (unit === 'hari') ms = num * 86400 * 1000;
-    else if (unit === 'minggu') ms = num * 7 * 86400 * 1000;
-    else if (unit === 'bulan') ms = num * 30 * 86400 * 1000;
-    else if (unit === 'tahun') ms = num * 365 * 86400 * 1000;
-    return now - ms;
-  }
-
-  // Try parsing DD/MM/YYYY
-  const dmy = dateStr.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
-  if (dmy) {
-    return new Date(parseInt(dmy[3], 10), parseInt(dmy[2], 10) - 1, parseInt(dmy[1], 10)).getTime();
-  }
-
-  return 0;
 }
 
 export function mergeAndSortChapters(
@@ -158,7 +131,7 @@ export async function searchComicsUnified(
 
 export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {
   const decodedId = decodeURIComponent(id);
-  const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
+  const isBrowser = isClientBrowser();
 
   if (decodedId.startsWith('komiku--')) {
     const slug = decodedId.replace(/^komiku--/, '');
@@ -195,7 +168,7 @@ export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail |
 
   if (decodedId.startsWith('komikindo--')) {
     const slug = decodedId.replace(/^komikindo--/, '');
-    if (typeof window !== 'undefined') {
+    if (isBrowser) {
       const res = await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(slug)}`);
       if (res.ok) {
         const json = await res.json();
@@ -217,7 +190,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   idChapters: ChapterItem[];
   enChapters: ChapterItem[];
 }> {
-  const isBrowser = typeof window !== 'undefined';
+  const isBrowser = isClientBrowser();
   const id = comic.id;
 
   let komikuPromise: Promise<ChapterItem[]> = Promise.resolve([]);

@@ -16,19 +16,18 @@ export async function GET(req: NextRequest) {
   const action = searchParams.get('action');
 
   try {
-    if (action === 'search') {
+    if (action === 'search' || action === 'slug') {
       const q = searchParams.get('q') || searchParams.get('title') || '';
       const altTitlesRaw = searchParams.get('altTitles') || '';
       const altTitles = altTitlesRaw ? altTitlesRaw.split('|').filter(Boolean) : [];
 
-      if (searchParams.get('slugOnly') === 'true' || searchParams.get('action') === 'slug') {
+      if (searchParams.get('slugOnly') === 'true' || action === 'slug') {
         const slug = await findKomikindoSlug(q, altTitles);
         return NextResponse.json({ slug }, { headers: CACHE_HEADERS });
       }
 
       const comics = await searchKomikindo(q);
-      const slug = await findKomikindoSlug(q, altTitles);
-      return NextResponse.json({ comics, slug }, { headers: CACHE_HEADERS });
+      return NextResponse.json({ comics }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'detail') {

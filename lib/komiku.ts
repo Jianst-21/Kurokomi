@@ -5,6 +5,7 @@ export const KOMIKU_BASE = 'https://komiku.org';
 export const KOMIKU_API_SEARCH = 'https://api.komiku.org';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+const FETCH_TIMEOUT_MS = 8000;
 
 export function normalizeTitle(t: string): string {
   return t
@@ -191,6 +192,7 @@ export async function searchKomiku(query: string): Promise<ComicCardItem[]> {
     const searchUrl = `${KOMIKU_API_SEARCH}/?post_type=manga&s=${encodeURIComponent(query)}`;
     const res = await fetch(searchUrl, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
     if (!res.ok) return [];
@@ -207,6 +209,7 @@ export async function fetchKomikuDetail(slug: string): Promise<ComicDetail | nul
     const url = `${KOMIKU_BASE}/manga/${slug}/`;
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
     if (!res.ok) return null;
@@ -270,6 +273,7 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
     const url = `${KOMIKU_BASE}/manga/${slug}/`;
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
 
@@ -295,6 +299,7 @@ export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChap
     let url = `${KOMIKU_BASE}/${cleanSlug}/`;
     let res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
 
@@ -306,6 +311,7 @@ export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChap
       url = `${KOMIKU_BASE}/${s}-chapter-${ch}/`;
       res = await fetch(url, {
         headers: { 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         next: { revalidate: 300 },
       });
     }

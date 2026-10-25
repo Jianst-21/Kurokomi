@@ -13,6 +13,11 @@ describe('formatChapterDate', () => {
     expect(formatChapterDate('15 Mei 2025')).toBe('15/05/2025');
   });
 
+  it('preserves and normalizes DD/MM/YYYY dates', () => {
+    expect(formatChapterDate('20/10/2026')).toBe('20/10/2026');
+    expect(formatChapterDate('5/1/2024')).toBe('05/01/2024');
+  });
+
   it('handles relative dates by returning a valid DD/MM/YYYY string or fallback', () => {
     // Relative dates like "5 hari lalu" should either calculate a date or provide a reasonable date
     const res = formatChapterDate('5 hari lalu');
