@@ -434,10 +434,15 @@ export async function searchComics(
         .map((t: { attributes?: { name: { en?: string } } }) => t.attributes?.name?.en)
         .filter(Boolean);
 
+      const rawAltTitles: string[] = (attr.altTitles || [])
+        .map((t: Record<string, string>) => Object.values(t)[0])
+        .filter(Boolean);
+
       items.push({
         id: m.id,
         title: String(title),
         altTitle,
+        altTitles: rawAltTitles,
         coverUrl,
         type,
         isFullColor,

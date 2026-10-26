@@ -4,6 +4,7 @@ export interface ComicCardItem {
   id: string;
   title: string;
   altTitle?: string;
+  altTitles?: string[];
   coverUrl: string;
   type: 'manga' | 'manhwa' | 'manhua' | 'other';
   latestChapter?: string;

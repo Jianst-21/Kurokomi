@@ -8,10 +8,14 @@ const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 const FETCH_TIMEOUT_MS = 8000;
 
 export function normalizeTitle(t: string): string {
+  if (!t) return '';
   return t
     .toLowerCase()
-    .replace(/\(.*?\)/g, '')
-    .replace(/\[.*?\]/g, '')
+    .replace(/\(.*?\)/g, ' ')
+    .replace(/\[.*?\]/g, ' ')
+    .replace(/\{.*?\}/g, ' ')
+    .replace(/['’`]/g, '')
+    .replace(/[-_~]/g, ' ')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

@@ -56,6 +56,32 @@ export function mergeAndSortChapters(
   return sortChapters(Array.from(map.values()), false);
 }
 
+function cleanComicAlias(t: string): string {
+  const norm = normalizeTitle(t);
+  return norm
+    .replace(/^komik\s+/i, '')
+    .replace(/^manga\s+/i, '')
+    .replace(/^manhwa\s+/i, '')
+    .replace(/^manhua\s+/i, '')
+    .replace(/\s*(?:bahasa\s+indonesia|sub\s+indo|indonesia|indo)$/i, '')
+    .replace(/\s*(?:colored|fan\s+colored|full\s+color|color\s+version|berwarna)$/i, '')
+    .replace(/\s*(?:tamat|end|batch)$/i, '')
+    .replace(/\s*(?:season\s+\d+|s\d+)$/i, '')
+    .trim();
+}
+
+function getSlugAlias(id: string): string | null {
+  if (id.startsWith('komiku--') || id.startsWith('komikindo--') || id.startsWith('softkomik--')) {
+    const raw = id.replace(/^(komiku|komikindo|softkomik)--/, '');
+    const cleanSlug = raw
+      .replace(/-(?:bahasa-indonesia|sub-indo)$/i, '')
+      .replace(/__.*$/, '')
+      .replace(/-/g, ' ');
+    return cleanComicAlias(cleanSlug);
+  }
+  return null;
+}
+
 function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): ComicCardItem {
   const normExistingTitle = normalizeTitle(existing.title);
   const normIncomingTitle = normalizeTitle(incoming.title);
@@ -100,10 +126,17 @@ function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): C
     preferredAltTitle = undefined;
   }
 
+  // Combine unique altTitles
+  const combinedAltTitles = Array.from(new Set([
+    ...(existing.altTitles || []),
+    ...(incoming.altTitles || []),
+  ].filter(Boolean)));
+
   return {
     id: resultId,
     title: preferredTitle,
     altTitle: preferredAltTitle,
+    altTitles: combinedAltTitles.length > 0 ? combinedAltTitles : undefined,
     coverUrl: resultCover,
     type: resultType,
     latestChapter: resultLatestChapter,
@@ -122,15 +155,15 @@ export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
   const clusters: Cluster[] = [];
 
   for (const c of comics) {
-    const rawAliases = [c.title, c.altTitle].filter(Boolean) as string[];
+    const rawAliases = [c.title, c.altTitle, ...(c.altTitles || [])].filter(Boolean) as string[];
+    const slugAlias = getSlugAlias(c.id);
+    if (slugAlias) rawAliases.push(slugAlias);
+
     const normAliases = new Set<string>();
     for (const a of rawAliases) {
       const norm = normalizeTitle(a);
       if (norm) normAliases.add(norm);
-      const clean = norm
-        .replace(/^komik\s+/i, '')
-        .replace(/\s*(?:bahasa\s+indonesia|sub\s+indo|indonesia)$/i, '')
-        .trim();
+      const clean = cleanComicAlias(a);
       if (clean) normAliases.add(clean);
     }
 
@@ -168,6 +201,9 @@ export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
 
       const finalNormTitle = normalizeTitle(mergedItem.title);
       if (finalNormTitle) combinedAliases.add(finalNormTitle);
+      const finalCleanTitle = cleanComicAlias(mergedItem.title);
+      if (finalCleanTitle) combinedAliases.add(finalCleanTitle);
+
       if (mergedItem.altTitle) {
         const finalNormAlt = normalizeTitle(mergedItem.altTitle);
         if (finalNormAlt) combinedAliases.add(finalNormAlt);
