@@ -56,67 +56,132 @@ export function mergeAndSortChapters(
   return sortChapters(Array.from(map.values()), false);
 }
 
+function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): ComicCardItem {
+  const normExistingTitle = normalizeTitle(existing.title);
+  const normIncomingTitle = normalizeTitle(incoming.title);
+  const normExistingAlt = existing.altTitle ? normalizeTitle(existing.altTitle) : '';
+  const normIncomingAlt = incoming.altTitle ? normalizeTitle(incoming.altTitle) : '';
+
+  let preferredTitle = existing.title;
+  let preferredAltTitle = existing.altTitle || incoming.altTitle;
+
+  // If existing's title matched incoming's altTitle, incoming.title is the primary English/popular title
+  if (normIncomingAlt && normExistingTitle === normIncomingAlt && incoming.title) {
+    preferredTitle = incoming.title;
+    preferredAltTitle = existing.title;
+  } else if (normIncomingTitle && normExistingAlt === normIncomingTitle) {
+    preferredTitle = existing.title;
+    preferredAltTitle = incoming.title;
+  } else if (incoming.altTitle && !existing.altTitle) {
+    preferredAltTitle = incoming.altTitle;
+  } else if (!existing.altTitle && incoming.title !== existing.title && normIncomingTitle !== normExistingTitle) {
+    preferredAltTitle = incoming.title;
+  }
+
+  // Provider priority: Komiku (1) > Komikindo (2) > Softkomik (3) > MangaDex (4)
+  let resultId = existing.id;
+  let resultCover = existing.coverUrl;
+  let resultType = existing.type;
+  let resultLatestChapter = existing.latestChapter;
+  let resultIsFullColor = existing.isFullColor;
+  let resultUpdatedAt = existing.updatedAt;
+
+  if (getProviderPriority(incoming.id) < getProviderPriority(existing.id)) {
+    resultId = incoming.id;
+    if (incoming.coverUrl) resultCover = incoming.coverUrl;
+    if (incoming.type && incoming.type !== 'other') resultType = incoming.type;
+    if (incoming.latestChapter) resultLatestChapter = incoming.latestChapter;
+    if (incoming.isFullColor !== undefined) resultIsFullColor = incoming.isFullColor;
+    if (incoming.updatedAt) resultUpdatedAt = incoming.updatedAt;
+  }
+
+  // If altTitle equals title after normalization, omit it
+  if (preferredAltTitle && normalizeTitle(preferredAltTitle) === normalizeTitle(preferredTitle)) {
+    preferredAltTitle = undefined;
+  }
+
+  return {
+    id: resultId,
+    title: preferredTitle,
+    altTitle: preferredAltTitle,
+    coverUrl: resultCover,
+    type: resultType,
+    latestChapter: resultLatestChapter,
+    updatedAt: resultUpdatedAt,
+    isFullColor: resultIsFullColor,
+    genres: existing.genres || incoming.genres,
+  };
+}
+
 export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
-  const list: ComicCardItem[] = [];
-  const titleToComic = new Map<string, ComicCardItem>();
+  interface Cluster {
+    item: ComicCardItem;
+    aliases: Set<string>;
+  }
+
+  const clusters: Cluster[] = [];
 
   for (const c of comics) {
-    const normTitle = normalizeTitle(c.title);
-    const normAlt = c.altTitle ? normalizeTitle(c.altTitle) : '';
-
-    // Check if matching an existing comic by title or altTitle
-    const existing = (normTitle && titleToComic.get(normTitle)) ||
-                     (normAlt && titleToComic.get(normAlt));
-
-    if (!existing) {
-      list.push(c);
-      if (normTitle) titleToComic.set(normTitle, c);
-      if (normAlt) titleToComic.set(normAlt, c);
-      continue;
+    const rawAliases = [c.title, c.altTitle].filter(Boolean) as string[];
+    const normAliases = new Set<string>();
+    for (const a of rawAliases) {
+      const norm = normalizeTitle(a);
+      if (norm) normAliases.add(norm);
+      const clean = norm
+        .replace(/^komik\s+/i, '')
+        .replace(/\s*(?:bahasa\s+indonesia|sub\s+indo|indonesia)$/i, '')
+        .trim();
+      if (clean) normAliases.add(clean);
     }
 
-    // Determine best title & altTitle
-    let preferredTitle = existing.title;
-    let preferredAltTitle = existing.altTitle || c.altTitle;
+    const matchingClusters: Cluster[] = [];
+    const nonMatchingClusters: Cluster[] = [];
 
-    // If existing's title matched c's altTitle, c.title is the primary English title
-    if (normAlt && normalizeTitle(existing.title) === normAlt && c.title) {
-      preferredTitle = c.title;
-      preferredAltTitle = existing.title;
-    } else if (normTitle && existing.altTitle && normalizeTitle(existing.altTitle) === normTitle) {
-      // c.title matched existing's altTitle; keep existing.title as primary
-      preferredTitle = existing.title;
-      preferredAltTitle = c.title;
-    } else if (c.altTitle && !existing.altTitle) {
-      preferredAltTitle = c.altTitle;
-    } else if (!existing.altTitle && c.title !== existing.title) {
-      preferredAltTitle = c.title;
+    for (const cluster of clusters) {
+      let matched = false;
+      for (const alias of normAliases) {
+        if (cluster.aliases.has(alias)) {
+          matched = true;
+          break;
+        }
+      }
+      if (matched) {
+        matchingClusters.push(cluster);
+      } else {
+        nonMatchingClusters.push(cluster);
+      }
     }
 
-    // Provider priority: Komiku (1) > Komikindo (2) > MangaDex (3)
-    if (getProviderPriority(c.id) < getProviderPriority(existing.id)) {
-      existing.id = c.id;
-      if (c.coverUrl) existing.coverUrl = c.coverUrl;
-      if (c.type && c.type !== 'other') existing.type = c.type;
-      if (c.latestChapter) existing.latestChapter = c.latestChapter;
-      if (c.isFullColor !== undefined) existing.isFullColor = c.isFullColor;
-    }
+    if (matchingClusters.length === 0) {
+      clusters.push({
+        item: { ...c },
+        aliases: normAliases,
+      });
+    } else {
+      let mergedItem = c;
+      const combinedAliases = new Set<string>(normAliases);
 
-    existing.title = preferredTitle;
-    existing.altTitle = preferredAltTitle && preferredAltTitle !== preferredTitle ? preferredAltTitle : undefined;
+      for (const mc of matchingClusters) {
+        mergedItem = mergeTwoComicItems(mc.item, mergedItem);
+        mc.aliases.forEach(a => combinedAliases.add(a));
+      }
 
-    // Re-index all variants to point to existing
-    if (normTitle) titleToComic.set(normTitle, existing);
-    if (normAlt) titleToComic.set(normAlt, existing);
-    const newNormTitle = normalizeTitle(existing.title);
-    if (newNormTitle) titleToComic.set(newNormTitle, existing);
-    if (existing.altTitle) {
-      const newNormAlt = normalizeTitle(existing.altTitle);
-      if (newNormAlt) titleToComic.set(newNormAlt, existing);
+      const finalNormTitle = normalizeTitle(mergedItem.title);
+      if (finalNormTitle) combinedAliases.add(finalNormTitle);
+      if (mergedItem.altTitle) {
+        const finalNormAlt = normalizeTitle(mergedItem.altTitle);
+        if (finalNormAlt) combinedAliases.add(finalNormAlt);
+      }
+
+      clusters.length = 0;
+      clusters.push(...nonMatchingClusters, {
+        item: mergedItem,
+        aliases: combinedAliases,
+      });
     }
   }
 
-  return list;
+  return clusters.map(cl => cl.item);
 }
 
 export async function searchComicsUnified(

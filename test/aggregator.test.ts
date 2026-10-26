@@ -85,4 +85,41 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
     expect(deduplicated[0].title).toBe("The Evil Alchemist Can't Handle His Own Experiment");
     expect(deduplicated[0].altTitle).toBe("Xié'è Liànjīn Shùshì Gǎo Bùdìng Zìjǐ De Shíyàn Tǐ");
   });
+
+  it('transitively deduplicates Rent-a-Girlfriend across different aliases regardless of arrival order', () => {
+    const cards: ComicCardItem[] = [
+      {
+        id: 'komiku--kanojo-okarishimasu',
+        title: 'Kanojo Okarishimasu',
+        coverUrl: 'http://img1.jpg',
+        type: 'manga',
+      },
+      {
+        id: 'komikindo--rent-a-girlfriend',
+        title: 'Rent a Girlfriend',
+        coverUrl: 'http://img2.jpg',
+        type: 'manga',
+      },
+      {
+        id: 'softkomik--kanojo-okarishimasu-kanokari',
+        title: 'Kanojo, Okarishimasu (Kanokari)',
+        coverUrl: 'http://img-soft.jpg',
+        type: 'manga',
+      },
+      {
+        id: 'md-rent-a-girlfriend',
+        title: 'Rent-A-Girlfriend',
+        altTitle: 'Kanojo, Okarishimasu',
+        coverUrl: 'http://img3.jpg',
+        type: 'manga',
+      },
+    ];
+
+    const deduplicated = deduplicateComics(cards);
+    // All 4 source entries must be transitively clustered into exactly 1 comic!
+    expect(deduplicated).toHaveLength(1);
+    expect(deduplicated[0].id).toBe('komiku--kanojo-okarishimasu');
+    expect(deduplicated[0].title.toLowerCase()).toContain('rent');
+    expect(deduplicated[0].altTitle?.toLowerCase()).toContain('kanojo');
+  });
 });

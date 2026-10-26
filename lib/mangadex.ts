@@ -11,7 +11,7 @@ export const MANGADEX_API_BASE = 'https://api.mangadex.org';
 export const MANGADEX_COVER_BASE = 'https://uploads.mangadex.org/covers';
 
 export function getApiBase(): string {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && !process.env.VITEST) {
     return '/api/mangadex';
   }
   return MANGADEX_API_BASE;
