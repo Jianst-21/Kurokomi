@@ -300,7 +300,7 @@ export function parseKomikindoImages(html: string): ChapterPageItem[] {
   const imgMatches = [...targetArea.matchAll(/<img[^>]+src="([^"]+)"/gi)];
   const urls: string[] = [];
 
-  for (const m of imgMatches) {
+    for (const m of imgMatches) {
     const src = m[1];
     if (
       src &&
@@ -311,7 +311,7 @@ export function parseKomikindoImages(html: string): ChapterPageItem[] {
       !src.includes('promosi') &&
       !src.includes('logo')
     ) {
-      urls.push(src);
+      urls.push(src.replace(/^http:\/\//i, 'https://'));
     }
   }
 

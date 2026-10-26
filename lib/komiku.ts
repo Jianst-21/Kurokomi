@@ -552,7 +552,8 @@ export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChap
 
     const urls = imgMatches
       .map(m => m[1])
-      .filter(u => u && u.startsWith('http') && !u.includes('promosi') && !u.includes('iklan'));
+      .filter(u => u && u.startsWith('http') && !u.includes('promosi') && !u.includes('iklan'))
+      .map(u => u.replace(/^http:\/\//i, 'https://'));
 
     return urls.map(u => ({
       url: u,

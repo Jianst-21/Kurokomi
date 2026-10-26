@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeSlug, clampInteger } from '@/lib/security';
 import {
   findSoftkomikSlug,
   fetchSoftkomikChapters,
@@ -36,28 +37,37 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === 'detail') {
-      const slug = searchParams.get('slug') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
       const detail = await fetchSoftkomikDetail(slug);
       return NextResponse.json({ detail }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'latest') {
       const type = (searchParams.get('type') || 'all') as 'manga' | 'manhwa' | 'manhua' | 'all';
-      const page = parseInt(searchParams.get('page') || '1', 10);
-      const limit = parseInt(searchParams.get('limit') || '10', 10);
+      const page = clampInteger(searchParams.get('page'), 1, 500, 1);
+      const limit = clampInteger(searchParams.get('limit'), 1, 50, 10);
       const comics = await fetchSoftkomikLatest(type, page, limit);
       return NextResponse.json({ comics }, { headers: LATEST_CACHE_HEADERS });
     }
 
     if (action === 'chapters') {
-      const slug = searchParams.get('slug') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
       const chapters = await fetchSoftkomikChapters(slug);
       return NextResponse.json({ chapters }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'pages') {
-      const slug = searchParams.get('slug') || '';
-      const chapter = searchParams.get('chapter') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      const chapter = sanitizeSlug(searchParams.get('chapter'));
+      if (!slug || !chapter) {
+        return NextResponse.json({ error: 'Slug atau chapter tidak valid' }, { status: 400 });
+      }
       const pages = await fetchSoftkomikChapterImages(slug, chapter);
       return NextResponse.json({ pages }, { headers: CACHE_HEADERS });
     }

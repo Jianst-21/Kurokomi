@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeSlug, clampInteger } from '@/lib/security';
 import {
   findKomikindoSlug,
   fetchKomikindoChapters,
@@ -36,27 +37,36 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === 'detail') {
-      const slug = searchParams.get('slug') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
       const detail = await fetchKomikindoDetail(slug);
       return NextResponse.json({ detail }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'latest') {
       const type = (searchParams.get('type') || 'all') as 'manga' | 'manhwa' | 'manhua' | 'all';
-      const page = parseInt(searchParams.get('page') || '1', 10);
-      const limit = parseInt(searchParams.get('limit') || '10', 10);
+      const page = clampInteger(searchParams.get('page'), 1, 500, 1);
+      const limit = clampInteger(searchParams.get('limit'), 1, 50, 10);
       const comics = await fetchKomikindoLatest(type, page, limit);
       return NextResponse.json({ comics }, { headers: LATEST_CACHE_HEADERS });
     }
 
     if (action === 'chapters') {
-      const slug = searchParams.get('slug') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
       const chapters = await fetchKomikindoChapters(slug);
       return NextResponse.json({ chapters }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'pages') {
-      const chapterSlug = searchParams.get('chapter') || searchParams.get('slug') || '';
+      const chapterSlug = sanitizeSlug(searchParams.get('chapter') || searchParams.get('slug'));
+      if (!chapterSlug) {
+        return NextResponse.json({ error: 'Chapter slug tidak valid' }, { status: 400 });
+      }
       const pages = await fetchKomikindoChapterImages(chapterSlug);
       return NextResponse.json({ pages }, { headers: CACHE_HEADERS });
     }

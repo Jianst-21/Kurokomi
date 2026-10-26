@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { sanitizeSlug, clampInteger } from '@/lib/security';
 import {
   findKomikuSlug,
   fetchKomikuChapters,
@@ -36,26 +37,35 @@ export async function GET(req: NextRequest) {
     }
 
     if (action === 'detail') {
-      const slug = searchParams.get('slug') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
       const detail = await fetchKomikuDetail(slug);
       return NextResponse.json({ detail }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'latest') {
       const type = (searchParams.get('type') || 'all') as 'manga' | 'manhwa' | 'manhua' | 'all';
-      const page = parseInt(searchParams.get('page') || '1', 10);
+      const page = clampInteger(searchParams.get('page'), 1, 500, 1);
       const comics = await fetchKomikuLatest(type, page);
       return NextResponse.json({ comics }, { headers: LATEST_CACHE_HEADERS });
     }
 
     if (action === 'chapters') {
-      const slug = searchParams.get('slug') || '';
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
       const chapters = await fetchKomikuChapters(slug);
       return NextResponse.json({ chapters }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'pages') {
-      const chapterSlug = searchParams.get('chapter') || searchParams.get('slug') || '';
+      const chapterSlug = sanitizeSlug(searchParams.get('chapter') || searchParams.get('slug'));
+      if (!chapterSlug) {
+        return NextResponse.json({ error: 'Chapter slug tidak valid' }, { status: 400 });
+      }
       const fallbackNum = searchParams.get('num') || undefined;
       const pages = await fetchKomikuChapterImages(chapterSlug, fallbackNum);
       return NextResponse.json({ pages }, { headers: CACHE_HEADERS });

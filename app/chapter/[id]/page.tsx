@@ -57,11 +57,34 @@ export default function ReaderPage() {
 
       // Resolve comic metadata and chapters
       let targetMangaId = mangaId;
-      if (!targetMangaId && !chapterId.startsWith('komiku--') && !chapterId.startsWith('komikindo--')) {
-        const resolved = await fetchMangaIdFromChapter(chapterId);
-        if (resolved) {
-          targetMangaId = resolved;
-          setMangaId(resolved);
+      if (!targetMangaId) {
+        if (chapterId.startsWith('softkomik--')) {
+          const raw = chapterId.replace(/^softkomik--/, '');
+          const slug = raw.split('__')[0];
+          if (slug) {
+            targetMangaId = `softkomik--${slug}`;
+            setMangaId(targetMangaId);
+          }
+        } else if (chapterId.startsWith('komiku--')) {
+          const raw = chapterId.replace(/^komiku--/, '');
+          const slug = raw.replace(/-chapter-[0-9.]+.*$/i, '');
+          if (slug) {
+            targetMangaId = `komiku--${slug}`;
+            setMangaId(targetMangaId);
+          }
+        } else if (chapterId.startsWith('komikindo--')) {
+          const raw = chapterId.replace(/^komikindo--/, '');
+          const slug = raw.replace(/-chapter-[0-9.]+.*$/i, '');
+          if (slug) {
+            targetMangaId = `komikindo--${slug}`;
+            setMangaId(targetMangaId);
+          }
+        } else {
+          const resolved = await fetchMangaIdFromChapter(chapterId);
+          if (resolved) {
+            targetMangaId = resolved;
+            setMangaId(resolved);
+          }
         }
       }
 
@@ -152,6 +175,30 @@ export default function ReaderPage() {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  // Keyboard navigation for chapter reading
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      if (e.key === 'ArrowLeft' || e.key === '[') {
+        if (prevChapter) {
+          router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}`);
+        }
+      } else if (e.key === 'ArrowRight' || e.key === ']') {
+        if (nextChapter) {
+          router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
+        }
+      } else if (e.key === 'm' || e.key === 'M') {
+        setIsDrawerOpen(prev => !prev);
+      } else if (e.key === 'h' || e.key === 'H') {
+        setHudVisible(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [prevChapter, nextChapter, mangaId, router]);
 
   if (isLoading) {
     return (

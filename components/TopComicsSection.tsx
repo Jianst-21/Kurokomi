@@ -26,6 +26,7 @@ export function TopComicsSection() {
   const [error, setError] = useState<string | null>(null);
 
   const sectionRef = useRef<HTMLElement>(null);
+  const cacheRef = useRef<Map<string, ComicCardItem[]>>(new Map());
   const PAGE_LIMIT = 15;
 
   const scrollToTop = () => {
@@ -36,12 +37,21 @@ export function TopComicsSection() {
   };
 
   const loadTopComics = useCallback(async (cat: ComicType, pageNum: number) => {
+    const cacheKey = `${cat}-${pageNum}`;
+    if (cacheRef.current.has(cacheKey)) {
+      setComics(cacheRef.current.get(cacheKey)!);
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     const offset = (pageNum - 1) * PAGE_LIMIT;
 
     try {
       const results = await fetchTopComics(cat, PAGE_LIMIT, offset);
+      cacheRef.current.set(cacheKey, results);
       setComics(results);
     } catch {
       setError('Gagal memuat rekomendasi populer.');
@@ -49,6 +59,12 @@ export function TopComicsSection() {
       setIsLoading(false);
     }
   }, []);
+
+  const handleRetry = () => {
+    const cacheKey = `${activeCategory}-${page}`;
+    cacheRef.current.delete(cacheKey);
+    loadTopComics(activeCategory, page);
+  };
 
   useEffect(() => {
     loadTopComics(activeCategory, page);
@@ -119,7 +135,7 @@ export function TopComicsSection() {
           <AlertCircle className="w-5 h-5 text-rose-400" />
           <p className="text-xs text-zinc-400">{error}</p>
           <button
-            onClick={() => loadTopComics(activeCategory, page)}
+            onClick={handleRetry}
             className="text-xs text-amber-400 font-semibold hover:underline"
           >
             Coba Lagi

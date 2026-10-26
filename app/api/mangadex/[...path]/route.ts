@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAllowedMangaDexSubpath } from '@/lib/security';
 
 export async function GET(
   req: NextRequest,
@@ -7,6 +8,14 @@ export async function GET(
   try {
     const { path } = await context.params;
     const subpath = path.join('/');
+
+    if (!isAllowedMangaDexSubpath(subpath)) {
+      return NextResponse.json(
+        { error: 'Akses proxy ke endpoint ini ditolak' },
+        { status: 403 }
+      );
+    }
+
     const search = req.nextUrl.search;
     const targetUrl = `https://api.mangadex.org/${subpath}${search}`;
 
