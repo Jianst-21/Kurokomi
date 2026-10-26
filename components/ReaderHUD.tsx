@@ -9,6 +9,7 @@ interface ReaderHUDProps {
   comicTitle: string;
   currentChapter: string;
   mangaId: string;
+  readProgress?: number;
   prevChapterId?: string;
   prevChapterNumber?: string;
   nextChapterId?: string;
@@ -21,6 +22,7 @@ export function ReaderHUD({
   comicTitle,
   currentChapter,
   mangaId,
+  readProgress,
   prevChapterId,
   prevChapterNumber,
   nextChapterId,
@@ -29,6 +31,14 @@ export function ReaderHUD({
 }: ReaderHUDProps) {
   return (
     <>
+      {/* Floating Slim Reading Progress Bar at Top */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-zinc-900/40 pointer-events-none">
+        <div
+          className="h-full bg-blue-500 transition-all duration-150 ease-out"
+          style={{ width: `${Math.min(100, Math.max(0, readProgress ?? 0))}%` }}
+        />
+      </div>
+
       {/* Floating Top Bar */}
       <header
         className={`fixed top-0 left-0 right-0 z-40 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3 transition-all duration-200 ${
@@ -51,7 +61,7 @@ export function ReaderHUD({
               {comicTitle}
             </span>
             <span className="text-[10px] text-zinc-400 font-medium">
-              Chapter {currentChapter} • Sub Indo
+              Chapter {currentChapter} • {readProgress !== undefined && readProgress > 0 ? `${readProgress}%` : 'Sub Indo'}
             </span>
           </div>
 

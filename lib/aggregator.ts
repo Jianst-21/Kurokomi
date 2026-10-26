@@ -339,31 +339,65 @@ export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail |
 
   if (decodedId.startsWith('komikindo--')) {
     const slug = decodedId.replace(/^komikindo--/, '');
+    let detail: ComicDetail | null = null;
     if (isBrowser) {
       const res = await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(slug)}`);
       if (res.ok) {
         const json = await res.json();
-        return json.detail || null;
+        detail = json.detail || null;
       }
     } else {
       const { fetchKomikindoDetail } = await import('./komikindo');
-      return await fetchKomikindoDetail(slug);
+      detail = await fetchKomikindoDetail(slug);
     }
+    if (detail) return detail;
+
+    // Resilient fallback if Komikindo 404s/fails: fallback to Softkomik
+    try {
+      const { findSoftkomikSlug, fetchSoftkomikDetail } = await import('./softkomik');
+      const skSlug = await findSoftkomikSlug(slug);
+      if (skSlug) {
+        detail = isBrowser
+          ? await fetch(`/api/softkomik?action=detail&slug=${encodeURIComponent(skSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
+          : await fetchSoftkomikDetail(skSlug);
+        if (detail) return detail;
+      }
+    } catch {
+      // ignore
+    }
+
     return null;
   }
 
   if (decodedId.startsWith('softkomik--')) {
     const slug = decodedId.replace(/^softkomik--/, '');
+    let detail: ComicDetail | null = null;
     if (isBrowser) {
       const res = await fetch(`/api/softkomik?action=detail&slug=${encodeURIComponent(slug)}`);
       if (res.ok) {
         const json = await res.json();
-        return json.detail || null;
+        detail = json.detail || null;
       }
     } else {
       const { fetchSoftkomikDetail } = await import('./softkomik');
-      return await fetchSoftkomikDetail(slug);
+      detail = await fetchSoftkomikDetail(slug);
     }
+    if (detail) return detail;
+
+    // Resilient fallback if Softkomik 404s/fails: fallback to Komikindo
+    try {
+      const { findKomikindoSlug, fetchKomikindoDetail } = await import('./komikindo');
+      const kiSlug = await findKomikindoSlug(slug);
+      if (kiSlug) {
+        detail = isBrowser
+          ? await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(kiSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
+          : await fetchKomikindoDetail(kiSlug);
+        if (detail) return detail;
+      }
+    } catch {
+      // ignore
+    }
+
     return null;
   }
 

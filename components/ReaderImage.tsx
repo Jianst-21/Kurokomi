@@ -71,7 +71,7 @@ export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
       decoding="async"
       referrerPolicy="no-referrer"
       onError={handleImageError}
-      className="w-full h-auto block m-0 p-0 border-0 outline-none select-none bg-black"
+      className="w-full h-auto block m-0 p-0 border-0 outline-none select-none bg-black [content-visibility:auto] [contain-intrinsic-size:800px]"
     />
   );
 }

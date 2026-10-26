@@ -42,6 +42,7 @@ export default function ReaderPage() {
 
   const [hudVisible, setHudVisible] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [readProgress, setReadProgress] = useState(0);
 
   const loadChapter = async () => {
     if (!chapterId) return;
@@ -168,6 +169,11 @@ export default function ReaderPage() {
         setHudVisible(false);
         lastScrollY = currentScrollY;
       }
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (scrollHeight > 0) {
+        const pct = Math.round((currentScrollY / scrollHeight) * 100);
+        setReadProgress(Math.min(100, Math.max(0, pct)));
+      }
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -242,6 +248,7 @@ export default function ReaderPage() {
         comicTitle={comic?.title || 'Komik'}
         currentChapter={currentChapter?.chapter || '?'}
         mangaId={mangaId}
+        readProgress={readProgress}
         prevChapterId={prevChapter?.id}
         prevChapterNumber={prevChapter?.chapter}
         nextChapterId={nextChapter?.id}
