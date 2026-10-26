@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { searchComicsUnified } from '@/lib/aggregator';
 import * as komikuModule from '@/lib/komiku';
 import * as komikindoModule from '@/lib/komikindo';
+import * as softkomikModule from '@/lib/softkomik';
 import * as mangadexModule from '@/lib/mangadex';
 import { ComicCardItem } from '@/lib/types';
 
@@ -15,6 +16,8 @@ describe('searchComicsUnified', () => {
       { id: 'komikindo--solo-leveling', title: 'Solo Leveling', coverUrl: 'ki-img.jpg', type: 'manhwa' },
       { id: 'komikindo--eleceed', title: 'Eleceed', coverUrl: 'ele-img.jpg', type: 'manhwa' },
     ]);
+
+    vi.spyOn(softkomikModule, 'searchSoftkomik').mockResolvedValue([]);
 
     vi.spyOn(mangadexModule, 'searchComics').mockResolvedValue([
       { id: 'md-solo', title: 'Solo Leveling', coverUrl: 'md-img.jpg', type: 'manhwa' },
@@ -37,6 +40,7 @@ describe('searchComicsUnified', () => {
   });
 
   it('respects comic type filtering when searching', async () => {
+    vi.spyOn(softkomikModule, 'searchSoftkomik').mockResolvedValue([]);
     const results = await searchComicsUnified('Solo', { type: 'manhwa' });
     expect(results.every(r => r.type === 'manhwa')).toBe(true);
   });

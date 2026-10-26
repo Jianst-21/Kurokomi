@@ -48,6 +48,7 @@ export interface FilterOptions {
   limit?: number;
   offset?: number;
   order?: Record<string, 'asc' | 'desc'>;
+  requireIndonesian?: boolean;
 }
 
 export interface ReadingHistoryItem {

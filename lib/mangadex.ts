@@ -399,6 +399,8 @@ export async function searchComics(
       genre: options?.genre,
       limit: options?.limit || 30,
       offset: options?.offset || 0,
+      requireIndonesian: options?.requireIndonesian,
+      order: options?.order,
     });
 
     const res = await fetch(url, { next: { revalidate: 60 } });
@@ -469,7 +471,7 @@ export async function fetchLatestComicsByType(
         }
       }
     } catch {
-      // fallback to komiku
+      // fallback
     }
   } else {
     try {
@@ -479,11 +481,36 @@ export async function fetchLatestComicsByType(
         return items;
       }
     } catch {
-      // fallback to komiku
+      // fallback
     }
   }
 
-  // 2. Secondary: Komiku real-time stream
+  // 2. Secondary: Softkomik real-time stream (clean, high quality Indonesian updates)
+  if (isBrowser) {
+    try {
+      const res = await fetch(`/api/softkomik?action=latest&type=${type}&page=${page}&limit=${limit}`);
+      if (res.ok) {
+        const json = await res.json();
+        if (json.comics && json.comics.length > 0) {
+          return json.comics;
+        }
+      }
+    } catch {
+      // fallback
+    }
+  } else {
+    try {
+      const { fetchSoftkomikLatest } = await import('./softkomik');
+      const items = await fetchSoftkomikLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page, limit);
+      if (items && items.length > 0) {
+        return items;
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  // 3. Tertiary: Komiku real-time stream
   if (isBrowser) {
     try {
       const res = await fetch(`/api/komiku?action=latest&type=${type}&page=${page}`);
@@ -494,7 +521,7 @@ export async function fetchLatestComicsByType(
         }
       }
     } catch {
-      // ignore
+      // fallback
     }
   } else {
     try {
@@ -504,11 +531,22 @@ export async function fetchLatestComicsByType(
         return items;
       }
     } catch {
-      // ignore
+      // fallback
     }
   }
 
-  return [];
+  // 4. Final Fallback: MangaDex (safely caught without unhandled exceptions)
+  try {
+    return await searchComics('', {
+      type,
+      limit,
+      offset,
+      requireIndonesian: true,
+      order: { latestUploadedChapter: 'desc' },
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function fetchTopComics(
@@ -693,6 +731,26 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
       } else {
         const { fetchKomikindoChapterImages } = await import('./komikindo');
         return await fetchKomikindoChapterImages(chapterSlug);
+      }
+      return [];
+    }
+
+    // If chapter ID is from Softkomik provider (softkomik--slug__chapter or softkomik:...)
+    if (decodedId.startsWith('softkomik--') || decodedId.startsWith('softkomik:')) {
+      const raw = decodedId.replace(/^softkomik(--|:)/, '');
+      const parts = raw.split('__');
+      const slug = parts[0] || '';
+      const chapter = parts[1] || '';
+
+      if (typeof window !== 'undefined') {
+        const res = await fetch(`/api/softkomik?action=pages&slug=${encodeURIComponent(slug)}&chapter=${encodeURIComponent(chapter)}`);
+        if (res.ok) {
+          const data = await res.json();
+          return data.pages || [];
+        }
+      } else {
+        const { fetchSoftkomikChapterImages } = await import('./softkomik');
+        return await fetchSoftkomikChapterImages(slug, chapter);
       }
       return [];
     }

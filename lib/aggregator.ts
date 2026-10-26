@@ -2,6 +2,7 @@ import { ChapterItem, ComicCardItem, ComicDetail, FilterOptions } from './types'
 import { sortChapters, searchComics } from './mangadex';
 import { normalizeTitle, searchKomiku, scoreTitleMatch } from './komiku';
 import { searchKomikindo } from './komikindo';
+import { searchSoftkomik } from './softkomik';
 import { parseDateScore } from './date';
 
 function isClientBrowser(): boolean {
@@ -11,15 +12,14 @@ function isClientBrowser(): boolean {
 function getProviderPriority(id: string): number {
   if (id.startsWith('komiku--')) return 1;
   if (id.startsWith('komikindo--')) return 2;
-  return 3; // MangaDex or other
+  if (id.startsWith('softkomik--')) return 3;
+  return 4; // MangaDex or other
 }
 
 export function mergeAndSortChapters(
-  chaptersA: ChapterItem[] = [],
-  chaptersB: ChapterItem[] = [],
-  chaptersC: ChapterItem[] = []
+  ...chapterArrays: ChapterItem[][]
 ): ChapterItem[] {
-  const all = [...chaptersA, ...chaptersB, ...chaptersC];
+  const all = chapterArrays.flat();
   const map = new Map<string, ChapterItem>();
 
   for (const item of all) {
@@ -146,15 +146,28 @@ export async function searchComicsUnified(
         .catch(() => [])
     : searchKomikindo(cleanQuery).catch(() => []);
 
+  const softkomikPromise = isBrowser
+    ? fetch(`/api/softkomik?action=search&q=${encodeURIComponent(cleanQuery)}`)
+        .then(r => r.ok ? r.json() : { comics: [] })
+        .then(d => d.comics || [])
+        .catch(() => [])
+    : searchSoftkomik(cleanQuery).catch(() => []);
+
   const mdPromise = searchComics(cleanQuery, options).catch(() => []);
 
-  const [komikuRes, komikindoRes, mdRes] = await Promise.all([
+  const [komikuRes, komikindoRes, softkomikRes, mdRes] = await Promise.all([
     komikuPromise,
     komikindoPromise,
+    softkomikPromise,
     mdPromise,
   ]);
 
-  let combined = [...(komikuRes || []), ...(komikindoRes || []), ...(mdRes || [])];
+  let combined = [
+    ...(komikuRes || []),
+    ...(komikindoRes || []),
+    ...(softkomikRes || []),
+    ...(mdRes || []),
+  ];
 
   // Apply comic type filtering if specified
   if (options?.type && options.type !== 'all') {
@@ -229,6 +242,21 @@ export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail |
     return null;
   }
 
+  if (decodedId.startsWith('softkomik--')) {
+    const slug = decodedId.replace(/^softkomik--/, '');
+    if (isBrowser) {
+      const res = await fetch(`/api/softkomik?action=detail&slug=${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        const json = await res.json();
+        return json.detail || null;
+      }
+    } else {
+      const { fetchSoftkomikDetail } = await import('./softkomik');
+      return await fetchSoftkomikDetail(slug);
+    }
+    return null;
+  }
+
   // MangaDex UUID
   const { fetchComicDetail } = await import('./mangadex');
   return await fetchComicDetail(decodedId);
@@ -243,6 +271,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
 
   let komikuPromise: Promise<ChapterItem[]> = Promise.resolve([]);
   let komikindoPromise: Promise<ChapterItem[]> = Promise.resolve([]);
+  let softkomikPromise: Promise<ChapterItem[]> = Promise.resolve([]);
   let mdIdPromise: Promise<ChapterItem[]> = Promise.resolve([]);
   let mdEnPromise: Promise<ChapterItem[]> = Promise.resolve([]);
 
@@ -304,21 +333,67 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
         });
   }
 
-  // 3. If it's a MangaDex UUID, fetch its chapters too
-  if (!id.startsWith('komiku--') && !id.startsWith('komikindo--')) {
-    const { fetchComicChapters } = await import('./mangadex');
-    mdIdPromise = fetchComicChapters(id, 'id');
-    mdEnPromise = fetchComicChapters(id, 'en');
+  // 3. If it's a Softkomik comic directly
+  if (id.startsWith('softkomik--')) {
+    const slug = id.replace(/^softkomik--/, '');
+    softkomikPromise = isBrowser
+      ? fetch(`/api/softkomik?action=chapters&slug=${encodeURIComponent(slug)}`)
+          .then(r => r.ok ? r.json() : { chapters: [] })
+          .then(d => d.chapters || [])
+          .catch(() => [])
+      : import('./softkomik').then(m => m.fetchSoftkomikChapters(slug));
+  } else {
+    // Search Softkomik by title + altTitles
+    const altParam = (comic.altTitles || []).slice(0, 10).join('|');
+    softkomikPromise = isBrowser
+      ? fetch(`/api/softkomik?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`)
+          .then(r => r.ok ? r.json() : { slug: null })
+          .then(async d => {
+            if (!d.slug) return [];
+            const cr = await fetch(`/api/softkomik?action=chapters&slug=${encodeURIComponent(d.slug)}`);
+            if (!cr.ok) return [];
+            const cjson = await cr.json();
+            return cjson.chapters || [];
+          })
+          .catch(() => [])
+      : import('./softkomik').then(async m => {
+          const s = await m.findSoftkomikSlug(comic.title, comic.altTitles);
+          return s ? await m.fetchSoftkomikChapters(s) : [];
+        });
   }
 
-  const [komikuChaps, komikindoChaps, mdIdChaps, mdEnChaps] = await Promise.all([
+  // 4. MangaDex: fetch chapters directly if MangaDex UUID, or resolve MangaDex ID by title
+  const isDirectMangaDex = !id.startsWith('komiku--') && !id.startsWith('komikindo--') && !id.startsWith('softkomik--');
+  if (isDirectMangaDex) {
+    const { fetchComicChapters } = await import('./mangadex');
+    mdIdPromise = fetchComicChapters(id, 'id').catch(() => []);
+    mdEnPromise = fetchComicChapters(id, 'en').catch(() => []);
+  } else {
+    // Attempt to discover MangaDex UUID by title to provide English chapters
+    mdEnPromise = (async () => {
+      try {
+        const { searchComics, fetchComicChapters } = await import('./mangadex');
+        const matches = await searchComics(comic.title, { limit: 5 }).catch(() => []);
+        const bestMatch = matches.find(m => scoreTitleMatch(comic.title, m.title) >= 70);
+        if (bestMatch && !bestMatch.id.includes('--')) {
+          return await fetchComicChapters(bestMatch.id, 'en').catch(() => []);
+        }
+      } catch {
+        // ignore
+      }
+      return [];
+    })();
+  }
+
+  const [komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps, mdEnChaps] = await Promise.all([
     komikuPromise,
     komikindoPromise,
+    softkomikPromise,
     mdIdPromise,
     mdEnPromise,
   ]);
 
-  const idChapters = mergeAndSortChapters(komikuChaps, komikindoChaps, mdIdChaps);
+  const idChapters = mergeAndSortChapters(komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps);
 
   return {
     idChapters,
