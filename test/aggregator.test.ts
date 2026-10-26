@@ -32,6 +32,23 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
     expect(merged[2].id).toBe('komiku--ch-179');
   });
 
+  it('deduplicates identical chapter numbers across Komiku, Komikindo, and Softkomik into exactly ONE chapter', () => {
+    const komikuChaps: ChapterItem[] = [
+      { id: 'komiku--ch-180', chapter: '180', title: 'Chapter 180', scanlationGroup: 'Komiku', publishAt: '2026-10-20', pagesCount: 0 },
+    ];
+    const komikindoChaps: ChapterItem[] = [
+      { id: 'komikindo--ch-180', chapter: '180', title: 'Chapter 180', scanlationGroup: 'Komikindo', publishAt: '2026-10-18', pagesCount: 0 },
+    ];
+    const softkomikChaps: ChapterItem[] = [
+      { id: 'softkomik--slug__0180', chapter: '0180', title: 'Chapter 0180', scanlationGroup: 'Softkomik', publishAt: '', pagesCount: 0 },
+    ];
+
+    const merged = mergeAndSortChapters(komikuChaps, komikindoChaps, softkomikChaps);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].chapter).toBe('180');
+    expect(merged[0].id).toBe('komiku--ch-180');
+  });
+
   it('deduplicates comics preferring Komiku first, then Komikindo, then MangaDex', () => {
     const cards: ComicCardItem[] = [
       { id: 'komikindo--solo-leveling', title: 'Solo Leveling', coverUrl: 'http://img1.jpg', type: 'manhwa' },

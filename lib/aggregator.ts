@@ -16,6 +16,15 @@ function getProviderPriority(id: string): number {
   return 4; // MangaDex or other
 }
 
+export function normalizeChapterKey(ch: string): string {
+  const clean = (ch || '').trim().replace(/^ch(?:\.|apter)?\s*/i, '');
+  const num = parseFloat(clean);
+  if (!isNaN(num)) {
+    return String(num);
+  }
+  return clean.toLowerCase().replace(/^0+/, '') || '0';
+}
+
 export function mergeAndSortChapters(
   ...chapterArrays: ChapterItem[][]
 ): ChapterItem[] {
@@ -23,11 +32,11 @@ export function mergeAndSortChapters(
   const map = new Map<string, ChapterItem>();
 
   for (const item of all) {
-    const key = item.chapter.trim();
+    const key = normalizeChapterKey(item.chapter);
     const existing = map.get(key);
 
     if (!existing) {
-      map.set(key, item);
+      map.set(key, { ...item, chapter: key });
       continue;
     }
 
@@ -36,19 +45,19 @@ export function mergeAndSortChapters(
 
     if (itemDate > 0 && existingDate > 0) {
       if (itemDate > existingDate) {
-        map.set(key, item);
+        map.set(key, { ...item, chapter: key });
       } else if (itemDate === existingDate) {
-        // Tie-break by provider priority: Komiku (1) > Komikindo (2) > MangaDex (3)
+        // Tie-break by provider priority: Komiku (1) > Komikindo (2) > Softkomik (3) > MangaDex (4)
         if (getProviderPriority(item.id) < getProviderPriority(existing.id)) {
-          map.set(key, item);
+          map.set(key, { ...item, chapter: key });
         }
       }
     } else if (itemDate > 0 && existingDate === 0) {
-      map.set(key, item);
+      map.set(key, { ...item, chapter: key });
     } else if (itemDate === 0 && existingDate === 0) {
       // Tie-break by provider priority
       if (getProviderPriority(item.id) < getProviderPriority(existing.id)) {
-        map.set(key, item);
+        map.set(key, { ...item, chapter: key });
       }
     }
   }
