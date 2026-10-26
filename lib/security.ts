@@ -49,6 +49,65 @@ export function isAllowedMangaDexSubpath(subpath: string | null | undefined): bo
 }
 
 /**
+ * Allowed domains and CDNs for image proxying.
+ */
+const ALLOWED_IMAGE_HOSTS = [
+  'mangadex.org',
+  'uploads.mangadex.org',
+  'komik.im',
+  'softdevices.my.id',
+  'komiku.org',
+  'thumbnail.komiku.org',
+  'komiku.id',
+  'komiku.com',
+  'komikindo.ch',
+  'komikindo.tv',
+  'komikindo.co',
+  'wp.com',
+  'blogger.com',
+  'bp.blogspot.com',
+  'ggpht.com',
+];
+
+/**
+ * Validates an image URL for the image proxy to prevent SSRF and unapproved external fetches.
+ */
+export function isAllowedImageProxyUrl(rawUrl: string | null | undefined): boolean {
+  if (!rawUrl) return false;
+  try {
+    const parsed = new URL(rawUrl);
+
+    // Only allow http or https
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return false;
+    }
+
+    const hostname = parsed.hostname.toLowerCase();
+
+    // Block localhost, link-local, loopback, private IPv4 and IPv6
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '::1' ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      hostname.startsWith('169.254.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    ) {
+      return false;
+    }
+
+    // Must match one of our approved comic domains
+    return ALLOWED_IMAGE_HOSTS.some(
+      allowed => hostname === allowed || hostname.endsWith(`.${allowed}`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Clamps numeric query parameters within safe boundaries.
  */
 export function clampInteger(

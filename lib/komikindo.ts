@@ -387,7 +387,16 @@ export async function fetchKomikindoChapterImages(chapterSlug: string): Promise<
   }
 }
 
+const SLUG_CACHE_TTL_MS = 15 * 60 * 1000;
+const komikindoSlugCache = new Map<string, { slug: string | null; exp: number }>();
+
 export async function findKomikindoSlug(title: string, altTitles?: string[]): Promise<string | null> {
+  const cacheKey = `${title.toLowerCase()}_${(altTitles || []).join('_').toLowerCase()}`;
+  const cached = komikindoSlugCache.get(cacheKey);
+  if (cached && cached.exp > Date.now()) {
+    return cached.slug;
+  }
+
   const titlesToTry = generateSearchQueries(title, altTitles);
   const targets = [title, ...(altTitles || [])].filter(Boolean);
   let bestSlug: string | null = null;
@@ -402,7 +411,9 @@ export async function findKomikindoSlug(title: string, altTitles?: string[]): Pr
         for (const target of targets) {
           const score = scoreTitleMatch(target, card.title);
           if (score === 100) {
-            return card.id.replace(/^komikindo--/, '');
+            const exactSlug = card.id.replace(/^komikindo--/, '');
+            komikindoSlugCache.set(cacheKey, { slug: exactSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
+            return exactSlug;
           }
           if (score > highestScore && score >= 60) {
             highestScore = score;
@@ -412,6 +423,7 @@ export async function findKomikindoSlug(title: string, altTitles?: string[]): Pr
       }
 
       if (highestScore >= 80 && bestSlug) {
+        komikindoSlugCache.set(cacheKey, { slug: bestSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
         return bestSlug;
       }
     } catch (e) {
@@ -419,5 +431,6 @@ export async function findKomikindoSlug(title: string, altTitles?: string[]): Pr
     }
   }
 
+  komikindoSlugCache.set(cacheKey, { slug: bestSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
   return bestSlug;
 }

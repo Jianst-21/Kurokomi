@@ -4,6 +4,7 @@ import {
   ensureHttps,
   isAllowedMangaDexSubpath,
   clampInteger,
+  isAllowedImageProxyUrl,
 } from '@/lib/security';
 
 describe('Security Utilities', () => {
@@ -45,5 +46,22 @@ describe('Security Utilities', () => {
     expect(clampInteger('-10', 1, 100, 10)).toBe(1);
     expect(clampInteger('abc', 1, 100, 10)).toBe(10);
     expect(clampInteger(null, 1, 100, 10)).toBe(10);
+  });
+
+  it('validates image proxy URLs against allowed comic CDN hosts and blocks SSRF', () => {
+    // Valid comic CDNs
+    expect(isAllowedImageProxyUrl('https://image.komik.im/softkomik/test.webp')).toBe(true);
+    expect(isAllowedImageProxyUrl('https://cover.softdevices.my.id/softkomik-cover/test.jpg')).toBe(true);
+    expect(isAllowedImageProxyUrl('https://uploads.mangadex.org/data/123/456.jpg')).toBe(true);
+    expect(isAllowedImageProxyUrl('https://thumbnail.komiku.org/uploads/manga/test.png')).toBe(true);
+    expect(isAllowedImageProxyUrl('https://komikindo.ch/wp-content/uploads/2026/04/test.png')).toBe(true);
+
+    // SSRF / Malicious attacks
+    expect(isAllowedImageProxyUrl('http://localhost:3000/api/secret')).toBe(false);
+    expect(isAllowedImageProxyUrl('http://127.0.0.1/admin')).toBe(false);
+    expect(isAllowedImageProxyUrl('http://169.254.169.254/latest/meta-data')).toBe(false);
+    expect(isAllowedImageProxyUrl('file:///etc/passwd')).toBe(false);
+    expect(isAllowedImageProxyUrl('ftp://example.com/test.jpg')).toBe(false);
+    expect(isAllowedImageProxyUrl('https://evil-phishing-site.com/image.jpg')).toBe(false);
   });
 });

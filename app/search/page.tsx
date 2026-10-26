@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useEffect, useRef, useTransition } from 'react';
 import { Search, X, SlidersHorizontal, RefreshCw, AlertCircle, ChevronDown } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { searchComicsUnified } from '@/lib/aggregator';
@@ -23,11 +23,25 @@ export default function SearchPage() {
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  const searchCacheRef = useRef<Map<string, ComicCardItem[]>>(new Map());
 
   const isFilterActive = activeType !== 'all' || isColor || Boolean(activeGenre);
 
   const loadData = async (reset: boolean = true) => {
+    const currentOffset = reset ? 0 : offset;
+    const PAGE_LIMIT = 30;
+    const cacheKey = `${searchQuery.trim().toLowerCase()}_${activeType}_${isColor}_${activeGenre}_${currentOffset}`;
+
     if (reset) {
+      if (searchCacheRef.current.has(cacheKey)) {
+        const cached = searchCacheRef.current.get(cacheKey)!;
+        setComics(cached);
+        setOffset(PAGE_LIMIT);
+        setHasMore(cached.length >= 10);
+        setIsLoading(false);
+        setError(null);
+        return;
+      }
       setIsLoading(true);
       setError(null);
       setOffset(0);
@@ -35,9 +49,6 @@ export default function SearchPage() {
     } else {
       setIsLoadingMore(true);
     }
-
-    const currentOffset = reset ? 0 : offset;
-    const PAGE_LIMIT = 30;
 
     try {
       const results = await searchComicsUnified(searchQuery, {
@@ -49,6 +60,7 @@ export default function SearchPage() {
       });
 
       if (reset) {
+        searchCacheRef.current.set(cacheKey, results);
         setComics(results);
       } else {
         setComics(prev => {

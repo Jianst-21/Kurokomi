@@ -456,7 +456,16 @@ export function generateSearchQueries(title: string, altTitles?: string[]): stri
   return Array.from(queries);
 }
 
+const SLUG_CACHE_TTL_MS = 15 * 60 * 1000;
+const komikuSlugCache = new Map<string, { slug: string | null; exp: number }>();
+
 export async function findKomikuSlug(title: string, altTitles?: string[]): Promise<string | null> {
+  const cacheKey = `${title.toLowerCase()}_${(altTitles || []).join('_').toLowerCase()}`;
+  const cached = komikuSlugCache.get(cacheKey);
+  if (cached && cached.exp > Date.now()) {
+    return cached.slug;
+  }
+
   const titlesToTry = generateSearchQueries(title, altTitles);
   const targets = [title, ...(altTitles || [])].filter(Boolean);
 
@@ -472,7 +481,9 @@ export async function findKomikuSlug(title: string, altTitles?: string[]): Promi
         for (const target of targets) {
           const score = scoreTitleMatch(target, card.title);
           if (score === 100) {
-            return card.id.replace(/^komiku--/, '');
+            const exactSlug = card.id.replace(/^komiku--/, '');
+            komikuSlugCache.set(cacheKey, { slug: exactSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
+            return exactSlug;
           }
           if (score > highestScore && score >= 60) {
             highestScore = score;
@@ -482,6 +493,7 @@ export async function findKomikuSlug(title: string, altTitles?: string[]): Promi
       }
 
       if (highestScore >= 80 && bestSlug) {
+        komikuSlugCache.set(cacheKey, { slug: bestSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
         return bestSlug;
       }
     } catch (e) {
@@ -489,6 +501,7 @@ export async function findKomikuSlug(title: string, altTitles?: string[]): Promi
     }
   }
 
+  komikuSlugCache.set(cacheKey, { slug: bestSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
   return bestSlug;
 }
 

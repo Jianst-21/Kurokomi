@@ -197,7 +197,16 @@ export async function searchSoftkomik(query: string): Promise<ComicCardItem[]> {
   }
 }
 
+const SLUG_CACHE_TTL_MS = 15 * 60 * 1000;
+const softkomikSlugCache = new Map<string, { slug: string | null; exp: number }>();
+
 export async function findSoftkomikSlug(title: string, altTitles: string[] = []): Promise<string | null> {
+  const cacheKey = `${title.toLowerCase()}_${(altTitles || []).join('_').toLowerCase()}`;
+  const cached = softkomikSlugCache.get(cacheKey);
+  if (cached && cached.exp > Date.now()) {
+    return cached.slug;
+  }
+
   const queries = generateSearchQueries(title, altTitles);
 
   for (const q of queries) {
@@ -227,6 +236,7 @@ export async function findSoftkomikSlug(title: string, altTitles: string[] = [])
       }
 
       if (highestScore >= 60 && bestSlug) {
+        softkomikSlugCache.set(cacheKey, { slug: bestSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
         return bestSlug;
       }
     } catch {
@@ -234,6 +244,7 @@ export async function findSoftkomikSlug(title: string, altTitles: string[] = [])
     }
   }
 
+  softkomikSlugCache.set(cacheKey, { slug: null, exp: Date.now() + SLUG_CACHE_TTL_MS });
   return null;
 }
 

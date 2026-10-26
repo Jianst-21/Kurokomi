@@ -13,18 +13,24 @@ export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
   const [currentSrc, setCurrentSrc] = useState(src);
   const [error, setError] = useState(false);
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
+  const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     setCurrentSrc(src);
     setError(false);
     setHasTriedFallback(false);
+    setHasTriedProxy(false);
   }, [src]);
 
   const handleImageError = () => {
     if (fallbackSrc && !hasTriedFallback && currentSrc !== fallbackSrc) {
       setHasTriedFallback(true);
       setCurrentSrc(fallbackSrc);
+    } else if (!hasTriedProxy && !currentSrc.startsWith('/api/image-proxy')) {
+      // Automatic fallback via Kurokomi server image proxy to bypass ISP blocking & hotlink issues
+      setHasTriedProxy(true);
+      setCurrentSrc(`/api/image-proxy?url=${encodeURIComponent(src)}`);
     } else {
       setError(true);
     }
@@ -33,10 +39,9 @@ export function ReaderImage({ src, fallbackSrc, pageIndex }: ReaderImageProps) {
   const handleRetry = (e: React.MouseEvent) => {
     e.stopPropagation();
     setError(false);
-    if (fallbackSrc) {
-      setCurrentSrc(fallbackSrc);
-      setHasTriedFallback(true);
-    }
+    setHasTriedFallback(false);
+    setHasTriedProxy(false);
+    setCurrentSrc(src);
     setRetryKey(k => k + 1);
   };
 
