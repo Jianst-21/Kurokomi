@@ -31,6 +31,12 @@ describe('Favorites and History Pages', () => {
     expect(screen.getByRole('heading', { name: 'Solo Leveling' })).toBeInTheDocument();
   });
 
+  it('renders minimalist Ekspor and Impor action buttons on favorites page', () => {
+    render(<FavoritesPage />);
+    expect(screen.getByRole('button', { name: 'Ekspor' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Impor' })).toBeInTheDocument();
+  });
+
   it('renders history items with last read chapter when populated', () => {
     saveHistory({
       mangaId: 'm1',

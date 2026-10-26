@@ -1,0 +1,24 @@
+{
+  "name": "Kurokomi - Baca Komik Bahasa Indonesia",
+  "short_name": "Kurokomi",
+  "description": "Web reader komik manga, manhwa, dan manhua terjemahan Bahasa Indonesia yang cepat, bersih, dan bebas iklan.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

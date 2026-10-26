@@ -121,3 +121,101 @@ export function clearHistory(): void {
     // ignore
   }
 }
+
+export interface BackupData {
+  version: number;
+  exportedAt: string;
+  favorites: ComicCardItem[];
+  history: ReadingHistoryItem[];
+  readChapters: string[];
+}
+
+export function exportUserData(): string {
+  if (!isBrowser()) return JSON.stringify({ version: 1, exportedAt: new Date().toISOString(), favorites: [], history: [], readChapters: [] });
+  const data: BackupData = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    favorites: getFavorites(),
+    history: getHistory(),
+    readChapters: getReadChapterIds(),
+  };
+  return JSON.stringify(data, null, 2);
+}
+
+export function importUserData(jsonString: string): { success: boolean; count: number; error?: string } {
+  if (!isBrowser()) return { success: false, count: 0, error: 'Browser environment required' };
+  try {
+    const parsed = JSON.parse(jsonString);
+    if (!parsed || typeof parsed !== 'object') {
+      return { success: false, count: 0, error: 'Format file tidak valid' };
+    }
+
+    let restoredCount = 0;
+
+    // 1. Restore & Merge Favorites
+    if (Array.isArray(parsed.favorites)) {
+      const currentFavs = getFavorites();
+      const favMap = new Map<string, ComicCardItem>();
+      for (const item of currentFavs) {
+        if (item && item.id) favMap.set(item.id, item);
+      }
+      for (const item of parsed.favorites) {
+        if (item && item.id && !favMap.has(item.id)) {
+          favMap.set(item.id, item);
+          restoredCount++;
+        }
+      }
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(favMap.values())));
+    }
+
+    // 2. Restore & Merge History
+    if (Array.isArray(parsed.history)) {
+      const currentHistory = getHistory();
+      const historyMap = new Map<string, ReadingHistoryItem>();
+      for (const item of currentHistory) {
+        if (item && item.mangaId) historyMap.set(item.mangaId, item);
+      }
+      for (const item of parsed.history) {
+        if (item && item.mangaId) {
+          const existing = historyMap.get(item.mangaId);
+          if (!existing) {
+            historyMap.set(item.mangaId, item);
+            restoredCount++;
+          } else {
+            // Pick newest readAt
+            const existingTime = existing.readAt ? new Date(existing.readAt).getTime() : 0;
+            const itemTime = item.readAt ? new Date(item.readAt).getTime() : 0;
+            if (itemTime > existingTime) {
+              historyMap.set(item.mangaId, item);
+            }
+          }
+        }
+      }
+      // Sort history descending by readAt
+      const sortedHistory = Array.from(historyMap.values()).sort((a, b) => {
+        const timeA = a.readAt ? new Date(a.readAt).getTime() : 0;
+        const timeB = b.readAt ? new Date(b.readAt).getTime() : 0;
+        return timeB - timeA;
+      }).slice(0, 100);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(sortedHistory));
+    }
+
+    // 3. Restore & Merge Read Chapters
+    if (Array.isArray(parsed.readChapters)) {
+      const currentChapters = new Set(getReadChapterIds());
+      for (const chId of parsed.readChapters) {
+        if (typeof chId === 'string' && chId.trim()) {
+          if (!currentChapters.has(chId)) {
+            currentChapters.add(chId);
+            restoredCount++;
+          }
+        }
+      }
+      localStorage.setItem(READ_CHAPTERS_KEY, JSON.stringify(Array.from(currentChapters).slice(-500)));
+    }
+
+    return { success: true, count: restoredCount };
+  } catch {
+    return { success: false, count: 0, error: 'Gagal memproses file cadangan' };
+  }
+}

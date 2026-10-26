@@ -10,6 +10,8 @@ import {
   markChapterAsRead,
   isChapterRead,
   getReadChapterIds,
+  exportUserData,
+  importUserData,
 } from '@/lib/storage';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 
@@ -105,5 +107,57 @@ describe('LocalStorage Helper', () => {
     markChapterAsRead('ch-101');
     expect(isChapterRead('ch-101')).toBe(true);
     expect(getReadChapterIds()).toEqual(['ch-100', 'ch-101']);
+  });
+
+  it('exports user data to JSON and imports it back seamlessly', () => {
+    toggleFavorite({
+      id: 'fav-1',
+      title: 'Solo Leveling',
+      coverUrl: 'http://img.jpg',
+      type: 'manhwa',
+    });
+    saveHistory({
+      mangaId: 'fav-1',
+      title: 'Solo Leveling',
+      coverUrl: 'http://img.jpg',
+      type: 'manhwa',
+      chapterId: 'ch-10',
+      chapterNumber: '10',
+      readAt: '2026-10-27T00:00:00Z',
+    });
+    markChapterAsRead('ch-10');
+
+    const exportedJson = exportUserData();
+    expect(typeof exportedJson).toBe('string');
+    const parsed = JSON.parse(exportedJson);
+    expect(parsed.version).toBe(1);
+    expect(parsed.favorites).toHaveLength(1);
+    expect(parsed.history).toHaveLength(1);
+    expect(parsed.readChapters).toContain('ch-10');
+
+    // Clear local storage to simulate a new device or cleared cache
+    localStorage.clear();
+    expect(getFavorites()).toHaveLength(0);
+    expect(getHistory()).toHaveLength(0);
+    expect(getReadChapterIds()).toHaveLength(0);
+
+    // Import data
+    const result = importUserData(exportedJson);
+    expect(result.success).toBe(true);
+    expect(result.count).toBeGreaterThan(0);
+    expect(getFavorites()).toHaveLength(1);
+    expect(getFavorites()[0].id).toBe('fav-1');
+    expect(getHistory()).toHaveLength(1);
+    expect(isChapterRead('ch-10')).toBe(true);
+  });
+
+  it('handles invalid JSON gracefully during import', () => {
+    const invalidRes = importUserData('invalid json string');
+    expect(invalidRes.success).toBe(false);
+    expect(invalidRes.error).toBeDefined();
+
+    const emptyObjRes = importUserData('{}');
+    expect(emptyObjRes.success).toBe(true);
+    expect(emptyObjRes.count).toBe(0);
   });
 });
