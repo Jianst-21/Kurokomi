@@ -23,12 +23,12 @@ describe('DesktopNavbar Component', () => {
     mockPathname = '/';
   });
 
-  it('renders logo and navigation links without stickers', () => {
+  it('renders logo with clean white minimalist text branding', () => {
     render(<DesktopNavbar />);
-    expect(screen.getByText('KUROKOMI')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Beranda/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Favorit/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Riwayat/i })).toBeInTheDocument();
+    const title = screen.getByText('KUROKOMI');
+    expect(title).toBeInTheDocument();
+    expect(title).toHaveClass('text-zinc-100');
+    expect(title).not.toHaveClass('bg-clip-text');
   });
 
   it('has responsive class hidden md:flex', () => {

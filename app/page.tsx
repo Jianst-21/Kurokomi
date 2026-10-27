@@ -56,7 +56,7 @@ export default function HomePage() {
               />
             </div>
             <div className="flex flex-col">
-              <span className="text-sm font-extrabold tracking-wider bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent leading-none">
+              <span className="text-sm font-extrabold tracking-wider text-zinc-100 leading-none">
                 KUROKOMI
               </span>
               <span className="text-[10px] text-zinc-400 font-medium">
