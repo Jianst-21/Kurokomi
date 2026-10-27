@@ -172,9 +172,9 @@ export function TopComicsSection() {
         })}
       </div>
 
-      {/* Grid 3 Kolom Content */}
+      {/* Grid Content */}
       {isLoading ? (
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
@@ -198,7 +198,7 @@ export function TopComicsSection() {
           Belum ada komik rekomendasi untuk kategori ini.
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
           {comics.map((comic, idx) => {
             const rank = (page - 1) * PAGE_LIMIT + idx + 1;
             const rankBadgeStyle =

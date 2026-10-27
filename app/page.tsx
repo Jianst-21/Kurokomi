@@ -4,14 +4,18 @@ import React from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
+import { DesktopNavbar } from '@/components/DesktopNavbar';
 import { LatestUpdatesSection } from '@/components/LatestUpdatesSection';
 import { TopComicsSection } from '@/components/TopComicsSection';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-zinc-950 pb-28 text-zinc-100 flex flex-col">
-      {/* Top Header - Seamless without border */}
-      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+    <div className="min-h-screen bg-zinc-950 pb-28 md:pb-12 text-zinc-100 flex flex-col">
+      {/* Desktop Navbar (md+) */}
+      <DesktopNavbar />
+
+      {/* Top Header - Seamless without border (mobile only) */}
+      <header className="md:hidden sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-extrabold text-white text-base shadow-md shadow-blue-600/30">
@@ -38,7 +42,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Container */}
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pt-2 flex flex-col gap-6">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 pt-4 flex flex-col gap-8">
         {/* Section 1: Update Komik Terbaru (Horizontal Snap Slider & Clean Pagination) */}
         <LatestUpdatesSection />
 

@@ -136,7 +136,7 @@ export function LatestUpdatesSection() {
             Belum ada update komik untuk kategori ini.
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {comics.map(comic => (
               <HorizontalComicCard key={comic.id} comic={comic} />
             ))}
