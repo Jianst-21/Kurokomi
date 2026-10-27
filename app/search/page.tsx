@@ -111,7 +111,7 @@ export default function SearchPage() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Cari judul komik (contoh: Solo Leveling)..."
+              placeholder="Cari komik..."
               className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-9 pr-9 py-2.5 text-[16px] sm:text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600 transition-colors"
             />
             {searchQuery && (
@@ -153,7 +153,7 @@ export default function SearchPage() {
               type="text"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Cari judul komik..."
+              placeholder="Cari komik..."
               className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-9 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600 transition-colors"
             />
             {searchQuery && (

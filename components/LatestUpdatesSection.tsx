@@ -116,9 +116,23 @@ export function LatestUpdatesSection() {
       {/* Horizontal Slider Area */}
       <div className="relative">
         {isLoading ? (
-          <div className="w-full h-40 bg-zinc-900/40 border border-zinc-850 rounded-2xl p-4 flex items-center justify-center gap-2 text-zinc-400 text-xs animate-pulse">
-            <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />
-            <span>Memuat komik terbaru...</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[...Array(6)].map((_, i) => (
+              <div
+                key={i}
+                className="flex gap-3 bg-zinc-900/60 p-2.5 rounded-2xl border border-zinc-850 animate-pulse"
+              >
+                <div className="w-24 h-32 shrink-0 rounded-xl bg-zinc-800" />
+                <div className="flex flex-col flex-1 gap-2 py-1">
+                  <div className="h-4 bg-zinc-800 rounded w-3/4" />
+                  <div className="h-3 bg-zinc-800/70 rounded w-1/3" />
+                  <div className="mt-auto flex flex-col gap-1.5">
+                    <div className="h-5 bg-zinc-800/80 rounded-lg w-full" />
+                    <div className="h-5 bg-zinc-800/50 rounded-lg w-4/5" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : error ? (
           <div className="w-full h-40 bg-zinc-900/40 border border-zinc-850 rounded-2xl p-4 flex flex-col items-center justify-center gap-2 text-center">
