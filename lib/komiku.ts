@@ -34,17 +34,30 @@ export function scoreTitleMatch(query: string, candidate: string): number {
 
   if (qTokens.length === 0 || cTokens.length === 0) return 0;
 
-  // Check if all query tokens are present in candidate tokens
-  const allInCandidate = qTokens.every(qt => cTokens.includes(qt));
+  // Token overlap ratio with support for Romaji particle variants (ha vs wa, wo vs o)
+  const normalizeParticle = (token: string) => {
+    if (token === 'ha') return 'wa';
+    if (token === 'wo') return 'o';
+    return token;
+  };
+
+  const qNormalizedTokens = qTokens.map(normalizeParticle);
+  const cNormalizedTokens = cTokens.map(normalizeParticle);
+
+  // Check if all query tokens are present
+  const allInCandidate = qNormalizedTokens.every(qt => cNormalizedTokens.includes(qt));
   if (allInCandidate) {
-    const extraTokens = cTokens.length - qTokens.length;
+    const extraTokens = cNormalizedTokens.length - qNormalizedTokens.length;
     if (extraTokens === 0) return 100;
-    // Penalize spin-offs/subtitles (e.g., "One Piece: Ace Story" has 2 extra tokens)
-    return Math.max(50, 90 - extraTokens * 15);
+    return Math.max(50, 95 - extraTokens * 10);
   }
 
-  // Token overlap ratio
-  const matched = qTokens.filter(qt => cTokens.includes(qt)).length;
+  const matched = qNormalizedTokens.filter(qt => cNormalizedTokens.includes(qt)).length;
+  const matchRatio = matched / Math.max(qNormalizedTokens.length, cNormalizedTokens.length);
+  if (matchRatio >= 0.75) {
+    return Math.round(matchRatio * 90);
+  }
+
   return Math.round((matched / qTokens.length) * 50);
 }
 

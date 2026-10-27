@@ -11,7 +11,7 @@ const mangapillSlugCache = new Map<string, { path: string | null; exp: number }>
 
 export function parseMangaPillSearchHtml(html: string): ComicCardItem[] {
   const items: ComicCardItem[] = [];
-  const cardRegex = /<a href="(\/manga\/(\d+)\/([^"]+))"[^>]*class="[^"]*relative[^"]*"[^>]*>([\s\S]*?)<\/a>\s*<div class="flex flex-col">([\s\S]*?)<\/div>/gi;
+  const cardRegex = /<a href="(\/manga\/(\d+)\/([^"]+))"[^>]*class="[^"]*relative[^"]*"[^>]*>([\s\S]*?)<\/a>\s*<div class="flex flex-col[^"]*">([\s\S]*?)<\/div>/gi;
   let match;
 
   while ((match = cardRegex.exec(html)) !== null) {
@@ -130,7 +130,7 @@ export async function findMangaPillPath(title: string, altTitles: string[] = [])
   let bestPath: string | null = null;
   let highestScore = 0;
 
-  for (const q of queries.slice(0, 4)) {
+  for (const q of queries.slice(0, 3)) {
     try {
       const candidates = await searchMangaPill(q);
       if (!candidates || candidates.length === 0) continue;
@@ -138,7 +138,7 @@ export async function findMangaPillPath(title: string, altTitles: string[] = [])
       for (const card of candidates) {
         for (const target of targets) {
           const score = scoreTitleMatch(target, card.title);
-          if (score === 100) {
+          if (score >= 90) {
             const path = '/' + card.id.replace(/^mangapill--/, '').replace(/___/g, '/');
             mangapillSlugCache.set(cacheKey, { path, exp: Date.now() + MANGAPILL_CACHE_TTL });
             return path;

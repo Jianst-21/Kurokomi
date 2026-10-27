@@ -28,9 +28,16 @@ export function DesktopNavbar() {
     <header className="hidden md:flex sticky top-0 z-40 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-850 px-6 py-3">
       <div className="max-w-6xl mx-auto w-full flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-extrabold text-white text-base shadow-md shadow-blue-600/30">
-            K
+        <Link href="/" className="flex items-center gap-2.5 shrink-0 group">
+          <div className="w-8 h-8 rounded-lg overflow-hidden bg-black border border-zinc-800 shadow-md shadow-black/50 shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.svg"
+              alt="Kurokomi Logo"
+              width={32}
+              height={32}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+            />
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-extrabold tracking-wider bg-gradient-to-r from-blue-400 via-indigo-300 to-white bg-clip-text text-transparent leading-none">

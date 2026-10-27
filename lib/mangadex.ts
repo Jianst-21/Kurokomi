@@ -670,6 +670,11 @@ export async function fetchComicChapters(
         const list = data.data || [];
 
         for (const ch of list) {
+          // Skip external / paid paywalled chapters (like MangaUp, Bilibili, Kirei Cake external links)
+          if (ch.attributes?.externalUrl) {
+            continue;
+          }
+
           const groupRel = ch.relationships?.find((r: { type: string }) => r.type === 'scanlation_group');
           chapters.push({
             id: ch.id,
