@@ -1,5 +1,9 @@
-import { describe, it, expect } from 'vitest';
-import { mergeAndSortChapters, deduplicateComics } from '@/lib/aggregator';
+import { describe, it, expect, vi } from 'vitest';
+import * as mangadexModule from '@/lib/mangadex';
+import * as komikuModule from '@/lib/komiku';
+import * as komikindoModule from '@/lib/komikindo';
+import * as softkomikModule from '@/lib/softkomik';
+import { mergeAndSortChapters, deduplicateComics, fetchUnifiedChapters } from '@/lib/aggregator';
 import { ChapterItem, ComicCardItem } from '@/lib/types';
 
 describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
@@ -138,5 +142,44 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
     expect(deduplicated[0].id).toBe('komiku--kanojo-okarishimasu');
     expect(deduplicated[0].title.toLowerCase()).toContain('rent');
     expect(deduplicated[0].altTitle?.toLowerCase()).toContain('kanojo');
+  });
+
+  it('discovers MangaDex English chapters when primary title differs but altTitle matches', async () => {
+    vi.spyOn(komikuModule, 'fetchKomikuChapters').mockResolvedValue([]);
+    vi.spyOn(komikindoModule, 'findKomikindoSlug').mockResolvedValue(null);
+    vi.spyOn(softkomikModule, 'findSoftkomikSlug').mockResolvedValue(null);
+
+    // Spy on searchComics to return MangaDex comic with English title
+    vi.spyOn(mangadexModule, 'searchComics').mockResolvedValue([
+      {
+        id: 'md-fated-villain-uuid',
+        title: 'I Am the Fated Villain',
+        altTitle: 'The Villain of Destiny',
+        altTitles: ['The Villain of Destiny', 'Ni Tian Xie Shen'],
+        coverUrl: '',
+        type: 'manhua',
+      },
+    ]);
+
+    // Spy on fetchComicChapters to return English chapters
+    vi.spyOn(mangadexModule, 'fetchComicChapters').mockResolvedValue([
+      { id: 'md-ch-100', chapter: '100', title: 'Ch. 100', publishAt: '2026-10-20', pagesCount: 0 },
+    ]);
+
+    // Local comic has title 'The Villain of Destiny' and altTitle 'I Am the Fated Villain'
+    const result = await fetchUnifiedChapters({
+      id: 'komiku--the-villain-of-destiny',
+      title: 'The Villain of Destiny',
+      altTitles: ['I Am the Fated Villain'],
+      description: '',
+      coverUrl: '',
+      type: 'manhua',
+      status: 'ongoing',
+      genres: [],
+      isFullColor: true,
+    });
+
+    expect(result.enChapters).toHaveLength(1);
+    expect(result.enChapters[0].id).toBe('md-ch-100');
   });
 });

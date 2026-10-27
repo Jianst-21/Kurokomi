@@ -1,6 +1,10 @@
 import { ChapterItem, ComicCardItem, ComicDetail, FilterOptions } from './types';
-import { sortChapters, searchComics } from './mangadex';
-import { normalizeTitle, searchKomiku, scoreTitleMatch } from './komiku';
+import * as mangadex from './mangadex';
+import * as komiku from './komiku';
+import * as komikindo from './komikindo';
+import * as softkomik from './softkomik';
+import { sortChapters } from './mangadex';
+import { normalizeTitle, searchKomiku, scoreTitleMatch, generateSearchQueries } from './komiku';
 import { searchKomikindo } from './komikindo';
 import { searchSoftkomik } from './softkomik';
 import { parseDateScore } from './date';
@@ -237,7 +241,7 @@ export async function searchComicsUnified(
 
   // If query is empty, browse using MangaDex with tag/genre filters
   if (!cleanQuery) {
-    return await searchComics('', options);
+    return await mangadex.searchComics('', options);
   }
 
   const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
@@ -263,7 +267,7 @@ export async function searchComicsUnified(
         .catch(() => [])
     : searchSoftkomik(cleanQuery).catch(() => []);
 
-  const mdPromise = searchComics(cleanQuery, options).catch(() => []);
+  const mdPromise = mangadex.searchComics(cleanQuery, options).catch(() => []);
 
   const [komikuRes, komikindoRes, softkomikRes, mdRes] = await Promise.all([
     komikuPromise,
@@ -304,8 +308,7 @@ async function enrichDetailGenres(detail: ComicDetail | null): Promise<ComicDeta
   if (!detail) return null;
   if (!detail.genres || detail.genres.length === 0) {
     try {
-      const { searchComics } = await import('./mangadex');
-      const mdMatches = await searchComics(detail.title, { limit: 3 }).catch(() => []);
+      const mdMatches = await mangadex.searchComics(detail.title, { limit: 3 }).catch(() => []);
       const matched = mdMatches.find(m => m.genres && m.genres.length > 0);
       if (matched && matched.genres) {
         detail.genres = matched.genres;
@@ -449,7 +452,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
           .then(r => r.ok ? r.json() : { chapters: [] })
           .then(d => d.chapters || [])
           .catch(() => [])
-      : import('./komiku').then(m => m.fetchKomikuChapters(slug));
+      : komiku.fetchKomikuChapters(slug).catch(() => []);
   } else {
     // Search Komiku by title + altTitles
     const altParam = (comic.altTitles || []).slice(0, 10).join('|');
@@ -464,10 +467,10 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
             return cjson.chapters || [];
           })
           .catch(() => [])
-      : import('./komiku').then(async m => {
-          const s = await m.findKomikuSlug(comic.title, comic.altTitles);
-          return s ? await m.fetchKomikuChapters(s) : [];
-        });
+      : (async () => {
+          const s = await komiku.findKomikuSlug(comic.title, comic.altTitles);
+          return s ? await komiku.fetchKomikuChapters(s).catch(() => []) : [];
+        })();
   }
 
   // 2. If it's a Komikindo comic directly
@@ -478,7 +481,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
           .then(r => r.ok ? r.json() : { chapters: [] })
           .then(d => d.chapters || [])
           .catch(() => [])
-      : import('./komikindo').then(m => m.fetchKomikindoChapters(slug));
+      : komikindo.fetchKomikindoChapters(slug).catch(() => []);
   } else {
     // Search Komikindo by title + altTitles
     const altParam = (comic.altTitles || []).slice(0, 10).join('|');
@@ -493,10 +496,10 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
             return cjson.chapters || [];
           })
           .catch(() => [])
-      : import('./komikindo').then(async m => {
-          const s = await m.findKomikindoSlug(comic.title, comic.altTitles);
-          return s ? await m.fetchKomikindoChapters(s) : [];
-        });
+      : (async () => {
+          const s = await komikindo.findKomikindoSlug(comic.title, comic.altTitles);
+          return s ? await komikindo.fetchKomikindoChapters(s).catch(() => []) : [];
+        })();
   }
 
   // 3. If it's a Softkomik comic directly
@@ -507,7 +510,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
           .then(r => r.ok ? r.json() : { chapters: [] })
           .then(d => d.chapters || [])
           .catch(() => [])
-      : import('./softkomik').then(m => m.fetchSoftkomikChapters(slug));
+      : softkomik.fetchSoftkomikChapters(slug).catch(() => []);
   } else {
     // Search Softkomik by title + altTitles
     const altParam = (comic.altTitles || []).slice(0, 10).join('|');
@@ -522,27 +525,51 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
             return cjson.chapters || [];
           })
           .catch(() => [])
-      : import('./softkomik').then(async m => {
-          const s = await m.findSoftkomikSlug(comic.title, comic.altTitles);
-          return s ? await m.fetchSoftkomikChapters(s) : [];
-        });
+      : (async () => {
+          const s = await softkomik.findSoftkomikSlug(comic.title, comic.altTitles);
+          return s ? await softkomik.fetchSoftkomikChapters(s).catch(() => []) : [];
+        })();
   }
 
   // 4. MangaDex: fetch chapters directly if MangaDex UUID, or resolve MangaDex ID by title
   const isDirectMangaDex = !id.startsWith('komiku--') && !id.startsWith('komikindo--') && !id.startsWith('softkomik--');
   if (isDirectMangaDex) {
-    const { fetchComicChapters } = await import('./mangadex');
-    mdIdPromise = fetchComicChapters(id, 'id').catch(() => []);
-    mdEnPromise = fetchComicChapters(id, 'en').catch(() => []);
+    mdIdPromise = mangadex.fetchComicChapters(id, 'id').catch(() => []);
+    mdEnPromise = mangadex.fetchComicChapters(id, 'en').catch(() => []);
   } else {
-    // Attempt to discover MangaDex UUID by title to provide English chapters
+    // Attempt to discover MangaDex UUID by title + altTitles to provide English chapters
     mdEnPromise = (async () => {
       try {
-        const { searchComics, fetchComicChapters } = await import('./mangadex');
-        const matches = await searchComics(comic.title, { limit: 5 }).catch(() => []);
-        const bestMatch = matches.find(m => scoreTitleMatch(comic.title, m.title) >= 70);
-        if (bestMatch && !bestMatch.id.includes('--')) {
-          return await fetchComicChapters(bestMatch.id, 'en').catch(() => []);
+        const titlesToTry = generateSearchQueries(comic.title, comic.altTitles);
+        const allTargets = [comic.title, ...(comic.altTitles || [])].filter(Boolean);
+
+        let bestMatch: ComicCardItem | null = null;
+        let highestScore = 0;
+
+        for (const q of titlesToTry.slice(0, 4)) {
+          const matches = await mangadex.searchComics(q, { limit: 5 }).catch(() => []);
+          for (const m of matches) {
+            if (m.id.includes('--')) continue;
+
+            for (const target of allTargets) {
+              const s1 = scoreTitleMatch(target, m.title);
+              const s2 = m.altTitle ? scoreTitleMatch(target, m.altTitle) : 0;
+              let s3 = 0;
+              for (const at of (m.altTitles || [])) {
+                s3 = Math.max(s3, scoreTitleMatch(target, at));
+              }
+              const s = Math.max(s1, s2, s3);
+              if (s > highestScore) {
+                highestScore = s;
+                bestMatch = m;
+              }
+            }
+          }
+          if (highestScore >= 80) break;
+        }
+
+        if (bestMatch && highestScore >= 60) {
+          return await mangadex.fetchComicChapters(bestMatch.id, 'en').catch(() => []);
         }
       } catch {
         // ignore
