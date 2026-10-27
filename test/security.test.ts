@@ -7,6 +7,7 @@ import {
   isAllowedImageProxyUrl,
   isSafeContent,
   filterSafeGenres,
+  isValidCoverUrl,
 } from '@/lib/security';
 
 describe('Security Utilities', () => {
@@ -57,6 +58,8 @@ describe('Security Utilities', () => {
     expect(isAllowedImageProxyUrl('https://uploads.mangadex.org/data/123/456.jpg')).toBe(true);
     expect(isAllowedImageProxyUrl('https://thumbnail.komiku.org/uploads/manga/test.png')).toBe(true);
     expect(isAllowedImageProxyUrl('https://komikindo.ch/wp-content/uploads/2026/04/test.png')).toBe(true);
+    expect(isAllowedImageProxyUrl('https://amatipolanyatirudesainnya.lol/media/2114308/chapter-63/1.webp')).toBe(true);
+    expect(isAllowedImageProxyUrl('https://blogger.googleusercontent.com/img/b/123.jpg')).toBe(true);
 
     // SSRF / Malicious attacks
     expect(isAllowedImageProxyUrl('http://localhost:3000/api/secret')).toBe(false);
@@ -74,7 +77,6 @@ describe('Security Utilities', () => {
 
     // Smut / 18+ items to block
     expect(isSafeContent({ title: 'Some Comic', genres: ['Smut'] })).toBe(false);
-    expect(isSafeContent({ title: 'Some Comic', genres: ['Ecchi', 'Comedy'] })).toBe(false);
     expect(isSafeContent({ title: 'Some Comic', genres: ['Hentai'] })).toBe(false);
     expect(isSafeContent({ title: 'Some Comic', genres: ['Mature'] })).toBe(false);
     expect(isSafeContent({ title: 'Some Comic', genres: ['Adult'] })).toBe(false);
@@ -83,11 +85,29 @@ describe('Security Utilities', () => {
     expect(isSafeContent({ title: 'Explicit Title (18+)', genres: ['Romance'] })).toBe(false);
     expect(isSafeContent({ title: 'Some Comic', contentRating: 'erotica' })).toBe(false);
     expect(isSafeContent({ title: 'Some Comic', contentRating: 'pornographic' })).toBe(false);
+
+    // Ecchi genre is allowed per user request
+    expect(isSafeContent({ title: 'Comedy Manga', genres: ['Comedy', 'Ecchi'] })).toBe(true);
   });
 
-  it('filters safe genres list removing all prohibited tags', () => {
+  it('filters safe genres list removing all prohibited tags while permitting ecchi', () => {
     const rawGenres = ['Action', 'Smut', 'Fantasy', 'Ecchi', 'Mature', 'Drama', 'Adult', 'Hentai', 'Comedy'];
     const safeGenres = filterSafeGenres(rawGenres);
-    expect(safeGenres).toEqual(['Action', 'Fantasy', 'Drama', 'Comedy']);
+    expect(safeGenres).toEqual(['Action', 'Fantasy', 'Ecchi', 'Drama', 'Comedy']);
+  });
+
+  it('validates cover image URLs and rejects site logos or placeholders', () => {
+    // Valid comic posters
+    expect(isValidCoverUrl('https://komikindo.ch/wp-content/uploads/komik-one-piece.jpg')).toBe(true);
+    expect(isValidCoverUrl('https://thumbnail.komiku.org/uploads/manga/solo-leveling.png')).toBe(true);
+
+    // Site logos or placeholders that ruin posters
+    expect(isValidCoverUrl('https://komikindo.ch/assets/img/logo.png')).toBe(false);
+    expect(isValidCoverUrl('https://example.com/favicon.ico')).toBe(false);
+    expect(isValidCoverUrl('https://example.com/default-pp.png')).toBe(false);
+    expect(isValidCoverUrl('https://example.com/placeholder.webp')).toBe(false);
+    expect(isValidCoverUrl('data:image/svg+xml;base64,...')).toBe(false);
+    expect(isValidCoverUrl('')).toBe(false);
+    expect(isValidCoverUrl(null)).toBe(false);
   });
 });

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
       referer = 'https://softkomik.app/';
     } else if (host.includes('komiku')) {
       referer = 'https://komiku.org/';
-    } else if (host.includes('komikindo')) {
+    } else if (host.includes('komikindo') || host.endsWith('.lol') || host.includes('googleusercontent')) {
       referer = 'https://komikindo.ch/';
     } else if (host.includes('mangadex')) {
       referer = 'https://mangadex.org/';

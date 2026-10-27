@@ -1,6 +1,6 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
-import { isSafeContent, filterSafeGenres } from './security';
+import { isSafeContent, filterSafeGenres, isValidCoverUrl } from './security';
 
 export const KOMIKU_BASE = 'https://komiku.org';
 export const KOMIKU_API_SEARCH = 'https://api.komiku.org';
@@ -514,11 +514,22 @@ export async function findKomikuSlug(title: string, altTitles?: string[]): Promi
 export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> {
   try {
     const url = `${KOMIKU_BASE}/manga/${slug}/`;
-    const res = await fetch(url, {
+    let res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
       next: { revalidate: 300 },
     });
+
+    if (!res.ok) {
+      const realSlug = await findKomikuSlug(slug);
+      if (realSlug && realSlug !== slug) {
+        res = await fetch(`${KOMIKU_BASE}/manga/${realSlug}/`, {
+          headers: { 'User-Agent': USER_AGENT },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          next: { revalidate: 300 },
+        });
+      }
+    }
 
     if (!res.ok) return [];
 
@@ -563,20 +574,18 @@ export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChap
 
     const html = await res.text();
     const imgIdx = html.indexOf('id="Baca_Komik"');
-    if (imgIdx === -1) return [];
+    const targetHtml = imgIdx !== -1 ? html.slice(imgIdx) : html;
 
-    const endIdx = html.indexOf('</div>', imgIdx + 2000);
-    const slice = html.slice(imgIdx, endIdx !== -1 ? endIdx : html.length);
-    const imgMatches = [...slice.matchAll(/src="([^"]+)"/g)];
+    const imgMatches = [...targetHtml.matchAll(/src="([^"]+)"/g)];
 
     const urls = imgMatches
       .map(m => m[1])
-      .filter(u => u && u.startsWith('http') && !u.includes('promosi') && !u.includes('iklan'))
+      .filter(u => u && u.startsWith('http') && !u.includes('promosi') && !u.includes('iklan') && !u.includes('logo') && !u.endsWith('.gif'))
       .map(u => u.replace(/^http:\/\//i, 'https://'));
 
     return urls.map(u => ({
       url: u,
-      fallbackUrl: u,
+      fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(u)}`,
     }));
   } catch (e) {
     console.error('fetchKomikuChapterImages error:', e);

@@ -12,11 +12,28 @@ interface ComicCardProps {
 
 export function ComicCard({ comic }: ComicCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [imgSrc, setImgSrc] = useState(comic.coverUrl);
+  const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [hasRead, setHasRead] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(comic.coverUrl);
+    setHasTriedProxy(false);
+    setImageError(false);
+  }, [comic.coverUrl]);
 
   useEffect(() => {
     setHasRead(Boolean(getComicLastRead(comic.id)));
   }, [comic.id]);
+
+  const handleImageError = () => {
+    if (!hasTriedProxy && comic.coverUrl && !imgSrc.startsWith('/api/image-proxy')) {
+      setHasTriedProxy(true);
+      setImgSrc(`/api/image-proxy?url=${encodeURIComponent(comic.coverUrl)}`);
+    } else {
+      setImageError(true);
+    }
+  };
 
   const typeLabels: Record<string, { label: string; color: string }> = {
     manhwa: { label: 'Manhwa', color: 'bg-emerald-950 text-emerald-400 border-emerald-800' },
@@ -38,15 +55,15 @@ export function ComicCard({ comic }: ComicCardProps) {
     >
       {/* Cover Image Container */}
       <div className="relative aspect-[3/4] w-full bg-zinc-950 overflow-hidden">
-        {comic.coverUrl && !imageError ? (
+        {imgSrc && !imageError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={comic.coverUrl}
+            src={imgSrc}
             alt={comic.title}
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            onError={() => setImageError(true)}
+            onError={handleImageError}
             className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
           />
         ) : (

@@ -58,6 +58,7 @@ const ALLOWED_IMAGE_HOSTS = [
   'softdevices.my.id',
   'komiku.org',
   'thumbnail.komiku.org',
+  'img.komiku.org',
   'komiku.id',
   'komiku.com',
   'komikindo.ch',
@@ -65,6 +66,7 @@ const ALLOWED_IMAGE_HOSTS = [
   'komikindo.co',
   'mangapill.com',
   'readdetectiveconan.com',
+  'googleusercontent.com',
   'wp.com',
   'blogger.com',
   'bp.blogspot.com',
@@ -100,7 +102,11 @@ export function isAllowedImageProxyUrl(rawUrl: string | null | undefined): boole
       return false;
     }
 
-    // Must match one of our approved comic domains
+    // Must match one of our approved comic domains or dynamic .lol Komikindo CDN
+    if (hostname.endsWith('.lol')) {
+      return true;
+    }
+
     return ALLOWED_IMAGE_HOSTS.some(
       allowed => hostname === allowed || hostname.endsWith(`.${allowed}`)
     );
@@ -129,7 +135,6 @@ const PROHIBITED_KEYWORDS = [
   'erotica',
   'porn',
   'hentai',
-  'ecchi',
   'adult',
   'mature',
   '18+',
@@ -160,6 +165,27 @@ export function filterSafeGenres(genres: string[] | undefined | null): string[] 
 }
 
 /**
+ * Validates whether a cover URL is a real comic poster and not a site logo, placeholder, or data URI.
+ */
+export function isValidCoverUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const lower = url.trim().toLowerCase();
+  if (
+    !lower.startsWith('http') ||
+    lower.includes('logo.') ||
+    lower.includes('/logo') ||
+    lower.includes('favicon') ||
+    lower.includes('default-pp') ||
+    lower.includes('placeholder') ||
+    lower.includes('blank.gif') ||
+    lower.startsWith('data:')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Validates a comic item against 18+, smut, erotica, and adult filters.
  * Returns false if the comic contains any prohibited rating, genre, or explicit tag.
  */
@@ -173,7 +199,7 @@ export function isSafeContent(item: {
   // 1. Content rating check
   if (item.contentRating) {
     const cr = item.contentRating.toLowerCase().trim();
-    if (cr === 'erotica' || cr === 'pornographic' || cr === '18+' || cr === 'adult' || cr === 'mature' || cr === 'ecchi') {
+    if (cr === 'erotica' || cr === 'pornographic' || cr === '18+' || cr === 'adult' || cr === 'mature') {
       return false;
     }
   }

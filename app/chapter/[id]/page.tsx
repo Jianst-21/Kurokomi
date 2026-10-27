@@ -58,6 +58,8 @@ export default function ReaderPage() {
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  const pointerStartPos = useRef<{ x: number; y: number } | null>(null);
+  const wasDragged = useRef(false);
 
   useEffect(() => {
     setReaderMode(getStoredReaderMode());
@@ -248,6 +250,35 @@ export default function ReaderPage() {
     touchStartY.current = null;
   };
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    pointerStartPos.current = { x: e.clientX, y: e.clientY };
+    wasDragged.current = false;
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!pointerStartPos.current) return;
+    const dx = Math.abs(e.clientX - pointerStartPos.current.x);
+    const dy = Math.abs(e.clientY - pointerStartPos.current.y);
+    if (dx > 10 || dy > 10) {
+      wasDragged.current = true;
+    }
+  };
+
+  const handleWebtoonTap = () => {
+    if (wasDragged.current) return;
+    toggleHUD();
+  };
+
+  // Prevent background scroll bleed-through when chapter drawer is open on iOS
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isDrawerOpen]);
+
   // Auto-hide HUD after 2.5s on initial chapter load
   useEffect(() => {
     if (!isLoading && pages.length > 0) {
@@ -258,20 +289,34 @@ export default function ReaderPage() {
     }
   }, [isLoading, pages.length]);
 
-  // Auto-hide HUD immediately whenever user scrolls
+  // Auto-hide HUD smoothly whenever user scrolls (rAF throttled for 120Hz ProMotion iOS)
   useEffect(() => {
     let lastScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    let ticking = false;
+    let lastReportedProgress = -1;
 
-    const handleScroll = () => {
+    const updateScrollMetrics = () => {
       const currentScrollY = window.scrollY;
-      if (Math.abs(currentScrollY - lastScrollY) > 6) {
+      if (Math.abs(currentScrollY - lastScrollY) > 10) {
         setHudVisible(false);
         lastScrollY = currentScrollY;
       }
       const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (scrollHeight > 0) {
         const pct = Math.round((currentScrollY / scrollHeight) * 100);
-        setReadProgress(Math.min(100, Math.max(0, pct)));
+        const clampedPct = Math.min(100, Math.max(0, pct));
+        if (Math.abs(clampedPct - lastReportedProgress) >= 2 || clampedPct === 0 || clampedPct === 100) {
+          lastReportedProgress = clampedPct;
+          setReadProgress(clampedPct);
+        }
+      }
+      ticking = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateScrollMetrics);
+        ticking = true;
       }
     };
 
@@ -389,7 +434,9 @@ export default function ReaderPage() {
         </main>
       ) : (
         <main
-          onClick={toggleHUD}
+          onClick={handleWebtoonTap}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
           className="reader-container flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
         >
           {pages.map((item, idx) => (

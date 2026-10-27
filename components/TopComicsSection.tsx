@@ -17,6 +17,61 @@ const CATEGORIES: Array<{
   { id: 'manhua', label: 'Top Manhua' },
 ];
 
+function TopComicCover({
+  comic,
+  rank,
+  rankBadgeStyle,
+}: {
+  comic: ComicCardItem;
+  rank: number;
+  rankBadgeStyle: string;
+}) {
+  const [imgSrc, setImgSrc] = useState(comic.coverUrl);
+  const [hasTriedProxy, setHasTriedProxy] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(comic.coverUrl);
+    setHasTriedProxy(false);
+    setError(false);
+  }, [comic.coverUrl]);
+
+  const handleImgError = () => {
+    if (!hasTriedProxy && comic.coverUrl && !imgSrc.startsWith('/api/image-proxy')) {
+      setHasTriedProxy(true);
+      setImgSrc(`/api/image-proxy?url=${encodeURIComponent(comic.coverUrl)}`);
+    } else {
+      setError(true);
+    }
+  };
+
+  return (
+    <div className="aspect-[3/4] rounded-lg overflow-hidden bg-zinc-800 relative shadow-sm">
+      {imgSrc && !error ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imgSrc}
+          alt={comic.title}
+          loading="lazy"
+          decoding="async"
+          referrerPolicy="no-referrer"
+          onError={handleImgError}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-zinc-600">
+          <BookOpen className="w-5 h-5 stroke-1" />
+        </div>
+      )}
+
+      {/* Rank Badge */}
+      <span className={`absolute top-1 left-1 text-[9px] px-1.5 py-0.2 rounded ${rankBadgeStyle}`}>
+        #{rank}
+      </span>
+    </div>
+  );
+}
+
 export function TopComicsSection() {
   const [activeCategory, setActiveCategory] = useState<ComicType>('all');
   const [page, setPage] = useState<number>(1);
@@ -162,30 +217,7 @@ export function TopComicsSection() {
                 className="flex flex-col gap-1.5 bg-zinc-900/50 hover:bg-zinc-900 rounded-xl p-1.5 border border-zinc-850 hover:border-zinc-750 transition-all group"
               >
                 {/* Poster Cover */}
-                <div className="aspect-[3/4] rounded-lg overflow-hidden bg-zinc-800 relative shadow-sm">
-                  {comic.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={comic.coverUrl}
-                      alt={comic.title}
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                      <BookOpen className="w-5 h-5 stroke-1" />
-                    </div>
-                  )}
-
-                  {/* Rank Badge */}
-                  <span
-                    className={`absolute top-1 left-1 text-[9px] px-1.5 py-0.2 rounded ${rankBadgeStyle}`}
-                  >
-                    #{rank}
-                  </span>
-                </div>
+                <TopComicCover comic={comic} rank={rank} rankBadgeStyle={rankBadgeStyle} />
 
                 {/* Title & Info */}
                 <h4 className="text-[11px] font-semibold text-zinc-200 line-clamp-1 leading-snug group-hover:text-amber-400 transition-colors">

@@ -27,6 +27,7 @@ export const GENRE_TAG_IDS: Record<string, string> = {
   crime: '5ca48985-9a9d-4bd8-be29-80dc0303db72',
   demons: '39730448-9a5f-48a2-85b0-a70db87b1233',
   drama: 'b9af3a63-f058-46de-a9a0-e0c13906197a',
+  ecchi: '1b526013-bf7b-4045-8f69-7c30f40a1532',
   fantasy: 'cdc58593-87dd-415e-bbc0-2ec27bf404cc',
   harem: 'aafb99c1-7f60-43fa-b75f-fc9502ce29c7',
   historical: '33771934-028e-4cb3-8744-691e866a923e',
@@ -64,6 +65,7 @@ export const GENRE_LABELS: Record<string, string> = {
   crime: 'Crime',
   demons: 'Demons',
   drama: 'Drama',
+  ecchi: 'Ecchi',
   fantasy: 'Fantasy',
   harem: 'Harem',
   historical: 'Historical',
@@ -239,9 +241,8 @@ export function buildSearchQueryUrl(options: {
 
   params.append('includes[]', 'cover_art');
   params.append('contentRating[]', 'safe');
-  params.append('excludedTags[]', '2d1f5d56-a1e5-4d0d-a961-29e389099879'); // Smut
-  params.append('excludedTags[]', '1b526013-bf7b-4045-8f69-7c30f40a1532'); // Ecchi
-  params.append('excludedTagsMode', 'OR');
+  params.append('contentRating[]', 'suggestive');
+  params.append('excludedTags[]', '2d1f5d56-a1e5-4d0d-a961-29e389099879'); // Smut excluded
 
   if (options.order) {
     for (const [key, dir] of Object.entries(options.order)) {

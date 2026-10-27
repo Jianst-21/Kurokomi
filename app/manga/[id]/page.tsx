@@ -22,6 +22,46 @@ import { filterSafeGenres } from '@/lib/security';
 import { ChapterList } from '@/components/ChapterList';
 import { BottomNav } from '@/components/BottomNav';
 
+function DetailCoverImage({ coverUrl, title }: { coverUrl: string; title: string }) {
+  const [imgSrc, setImgSrc] = useState(coverUrl);
+  const [hasTriedProxy, setHasTriedProxy] = useState(false);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    setImgSrc(coverUrl);
+    setHasTriedProxy(false);
+    setError(false);
+  }, [coverUrl]);
+
+  const handleImgError = () => {
+    if (!hasTriedProxy && coverUrl && !imgSrc.startsWith('/api/image-proxy')) {
+      setHasTriedProxy(true);
+      setImgSrc(`/api/image-proxy?url=${encodeURIComponent(coverUrl)}`);
+    } else {
+      setError(true);
+    }
+  };
+
+  if (!imgSrc || error) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-zinc-600">
+        <BookOpen className="w-8 h-8 opacity-40" />
+      </div>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={imgSrc}
+      alt={title}
+      referrerPolicy="no-referrer"
+      onError={handleImgError}
+      className="w-full h-full object-cover"
+    />
+  );
+}
+
 export default function MangaDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -174,19 +214,7 @@ export default function MangaDetailPage() {
         <div className="flex gap-4 items-start">
           {/* Cover Image */}
           <div className="w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-lg relative">
-            {comic.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={comic.coverUrl}
-                alt={comic.title}
-                referrerPolicy="no-referrer"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-zinc-600">
-                <BookOpen className="w-8 h-8 opacity-40" />
-              </div>
-            )}
+            <DetailCoverImage coverUrl={comic.coverUrl} title={comic.title} />
           </div>
 
           {/* Details Column */}

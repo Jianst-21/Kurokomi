@@ -1,7 +1,7 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
 import { scoreTitleMatch, generateSearchQueries } from './komiku';
-import { isSafeContent, filterSafeGenres } from './security';
+import { isSafeContent, filterSafeGenres, isValidCoverUrl } from './security';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -31,9 +31,15 @@ export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
     }
     title = title.replace(/^Komik\s+/i, '').trim();
 
-    // Extract image
-    const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
-    const coverUrl = imgMatch ? imgMatch[1] : '';
+    // Extract image with fallback to data-src and logo rejection
+    const imgMatches = [...block.matchAll(/(?:data-src|data-lazy-src|data-original|src)="([^"]+)"/gi)];
+    let coverUrl = '';
+    for (const im of imgMatches) {
+      if (isValidCoverUrl(im[1])) {
+        coverUrl = im[1];
+        break;
+      }
+    }
 
     // Extract comic type
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
@@ -92,8 +98,14 @@ export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
       title = titleMatch[1].replace(/<[^>]+>/g, '').replace(/^Komik\s+/i, '').trim();
     }
 
-    const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
-    const coverUrl = imgMatch ? imgMatch[1] : '';
+    const imgMatches = [...block.matchAll(/(?:data-src|data-lazy-src|data-original|src)="([^"]+)"/gi)];
+    let coverUrl = '';
+    for (const im of imgMatches) {
+      if (isValidCoverUrl(im[1])) {
+        coverUrl = im[1];
+        break;
+      }
+    }
 
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
     const typeMatch = block.match(/class="typeflag\s+([^"]+)"/i);
@@ -172,9 +184,15 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
       title = slug;
     }
 
-    // Cover
-    const coverMatch = html.match(/<div class="thumb"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"/i);
-    const coverUrl = coverMatch ? coverMatch[1] : '';
+    // Cover with fallback to data-src and logo rejection
+    const coverMatches = [...html.matchAll(/<div class="thumb"[^>]*>[\s\S]*?<img[^>]+(?:data-src|data-lazy-src|data-original|src)="([^"]+)"/gi)];
+    let coverUrl = '';
+    for (const cm of coverMatches) {
+      if (isValidCoverUrl(cm[1])) {
+        coverUrl = cm[1];
+        break;
+      }
+    }
 
     // Description / Synopsis
     let description = 'Tidak ada sinopsis.';
@@ -298,24 +316,28 @@ export function parseKomikindoChapters(html: string): ChapterItem[] {
 }
 
 export function parseKomikindoImages(html: string): ChapterPageItem[] {
-  const pages: ChapterPageItem[] = [];
-
+  const chimgMatch = html.match(/<div[^>]*id="chimg-auh"[^>]*>([\s\S]*?)<\/div>/i);
+  const landmineMatch = html.match(/<div[^>]*class="[^"]*img-landmine[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
   const readerMatch = html.match(/<div[^>]*id="readerarea"[^>]*>([\s\S]*?)<\/div>/i);
-  const targetArea = readerMatch ? readerMatch[1] : html;
 
-  const imgMatches = [...targetArea.matchAll(/<img[^>]+src="([^"]+)"/gi)];
+  const targetArea = chimgMatch ? chimgMatch[1] : (landmineMatch ? landmineMatch[1] : (readerMatch ? readerMatch[1] : html));
+
+  const imgMatches = [...targetArea.matchAll(/<img[^>]+(?:data-src|data-lazy-src|src)="([^"]+)"/gi)];
   const urls: string[] = [];
 
-    for (const m of imgMatches) {
+  for (const m of imgMatches) {
     const src = m[1];
     if (
       src &&
       src.startsWith('http') &&
+      !src.endsWith('.gif') &&
+      !src.includes('.gif?') &&
       !src.includes('fav.png') &&
       !src.includes('komikindo-') &&
       !src.includes('iklan') &&
       !src.includes('promosi') &&
-      !src.includes('logo')
+      !src.includes('logo') &&
+      !src.includes('banner')
     ) {
       urls.push(src.replace(/^http:\/\//i, 'https://'));
     }
@@ -323,7 +345,7 @@ export function parseKomikindoImages(html: string): ChapterPageItem[] {
 
   return urls.map(u => ({
     url: u,
-    fallbackUrl: u,
+    fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(u)}`,
   }));
 }
 

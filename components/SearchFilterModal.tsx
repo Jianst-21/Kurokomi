@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X, Palette, Check, RotateCcw } from 'lucide-react';
 import { ComicType } from '@/lib/types';
 import { GENRE_TAG_IDS, GENRE_LABELS } from '@/lib/mangadex';
@@ -40,6 +40,15 @@ export function SearchFilterModal({
   onGenreChange,
   onReset,
 }: SearchFilterModalProps) {
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

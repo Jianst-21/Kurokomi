@@ -13,11 +13,28 @@ interface HorizontalComicCardProps {
 
 export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   const [imgError, setImgError] = useState(false);
+  const [imgSrc, setImgSrc] = useState(comic.coverUrl);
+  const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [lastRead, setLastRead] = useState<ReadingHistoryItem | undefined>(undefined);
+
+  useEffect(() => {
+    setImgSrc(comic.coverUrl);
+    setHasTriedProxy(false);
+    setImgError(false);
+  }, [comic.coverUrl]);
 
   useEffect(() => {
     setLastRead(getComicLastRead(comic.id));
   }, [comic.id]);
+
+  const handleImgError = () => {
+    if (!hasTriedProxy && comic.coverUrl && !imgSrc.startsWith('/api/image-proxy')) {
+      setHasTriedProxy(true);
+      setImgSrc(`/api/image-proxy?url=${encodeURIComponent(comic.coverUrl)}`);
+    } else {
+      setImgError(true);
+    }
+  };
 
   const formattedDate = comic.updatedAt
     ? comic.updatedAt.includes('lalu')
@@ -47,12 +64,12 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
     >
       {/* Left: Comic Cover Poster */}
       <div className="w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-zinc-850 border border-zinc-750/60 relative shadow-md">
-        {comic.coverUrl && !imgError ? (
+        {imgSrc && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={comic.coverUrl}
+            src={imgSrc}
             alt={comic.title}
-            onError={() => setImgError(true)}
+            onError={handleImgError}
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"

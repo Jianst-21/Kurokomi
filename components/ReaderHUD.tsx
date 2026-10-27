@@ -44,7 +44,7 @@ export function ReaderHUD({
       {/* Floating Slim Reading Progress Bar at Top */}
       <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-zinc-900/40 pointer-events-none">
         <div
-          className="h-full bg-blue-500 transition-all duration-150 ease-out"
+          className="h-full bg-blue-500 transition-[width] duration-75 ease-out"
           style={{
             width: readerMode === 'paged' && currentPage && totalPages
               ? `${(currentPage / totalPages) * 100}%`
