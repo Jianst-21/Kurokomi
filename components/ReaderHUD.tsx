@@ -61,7 +61,7 @@ export function ReaderHUD({
             : '-translate-y-full opacity-0 pointer-events-none'
         }`}
       >
-        <div className="max-w-md mx-auto flex items-center justify-between">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Link
             href={`/manga/${mangaId}`}
             aria-label="Kembali ke detail"
@@ -99,7 +99,7 @@ export function ReaderHUD({
             : 'translate-y-full opacity-0 pointer-events-none'
         }`}
       >
-        <div className="max-w-md mx-auto flex flex-col gap-2">
+        <div className="max-w-3xl mx-auto flex flex-col gap-2">
           {/* Reader Mode Toggle (Minimalist - Only for Manga) */}
           {isManga && onModeChange && (
             <div className="flex items-center justify-center">

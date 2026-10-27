@@ -429,7 +429,7 @@ export default function ReaderPage() {
       ) : (
         <main
           onClick={handleWebtoonTap}
-          className="reader-container flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
+          className="reader-container flex-1 max-w-2xl mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
         >
           {pages.map((item, idx) => (
             <ReaderImage
