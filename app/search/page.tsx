@@ -6,6 +6,7 @@ import { ComicCardItem, ComicType } from '@/lib/types';
 import { searchComicsUnified } from '@/lib/aggregator';
 import { ComicCard } from '@/components/ComicCard';
 import { BottomNav } from '@/components/BottomNav';
+import { DesktopNavbar } from '@/components/DesktopNavbar';
 import { SearchFilterModal } from '@/components/SearchFilterModal';
 
 export default function SearchPage() {
@@ -97,9 +98,11 @@ export default function SearchPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 flex flex-col">
-      {/* Top Search Bar (Only 2 items: Search input on left, Filter icon button on right) */}
-      <header className="sticky top-0 z-30 bg-zinc-950 border-b border-zinc-850 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-md">
+    <div className="min-h-screen bg-zinc-950 pb-24 md:pb-12 text-zinc-100 flex flex-col">
+      <DesktopNavbar />
+
+      {/* Top Search Bar (Mobile only, Desktop uses navbar search / in-page filter) */}
+      <header className="sticky top-0 z-30 bg-zinc-950 border-b border-zinc-850 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-md md:hidden">
         <div className="max-w-md mx-auto flex items-center gap-2">
           {/* Left: Search Input Box */}
           <div className="relative flex-1 flex items-center">
@@ -141,7 +144,43 @@ export default function SearchPage() {
       </header>
 
       {/* Main Results Area */}
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pt-3">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 pt-3 md:pt-6">
+        {/* Desktop Search & Filter Bar */}
+        <div className="hidden md:flex items-center gap-3 mb-6 bg-zinc-900/50 p-3 rounded-2xl border border-zinc-850">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Cari judul komik..."
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-9 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                aria-label="Hapus teks pencarian"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors shrink-0 ${
+              isFilterActive
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800'
+            }`}
+          >
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Filter</span>
+            {isFilterActive && (
+              <span className="w-2 h-2 bg-amber-400 rounded-full" />
+            )}
+          </button>
+        </div>
         {/* Title row */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-zinc-300">
@@ -158,7 +197,7 @@ export default function SearchPage() {
 
         {/* Loading Skeletons */}
         {isLoading && comics.length === 0 && (
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
             {Array.from({ length: 12 }).map((_, i) => (
               <div
                 key={i}
@@ -209,7 +248,7 @@ export default function SearchPage() {
         {/* Comics Grid */}
         {comics.length > 0 && (
           <div className="flex flex-col gap-4">
-            <div className="grid grid-cols-3 gap-2.5">
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
               {comics.map(comic => (
                 <ComicCard key={comic.id} comic={comic} />
               ))}

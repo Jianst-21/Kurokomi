@@ -58,8 +58,6 @@ export default function ReaderPage() {
   const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
-  const pointerStartPos = useRef<{ x: number; y: number } | null>(null);
-  const wasDragged = useRef(false);
 
   useEffect(() => {
     setReaderMode(getStoredReaderMode());
@@ -250,22 +248,7 @@ export default function ReaderPage() {
     touchStartY.current = null;
   };
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    pointerStartPos.current = { x: e.clientX, y: e.clientY };
-    wasDragged.current = false;
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!pointerStartPos.current) return;
-    const dx = Math.abs(e.clientX - pointerStartPos.current.x);
-    const dy = Math.abs(e.clientY - pointerStartPos.current.y);
-    if (dx > 10 || dy > 10) {
-      wasDragged.current = true;
-    }
-  };
-
   const handleWebtoonTap = () => {
-    if (wasDragged.current) return;
     toggleHUD();
   };
 
@@ -389,7 +372,7 @@ export default function ReaderPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col select-none relative">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col relative">
       {/* Floating HUD */}
       <ReaderHUD
         visible={hudVisible}
@@ -435,8 +418,6 @@ export default function ReaderPage() {
       ) : (
         <main
           onClick={handleWebtoonTap}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
           className="reader-container flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
         >
           {pages.map((item, idx) => (

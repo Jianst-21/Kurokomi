@@ -74,8 +74,8 @@ export function ReaderImage({ src, fallbackSrc, pageIndex, fitContain = false }:
       onError={handleImageError}
       className={
         fitContain
-          ? "max-h-[100dvh] max-w-full w-auto h-auto block m-auto border-0 outline-none select-none bg-black object-contain pointer-events-none [-webkit-touch-callout:none]"
-          : "w-full h-auto block m-0 p-0 border-0 outline-none select-none bg-black pointer-events-none [-webkit-touch-callout:none] transform-gpu"
+          ? "max-h-[100dvh] max-w-full w-auto h-auto block m-auto border-0 outline-none select-none bg-black object-contain pointer-events-none"
+          : "w-full h-auto block m-0 p-0 border-0 outline-none select-none bg-black pointer-events-none"
       }
     />
   );

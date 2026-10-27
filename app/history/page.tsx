@@ -6,6 +6,7 @@ import { Clock, Trash2, Play, BookOpen, Compass } from 'lucide-react';
 import { ReadingHistoryItem } from '@/lib/types';
 import { getHistory, clearHistory } from '@/lib/storage';
 import { BottomNav } from '@/components/BottomNav';
+import { DesktopNavbar } from '@/components/DesktopNavbar';
 
 export default function HistoryPage() {
   const [history, setHistory] = useState<ReadingHistoryItem[]>([]);
@@ -24,9 +25,11 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-zinc-950 pb-24 md:pb-12 text-zinc-100 flex flex-col">
+      <DesktopNavbar />
+
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 md:hidden">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-500" />
@@ -46,7 +49,30 @@ export default function HistoryPage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-md mx-auto w-full px-4 pt-4">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 pt-4 md:pt-6">
+        {/* Desktop Header Row */}
+        <div className="hidden md:flex items-center justify-between mb-6 pb-4 border-b border-zinc-850">
+          <div className="flex items-center gap-2.5">
+            <Clock className="w-5 h-5 text-blue-500" />
+            <h1 className="text-lg font-bold text-zinc-100">Riwayat Bacaan</h1>
+            {mounted && history.length > 0 && (
+              <span className="text-xs text-zinc-400 font-medium">
+                ({history.length} bab tercatat)
+              </span>
+            )}
+          </div>
+          {mounted && history.length > 0 && (
+            <button
+              onClick={handleClearHistory}
+              aria-label="Hapus semua riwayat"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-xs font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/20 transition-colors"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Hapus Riwayat</span>
+            </button>
+          )}
+        </div>
+
         {mounted && history.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-8 bg-zinc-900/40 rounded-2xl border border-zinc-800/80 text-center my-12 gap-3">
             <div className="w-12 h-12 rounded-2xl bg-zinc-850 flex items-center justify-center text-zinc-500 border border-zinc-800">
@@ -65,7 +91,7 @@ export default function HistoryPage() {
             </Link>
           </div>
         ) : (
-          <div className="flex flex-col gap-2.5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {history.map(item => {
               const formattedDate = item.readAt
                 ? new Date(item.readAt).toLocaleDateString('id-ID', {
