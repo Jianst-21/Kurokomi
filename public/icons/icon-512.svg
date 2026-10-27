@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#2563eb"/>
-  <text x="256" y="352" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="900" font-size="300" fill="#ffffff" text-anchor="middle">K</text>
+  <rect width="512" height="512" fill="#2563eb"/>
+  <path d="M 160 100 L 230 100 L 230 412 L 160 412 Z" fill="#ffffff"/>
+  <path d="M 215 275 L 340 100 L 415 100 L 270 290 Z" fill="#ffffff"/>
+  <path d="M 255 265 L 420 412 L 345 412 L 205 285 Z" fill="#ffffff"/>
 </svg>
