@@ -1,6 +1,7 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
 import { scoreTitleMatch, generateSearchQueries } from './komiku';
+import { isSafeContent, filterSafeGenres } from './security';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -70,7 +71,7 @@ export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
     }
   }
 
-  return items;
+  return items.filter(isSafeContent);
 }
 
 export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
@@ -122,7 +123,7 @@ export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
     });
   }
 
-  return items;
+  return items.filter(isSafeContent);
 }
 
 export async function fetchKomikindoLatest(
@@ -232,6 +233,11 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
       }
     }
 
+    const safeGenres = filterSafeGenres(genres);
+    if (!isSafeContent({ title, genres: safeGenres })) {
+      return null;
+    }
+
     return {
       id: `komikindo--${slug}`,
       title,
@@ -240,7 +246,7 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
       coverUrl,
       type,
       status,
-      genres,
+      genres: safeGenres,
       isFullColor: false,
       author,
       artist,

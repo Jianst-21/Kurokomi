@@ -18,6 +18,7 @@ import {
 import { ComicDetail, ChapterItem } from '@/lib/types';
 import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
 import { toggleFavorite, isFavorite, getComicLastRead } from '@/lib/storage';
+import { filterSafeGenres } from '@/lib/security';
 import { ChapterList } from '@/components/ChapterList';
 import { BottomNav } from '@/components/BottomNav';
 
@@ -264,11 +265,11 @@ export default function MangaDetailPage() {
         ) : null}
 
         {/* Genres Chips */}
-        {comic.genres && comic.genres.length > 0 && (
+        {comic.genres && filterSafeGenres(comic.genres).length > 0 && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-[11px] font-semibold text-zinc-400">Genre:</span>
             <div className="flex flex-wrap gap-1.5">
-              {comic.genres.map(g => (
+              {filterSafeGenres(comic.genres).map(g => (
                 <Link
                   key={g}
                   href={`/search?genre=${encodeURIComponent(g.toLowerCase())}`}

@@ -1,5 +1,6 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
+import { isSafeContent, filterSafeGenres } from './security';
 
 export const KOMIKU_BASE = 'https://komiku.org';
 export const KOMIKU_API_SEARCH = 'https://api.komiku.org';
@@ -90,7 +91,7 @@ export function parseKomikuSearchResults(html: string): ComicCardItem[] {
     });
   }
 
-  return items;
+  return items.filter(isSafeContent);
 }
 
 export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
@@ -166,12 +167,12 @@ export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
       type,
       latestChapter,
       updatedAt,
-      genres,
+      genres: filterSafeGenres(genres),
       isFullColor,
     });
   }
 
-  return items;
+  return items.filter(isSafeContent);
 }
 
 export async function fetchKomikuLatest(
@@ -332,6 +333,11 @@ export function parseKomikuDetail(html: string, slug: string): ComicDetail | nul
       html.toLowerCase().includes('berwarna')
     );
 
+    const safeGenres = filterSafeGenres(genres);
+    if (!isSafeContent({ title, genres: safeGenres })) {
+      return null;
+    }
+
     return {
       id: `komiku--${slug}`,
       title,
@@ -340,7 +346,7 @@ export function parseKomikuDetail(html: string, slug: string): ComicDetail | nul
       coverUrl,
       type,
       status,
-      genres,
+      genres: safeGenres,
       isFullColor,
       author,
     };

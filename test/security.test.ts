@@ -5,6 +5,8 @@ import {
   isAllowedMangaDexSubpath,
   clampInteger,
   isAllowedImageProxyUrl,
+  isSafeContent,
+  filterSafeGenres,
 } from '@/lib/security';
 
 describe('Security Utilities', () => {
@@ -63,5 +65,29 @@ describe('Security Utilities', () => {
     expect(isAllowedImageProxyUrl('file:///etc/passwd')).toBe(false);
     expect(isAllowedImageProxyUrl('ftp://example.com/test.jpg')).toBe(false);
     expect(isAllowedImageProxyUrl('https://evil-phishing-site.com/image.jpg')).toBe(false);
+  });
+
+  it('filters out 18+, smut, ecchi, erotica, mature, and adult content strictly', () => {
+    // Safe items
+    expect(isSafeContent({ title: 'One Piece', genres: ['Action', 'Adventure'], contentRating: 'safe' })).toBe(true);
+    expect(isSafeContent({ title: 'Solo Leveling', genres: ['Action', 'Fantasy'], contentRating: 'normal' })).toBe(true);
+
+    // Smut / 18+ items to block
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Smut'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Ecchi', 'Comedy'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Hentai'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Mature'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Adult'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Erotica'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', genres: ['Dewasa (18+)'] })).toBe(false);
+    expect(isSafeContent({ title: 'Explicit Title (18+)', genres: ['Romance'] })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', contentRating: 'erotica' })).toBe(false);
+    expect(isSafeContent({ title: 'Some Comic', contentRating: 'pornographic' })).toBe(false);
+  });
+
+  it('filters safe genres list removing all prohibited tags', () => {
+    const rawGenres = ['Action', 'Smut', 'Fantasy', 'Ecchi', 'Mature', 'Drama', 'Adult', 'Hentai', 'Comedy'];
+    const safeGenres = filterSafeGenres(rawGenres);
+    expect(safeGenres).toEqual(['Action', 'Fantasy', 'Drama', 'Comedy']);
   });
 });

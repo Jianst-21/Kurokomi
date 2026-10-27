@@ -6,6 +6,7 @@ import {
   FilterOptions,
   ComicType,
 } from './types';
+import { isSafeContent, filterSafeGenres } from './security';
 
 export const MANGADEX_API_BASE = 'https://api.mangadex.org';
 export const MANGADEX_COVER_BASE = 'https://uploads.mangadex.org/covers';
@@ -238,8 +239,9 @@ export function buildSearchQueryUrl(options: {
 
   params.append('includes[]', 'cover_art');
   params.append('contentRating[]', 'safe');
-  params.append('contentRating[]', 'suggestive');
-  params.append('contentRating[]', 'erotica');
+  params.append('excludedTags[]', '2d1f5d56-a1e5-4d0d-a961-29e389099879'); // Smut
+  params.append('excludedTags[]', '1b526013-bf7b-4045-8f69-7c30f40a1532'); // Ecchi
+  params.append('excludedTagsMode', 'OR');
 
   if (options.order) {
     for (const [key, dir] of Object.entries(options.order)) {
@@ -348,7 +350,7 @@ export async function fetchLatestUpdates(limit: number = 60, offset: number = 0)
       }
     }
 
-    return items;
+    return items.filter(isSafeContent);
   } catch (err) {
     console.error('fetchLatestUpdates error:', err);
     throw err;
@@ -446,11 +448,11 @@ export async function searchComics(
         coverUrl,
         type,
         isFullColor,
-        genres,
+        genres: filterSafeGenres(genres),
       });
     }
 
-    return items;
+    return items.filter(isSafeContent);
   } catch (err) {
     console.error('searchComics error:', err);
     throw err;
@@ -609,6 +611,11 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
       .map((t: { attributes?: { name: { en?: string } } }) => t.attributes?.name?.en)
       .filter(Boolean);
 
+    const safeGenres = filterSafeGenres(genres);
+    if (!isSafeContent({ title: String(title), genres: safeGenres, contentRating: attr.contentRating })) {
+      return null;
+    }
+
     const isFullColor = (attr.tags || []).some((t: { id: string }) => t.id === FULL_COLOR_TAG_ID);
 
     return {
@@ -619,7 +626,7 @@ export async function fetchComicDetail(mangaId: string): Promise<ComicDetail | n
       coverUrl,
       type: getComicTypeFromLanguage(attr.originalLanguage),
       status: attr.status || 'ongoing',
-      genres,
+      genres: safeGenres,
       isFullColor,
       author: authorRel?.attributes?.name,
       artist: artistRel?.attributes?.name,

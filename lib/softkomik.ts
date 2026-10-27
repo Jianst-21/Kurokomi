@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
 import { scoreTitleMatch, generateSearchQueries } from './komiku';
+import { isSafeContent, filterSafeGenres } from './security';
 
 export const SOFTKOMIK_BASE = 'https://softkomik.app';
 export const SOFTKOMIK_COVER_BASE = 'https://cover.softdevices.my.id/softkomik-cover';
@@ -129,7 +130,7 @@ export function mapSoftkomikItemToCard(item: SoftkomikRawItem): ComicCardItem {
     type,
     latestChapter,
     updatedAt: formatTimeAgo(item.updated_at),
-    genres: item.Genre || [],
+    genres: filterSafeGenres(item.Genre || []),
     isFullColor,
   };
 }
@@ -141,8 +142,8 @@ export async function fetchSoftkomikLatest(
 ): Promise<ComicCardItem[]> {
   try {
     const url = type === 'all'
-      ? `${SOFTKOMIK_BASE}/komik/update?page=${page}`
-      : `${SOFTKOMIK_BASE}/komik/type/${type}?page=${page}`;
+      ? `${SOFTKOMIK_BASE}/komik/update?page=${page}&category=normal`
+      : `${SOFTKOMIK_BASE}/komik/type/${type}?page=${page}&category=normal`;
 
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
@@ -163,7 +164,11 @@ export async function fetchSoftkomikLatest(
       rawList = (pageProps.data as Record<string, unknown>).data as SoftkomikRawItem[];
     }
 
-    const items = rawList.map(mapSoftkomikItemToCard);
+    const items = rawList
+      .filter(item => item.contentRating !== '18+' && item.contentRating !== 'adult' && item.contentRating !== 'ecchi')
+      .map(mapSoftkomikItemToCard)
+      .filter(isSafeContent);
+
     return items.slice(0, limit);
   } catch (e) {
     console.error('fetchSoftkomikLatest error:', e);
@@ -190,7 +195,10 @@ export async function searchSoftkomik(query: string): Promise<ComicCardItem[]> {
     if (!pageProps?.initialData) return [];
 
     const rawList = ((pageProps.initialData as Record<string, unknown>).data || []) as SoftkomikRawItem[];
-    return rawList.map(mapSoftkomikItemToCard);
+    return rawList
+      .filter(item => item.contentRating !== '18+' && item.contentRating !== 'adult' && item.contentRating !== 'ecchi')
+      .map(mapSoftkomikItemToCard)
+      .filter(isSafeContent);
   } catch (e) {
     console.error('searchSoftkomik error:', e);
     return [];
@@ -290,8 +298,12 @@ export async function fetchSoftkomikDetail(slug: string): Promise<ComicDetail | 
       status = 'completed';
     }
 
-    const genres = data.Genre || [];
-    const isFullColor = genres.some(g =>
+    const safeGenres = filterSafeGenres(data.Genre || []);
+    if (!isSafeContent({ title: data.title, genres: safeGenres, contentRating: data.contentRating })) {
+      return null;
+    }
+
+    const isFullColor = safeGenres.some(g =>
       g.toLowerCase().includes('color') || g.toLowerCase().includes('warna')
     );
 
@@ -303,7 +315,7 @@ export async function fetchSoftkomikDetail(slug: string): Promise<ComicDetail | 
       coverUrl,
       type,
       status,
-      genres,
+      genres: safeGenres,
       isFullColor,
       author: data.author,
       artist: data.artist,

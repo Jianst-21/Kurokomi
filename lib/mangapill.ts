@@ -1,5 +1,6 @@
 import { ComicCardItem, ChapterItem, ChapterPageItem } from './types';
 import { generateSearchQueries, scoreTitleMatch } from './komiku';
+import { isSafeContent } from './security';
 
 export const MANGAPILL_BASE = 'https://mangapill.com';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -44,7 +45,7 @@ export function parseMangaPillSearchHtml(html: string): ComicCardItem[] {
     });
   }
 
-  return items;
+  return items.filter(isSafeContent);
 }
 
 export function parseMangaPillChaptersHtml(html: string): ChapterItem[] {

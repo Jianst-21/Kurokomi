@@ -8,6 +8,7 @@ import { normalizeTitle, searchKomiku, scoreTitleMatch, generateSearchQueries } 
 import { searchKomikindo } from './komikindo';
 import { searchSoftkomik } from './softkomik';
 import { parseDateScore } from './date';
+import { isSafeContent, filterSafeGenres } from './security';
 
 function isClientBrowser(): boolean {
   return typeof window !== 'undefined' && !process.env.VITEST;
@@ -156,7 +157,7 @@ function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): C
     latestChapter: resultLatestChapter,
     updatedAt: resultUpdatedAt,
     isFullColor: resultIsFullColor,
-    genres: existing.genres || incoming.genres,
+    genres: filterSafeGenres(existing.genres || incoming.genres),
   };
 }
 
@@ -168,7 +169,7 @@ export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
 
   const clusters: Cluster[] = [];
 
-  for (const c of comics) {
+  for (const c of comics.filter(isSafeContent)) {
     const rawAliases = [c.title, c.altTitle, ...(c.altTitles || [])].filter(Boolean) as string[];
     const slugAlias = getSlugAlias(c.id);
     if (slugAlias) rawAliases.push(slugAlias);
@@ -231,7 +232,7 @@ export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
     }
   }
 
-  return clusters.map(cl => cl.item);
+  return clusters.map(cl => cl.item).filter(isSafeContent);
 }
 
 export async function searchComicsUnified(
@@ -282,7 +283,7 @@ export async function searchComicsUnified(
     ...(komikindoRes || []),
     ...(softkomikRes || []),
     ...(mdRes || []),
-  ];
+  ].filter(isSafeContent);
 
   // Apply comic type filtering if specified
   if (options?.type && options.type !== 'all') {
@@ -312,13 +313,15 @@ async function enrichDetailGenres(detail: ComicDetail | null): Promise<ComicDeta
       const mdMatches = await mangadex.searchComics(detail.title, { limit: 3 }).catch(() => []);
       const matched = mdMatches.find(m => m.genres && m.genres.length > 0);
       if (matched && matched.genres) {
-        detail.genres = matched.genres;
+        detail.genres = filterSafeGenres(matched.genres);
       }
     } catch {
       // ignore
     }
+  } else {
+    detail.genres = filterSafeGenres(detail.genres);
   }
-  return detail;
+  return isSafeContent(detail) ? detail : null;
 }
 
 async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {

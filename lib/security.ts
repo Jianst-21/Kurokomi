@@ -123,3 +123,78 @@ export function clampInteger(
   if (isNaN(parsed)) return defaultVal;
   return Math.max(min, Math.min(max, parsed));
 }
+
+const PROHIBITED_KEYWORDS = [
+  'smut',
+  'erotica',
+  'porn',
+  'hentai',
+  'ecchi',
+  'adult',
+  'mature',
+  '18+',
+  '17+',
+  'nsfw',
+  'r18',
+  'r-18',
+  'dewasa',
+  'seksual',
+  'sexual violence',
+];
+
+/**
+ * Checks if a genre label contains prohibited 18+ / smut / ecchi terms.
+ */
+export function isSafeGenre(genre: string | null | undefined): boolean {
+  if (!genre) return true;
+  const lower = genre.toLowerCase().trim();
+  return !PROHIBITED_KEYWORDS.some(k => lower === k || lower.includes(k));
+}
+
+/**
+ * Filters an array of genre strings to only keep clean, safe genres.
+ */
+export function filterSafeGenres(genres: string[] | undefined | null): string[] {
+  if (!genres || !Array.isArray(genres)) return [];
+  return genres.filter(isSafeGenre);
+}
+
+/**
+ * Validates a comic item against 18+, smut, erotica, and adult filters.
+ * Returns false if the comic contains any prohibited rating, genre, or explicit tag.
+ */
+export function isSafeContent(item: {
+  title?: string;
+  genres?: string[];
+  contentRating?: string;
+} | null | undefined): boolean {
+  if (!item) return false;
+
+  // 1. Content rating check
+  if (item.contentRating) {
+    const cr = item.contentRating.toLowerCase().trim();
+    if (cr === 'erotica' || cr === 'pornographic' || cr === '18+' || cr === 'adult' || cr === 'mature' || cr === 'ecchi') {
+      return false;
+    }
+  }
+
+  // 2. Genres check
+  if (item.genres && Array.isArray(item.genres)) {
+    for (const g of item.genres) {
+      if (!isSafeGenre(g)) {
+        return false;
+      }
+    }
+  }
+
+  // 3. Title check for explicit 18+ tags
+  if (item.title) {
+    const lowerTitle = item.title.toLowerCase();
+    const explicitTitlePatterns = ['(18+)', '[18+]', ' 18+', 'hentai', 'uncensored 18+', 'dewasa 18+'];
+    if (explicitTitlePatterns.some(p => lowerTitle.includes(p))) {
+      return false;
+    }
+  }
+
+  return true;
+}
