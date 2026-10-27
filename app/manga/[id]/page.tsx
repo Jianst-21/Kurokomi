@@ -146,9 +146,57 @@ export default function MangaDetailPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-3">
-        <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-        <span className="text-xs text-zinc-400">Memuat detail komik...</span>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
+        <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between border-b border-zinc-900">
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 animate-pulse" />
+          <div className="w-32 h-4 rounded bg-zinc-900 animate-pulse" />
+          <div className="w-8 h-8 rounded-lg bg-zinc-900 animate-pulse" />
+        </header>
+
+        <main className="max-w-md mx-auto w-full px-4 pt-4 flex flex-col gap-5 animate-pulse">
+          {/* Cover & metadata skeleton */}
+          <div className="flex gap-4 items-start">
+            <div className="w-28 shrink-0 aspect-[3/4] rounded-xl bg-zinc-900 border border-zinc-850" />
+            <div className="flex flex-col flex-1 gap-2.5 py-1">
+              <div className="h-5 bg-zinc-800 rounded w-5/6" />
+              <div className="h-3.5 bg-zinc-850 rounded w-1/2" />
+              <div className="flex gap-1.5 mt-1">
+                <div className="h-5 bg-zinc-900 rounded w-14" />
+                <div className="h-5 bg-zinc-900 rounded w-16" />
+              </div>
+              <div className="h-3 bg-zinc-900 rounded w-2/3 mt-1" />
+            </div>
+          </div>
+
+          {/* Action button skeleton */}
+          <div className="h-11 w-full bg-zinc-900 rounded-xl" />
+
+          {/* Genres skeleton */}
+          <div className="flex gap-2 items-center">
+            <div className="w-12 h-3 bg-zinc-900 rounded" />
+            <div className="flex gap-1.5">
+              <div className="w-14 h-5 bg-zinc-900 rounded-md" />
+              <div className="w-16 h-5 bg-zinc-900 rounded-md" />
+              <div className="w-12 h-5 bg-zinc-900 rounded-md" />
+            </div>
+          </div>
+
+          {/* Synopsis skeleton */}
+          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-850 flex flex-col gap-2">
+            <div className="w-16 h-3 bg-zinc-800 rounded" />
+            <div className="w-full h-3 bg-zinc-900 rounded" />
+            <div className="w-5/6 h-3 bg-zinc-900 rounded" />
+            <div className="w-3/4 h-3 bg-zinc-900 rounded" />
+          </div>
+
+          {/* Chapter list skeleton */}
+          <div className="flex flex-col gap-2 mt-2">
+            <div className="w-28 h-4 bg-zinc-800 rounded mb-1" />
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 w-full bg-zinc-900/50 rounded-xl border border-zinc-850/60" />
+            ))}
+          </div>
+        </main>
       </div>
     );
   }

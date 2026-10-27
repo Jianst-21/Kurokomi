@@ -339,9 +339,20 @@ export default function ReaderPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-3">
-        <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
-        <span className="text-xs text-zinc-400">Memuat gambar chapter...</span>
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+        {/* Top reader HUD skeleton */}
+        <div className="h-12 w-full bg-zinc-950/90 border-b border-zinc-900 px-4 flex items-center justify-between animate-pulse">
+          <div className="w-8 h-8 rounded-lg bg-zinc-900" />
+          <div className="w-36 h-4 rounded bg-zinc-900" />
+          <div className="w-8 h-8 rounded-lg bg-zinc-900" />
+        </div>
+
+        {/* Vertical reading pages skeleton */}
+        <div className="flex-1 max-w-lg mx-auto w-full flex flex-col items-center gap-3 p-4 animate-pulse">
+          <div className="w-full aspect-[2/3] bg-zinc-900/70 rounded-xl" />
+          <div className="w-full aspect-[2/3] bg-zinc-900/50 rounded-xl" />
+          <div className="w-full aspect-[2/3] bg-zinc-900/30 rounded-xl" />
+        </div>
       </div>
     );
   }
