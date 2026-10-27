@@ -17,7 +17,8 @@ function getProviderPriority(id: string): number {
   if (id.startsWith('komiku--')) return 1;
   if (id.startsWith('komikindo--')) return 2;
   if (id.startsWith('softkomik--')) return 3;
-  return 4; // MangaDex or other
+  if (id.startsWith('mangapill--')) return 4;
+  return 5; // MangaDex or other
 }
 
 export function normalizeChapterKey(ch: string): string {
@@ -578,18 +579,42 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
     })();
   }
 
-  const [komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps, mdEnChaps] = await Promise.all([
+  // 5. MangaPill: Fetch English chapters from MangaPill for complete manga scanlations
+  const mpEnPromise = (async (): Promise<ChapterItem[]> => {
+    try {
+      const { findMangaPillPath, fetchMangaPillChapters } = await import('./mangapill');
+      const mpPath = await findMangaPillPath(comic.title, comic.altTitles);
+      if (mpPath) {
+        if (isBrowser) {
+          const res = await fetch(`/api/mangapill?action=chapters&path=${encodeURIComponent(mpPath)}`);
+          if (res.ok) {
+            const data = await res.json();
+            return data.chapters || [];
+          }
+        } else {
+          return await fetchMangaPillChapters(mpPath);
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  })();
+
+  const [komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps, mdEnChaps, mpEnChaps] = await Promise.all([
     komikuPromise,
     komikindoPromise,
     softkomikPromise,
     mdIdPromise,
     mdEnPromise,
+    mpEnPromise,
   ]);
 
   const idChapters = mergeAndSortChapters(komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps);
+  const enChapters = mergeAndSortChapters(mpEnChaps, mdEnChaps);
 
   return {
     idChapters,
-    enChapters: mdEnChaps,
+    enChapters,
   };
 }

@@ -760,6 +760,24 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
       return [];
     }
 
+    // If chapter ID is from MangaPill provider (mangapill--...)
+    if (decodedId.startsWith('mangapill--') || decodedId.startsWith('mangapill:')) {
+      const raw = decodedId.replace(/^mangapill(--|:)/, '');
+      const chapterPath = '/' + raw.replace(/___/g, '/');
+
+      if (typeof window !== 'undefined') {
+        const res = await fetch(`/api/mangapill?action=pages&path=${encodeURIComponent(chapterPath)}`);
+        if (res.ok) {
+          const data = await res.json();
+          return data.pages || [];
+        }
+      } else {
+        const { fetchMangaPillChapterImages } = await import('./mangapill');
+        return await fetchMangaPillChapterImages(chapterPath);
+      }
+      return [];
+    }
+
     const res = await fetch(`${getApiBase()}/at-home/server/${decodedId}`);
     if (!res.ok) {
       throw new Error(`Failed to fetch chapter server: ${res.status}`);

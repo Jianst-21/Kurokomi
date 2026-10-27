@@ -99,6 +99,15 @@ export default function ReaderPage() {
             targetMangaId = `komikindo--${slug}`;
             setMangaId(targetMangaId);
           }
+        } else if (chapterId.startsWith('mangapill--')) {
+          const raw = chapterId.replace(/^mangapill--/, '');
+          const parts = raw.split('___');
+          const slugPart = parts[parts.length - 1] || '';
+          const cleanSlug = slugPart.replace(/-chapter-[0-9.]+.*$/i, '');
+          if (cleanSlug) {
+            targetMangaId = `mangapill--${cleanSlug}`;
+            setMangaId(targetMangaId);
+          }
         } else {
           const resolved = await fetchMangaIdFromChapter(chapterId);
           if (resolved) {

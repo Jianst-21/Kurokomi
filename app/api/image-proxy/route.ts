@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
       referer = 'https://komikindo.ch/';
     } else if (host.includes('mangadex')) {
       referer = 'https://mangadex.org/';
+    } else if (host.includes('mangapill') || host.includes('readdetectiveconan')) {
+      referer = 'https://mangapill.com/';
     }
 
     const res = await fetch(urlParam, {

@@ -63,6 +63,8 @@ const ALLOWED_IMAGE_HOSTS = [
   'komikindo.ch',
   'komikindo.tv',
   'komikindo.co',
+  'mangapill.com',
+  'readdetectiveconan.com',
   'wp.com',
   'blogger.com',
   'bp.blogspot.com',
