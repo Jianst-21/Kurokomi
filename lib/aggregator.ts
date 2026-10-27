@@ -300,7 +300,24 @@ export async function searchComicsUnified(
   });
 }
 
-export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {
+async function enrichDetailGenres(detail: ComicDetail | null): Promise<ComicDetail | null> {
+  if (!detail) return null;
+  if (!detail.genres || detail.genres.length === 0) {
+    try {
+      const { searchComics } = await import('./mangadex');
+      const mdMatches = await searchComics(detail.title, { limit: 3 }).catch(() => []);
+      const matched = mdMatches.find(m => m.genres && m.genres.length > 0);
+      if (matched && matched.genres) {
+        detail.genres = matched.genres;
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return detail;
+}
+
+async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
   const decodedId = decodeURIComponent(id);
   const isBrowser = isClientBrowser();
 
@@ -404,6 +421,11 @@ export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail |
   // MangaDex UUID
   const { fetchComicDetail } = await import('./mangadex');
   return await fetchComicDetail(decodedId);
+}
+
+export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {
+  const detail = await resolveBaseComicDetail(id);
+  return await enrichDetailGenres(detail);
 }
 
 export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
