@@ -83,7 +83,7 @@ export function TopComicsSection() {
 
   const sectionRef = useRef<HTMLElement>(null);
   const cacheRef = useRef<Map<string, ComicCardItem[]>>(new Map());
-  const PAGE_LIMIT = 15;
+  const PAGE_LIMIT = 18;
 
   useEffect(() => {
     saveTopSectionState(activeCategory, page);
@@ -153,7 +153,7 @@ export function TopComicsSection() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="w-2 h-4 rounded-full bg-amber-500" />
-          <h2 className="text-sm font-bold text-zinc-100">Top 15 Rekomendasi</h2>
+          <h2 className="text-sm font-bold text-zinc-100">Top Rekomendasi</h2>
         </div>
         <span className="text-[11px] text-zinc-500">Paling Populer</span>
       </div>
@@ -181,7 +181,7 @@ export function TopComicsSection() {
       {/* Grid Content */}
       {isLoading ? (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 12 }).map((_, i) => (
             <div
               key={i}
               className="aspect-[3/4] rounded-xl bg-zinc-900/60 border border-zinc-850 animate-pulse"

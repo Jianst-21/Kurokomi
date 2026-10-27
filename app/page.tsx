@@ -80,7 +80,7 @@ export default function HomePage() {
         {/* Section 1: Update Komik Terbaru (Horizontal Snap Slider & Clean Pagination) */}
         <LatestUpdatesSection />
 
-        {/* Section 2: Top 15 Rekomendasi (3-Column Grid & Clean Pagination) */}
+        {/* Section 2: Top Rekomendasi (Responsive Grid & Clean Pagination) */}
         <TopComicsSection />
       </main>
 

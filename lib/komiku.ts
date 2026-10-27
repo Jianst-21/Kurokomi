@@ -6,7 +6,7 @@ export const KOMIKU_BASE = 'https://komiku.org';
 export const KOMIKU_API_SEARCH = 'https://api.komiku.org';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 4000;
 
 export function normalizeTitle(t: string): string {
   if (!t) return '';

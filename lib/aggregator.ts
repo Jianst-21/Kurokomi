@@ -430,9 +430,27 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
   return await fetchComicDetail(decodedId);
 }
 
+const detailMemoryCache = new Map<string, { data: ComicDetail; exp: number }>();
+const chaptersMemoryCache = new Map<string, { data: { idChapters: ChapterItem[]; enChapters: ChapterItem[] }; exp: number }>();
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {
+  const isBrowser = isClientBrowser();
+  if (isBrowser) {
+    const cached = detailMemoryCache.get(id);
+    if (cached && cached.exp > Date.now()) {
+      return cached.data;
+    }
+  }
+
   const detail = await resolveBaseComicDetail(id);
-  return await enrichDetailGenres(detail);
+  const enriched = await enrichDetailGenres(detail);
+
+  if (isBrowser && enriched) {
+    detailMemoryCache.set(id, { data: enriched, exp: Date.now() + CACHE_TTL_MS });
+  }
+
+  return enriched;
 }
 
 export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
@@ -441,6 +459,13 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
 }> {
   const isBrowser = isClientBrowser();
   const id = comic.id;
+
+  if (isBrowser) {
+    const cached = chaptersMemoryCache.get(id);
+    if (cached && cached.exp > Date.now()) {
+      return cached.data;
+    }
+  }
 
   let komikuPromise: Promise<ChapterItem[]> = Promise.resolve([]);
   let komikindoPromise: Promise<ChapterItem[]> = Promise.resolve([]);
@@ -616,8 +641,14 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   const idChapters = mergeAndSortChapters(komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps);
   const enChapters = mergeAndSortChapters(mpEnChaps, mdEnChaps);
 
-  return {
+  const result = {
     idChapters,
     enChapters,
   };
+
+  if (isBrowser && (idChapters.length > 0 || enChapters.length > 0)) {
+    chaptersMemoryCache.set(id, { data: result, exp: Date.now() + CACHE_TTL_MS });
+  }
+
+  return result;
 }

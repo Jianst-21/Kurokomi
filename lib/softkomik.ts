@@ -10,7 +10,7 @@ export const SOFTKOMIK_IMAGE_BASE = 'https://image.komik.im/softkomik';
 export const SOFTKOMIK_ENCRYPTION_KEY = 'nYTInq9MwR4pWa8yeXtu/2iO3t9nGP65WHpWEvqpEdU=';
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const FETCH_TIMEOUT_MS = 8000;
+const FETCH_TIMEOUT_MS = 4000;
 
 export function decryptOpenSSLAES(ciphertextB64: string, keyStr: string = SOFTKOMIK_ENCRYPTION_KEY): string {
   try {

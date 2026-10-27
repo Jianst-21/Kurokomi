@@ -715,9 +715,19 @@ export async function fetchMangaIdFromChapter(chapterId: string): Promise<string
   }
 }
 
+const chapterPagesMemoryCache = new Map<string, { pages: ChapterPageItem[]; exp: number }>();
+const PAGES_CACHE_TTL_MS = 10 * 60 * 1000;
+
 export async function fetchChapterPages(chapterId: string): Promise<ChapterPageItem[]> {
   try {
     const decodedId = decodeURIComponent(chapterId || '');
+
+    if (typeof window !== 'undefined') {
+      const cached = chapterPagesMemoryCache.get(decodedId);
+      if (cached && cached.exp > Date.now()) {
+        return cached.pages;
+      }
+    }
 
     // If chapter ID is from Komiku provider (komiku--chapterSlug or komiku:...)
     if (decodedId.startsWith('komiku--') || decodedId.startsWith('komiku:')) {
@@ -727,7 +737,11 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
         const res = await fetch(`/api/komiku?action=pages&chapter=${encodeURIComponent(chapterSlug)}`);
         if (res.ok) {
           const data = await res.json();
-          return data.pages || [];
+          const pages = data.pages || [];
+          if (pages.length > 0) {
+            chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
+          }
+          return pages;
         }
       } else {
         const { fetchKomikuChapterImages } = await import('./komiku');
@@ -744,7 +758,11 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
         const res = await fetch(`/api/komikindo?action=pages&chapter=${encodeURIComponent(chapterSlug)}`);
         if (res.ok) {
           const data = await res.json();
-          return data.pages || [];
+          const pages = data.pages || [];
+          if (pages.length > 0) {
+            chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
+          }
+          return pages;
         }
       } else {
         const { fetchKomikindoChapterImages } = await import('./komikindo');
@@ -764,7 +782,11 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
         const res = await fetch(`/api/softkomik?action=pages&slug=${encodeURIComponent(slug)}&chapter=${encodeURIComponent(chapter)}`);
         if (res.ok) {
           const data = await res.json();
-          return data.pages || [];
+          const pages = data.pages || [];
+          if (pages.length > 0) {
+            chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
+          }
+          return pages;
         }
       } else {
         const { fetchSoftkomikChapterImages } = await import('./softkomik');
@@ -782,7 +804,11 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
         const res = await fetch(`/api/mangapill?action=pages&path=${encodeURIComponent(chapterPath)}`);
         if (res.ok) {
           const data = await res.json();
-          return data.pages || [];
+          const pages = data.pages || [];
+          if (pages.length > 0) {
+            chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
+          }
+          return pages;
         }
       } else {
         const { fetchMangaPillChapterImages } = await import('./mangapill');
@@ -803,10 +829,16 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
 
     if (!baseUrl || !hash || !files.length) return [];
 
-    return files.map(file => ({
+    const pages = files.map(file => ({
       url: `${baseUrl}/data/${hash}/${file}`,
       fallbackUrl: `https://uploads.mangadex.org/data/${hash}/${file}`,
     }));
+
+    if (typeof window !== 'undefined' && pages.length > 0) {
+      chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
+    }
+
+    return pages;
   } catch (err) {
     console.error('fetchChapterPages error:', err);
     return [];
