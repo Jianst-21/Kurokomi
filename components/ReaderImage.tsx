@@ -8,9 +8,22 @@ interface ReaderImageProps {
   fallbackSrc?: string;
   pageIndex: number;
   fitContain?: boolean;
+  globalRetryKey?: number;
+  onErrorChange?: (pageIndex: number, hasError: boolean) => void;
+  isTopError?: boolean;
+  onRetryAll?: () => void;
 }
 
-export function ReaderImage({ src, fallbackSrc, pageIndex, fitContain = false }: ReaderImageProps) {
+export function ReaderImage({
+  src,
+  fallbackSrc,
+  pageIndex,
+  fitContain = false,
+  globalRetryKey = 0,
+  onErrorChange,
+  isTopError = false,
+  onRetryAll,
+}: ReaderImageProps) {
   const [currentSrc, setCurrentSrc] = useState(src);
   const [error, setError] = useState(false);
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
@@ -22,7 +35,19 @@ export function ReaderImage({ src, fallbackSrc, pageIndex, fitContain = false }:
     setError(false);
     setHasTriedFallback(false);
     setHasTriedProxy(false);
-  }, [src]);
+    onErrorChange?.(pageIndex, false);
+  }, [src, pageIndex, onErrorChange]);
+
+  useEffect(() => {
+    if (globalRetryKey > 0) {
+      setError(false);
+      setHasTriedFallback(false);
+      setHasTriedProxy(false);
+      setCurrentSrc(src);
+      setRetryKey(k => k + 1);
+      onErrorChange?.(pageIndex, false);
+    }
+  }, [globalRetryKey, src, pageIndex, onErrorChange]);
 
   const handleImageError = () => {
     if (fallbackSrc && !hasTriedFallback && currentSrc !== fallbackSrc) {
@@ -34,6 +59,7 @@ export function ReaderImage({ src, fallbackSrc, pageIndex, fitContain = false }:
       setCurrentSrc(`/api/image-proxy?url=${encodeURIComponent(src)}`);
     } else {
       setError(true);
+      onErrorChange?.(pageIndex, true);
     }
   };
 
@@ -44,6 +70,7 @@ export function ReaderImage({ src, fallbackSrc, pageIndex, fitContain = false }:
     setHasTriedProxy(false);
     setCurrentSrc(src);
     setRetryKey(k => k + 1);
+    onErrorChange?.(pageIndex, false);
   };
 
   if (error) {
@@ -51,13 +78,27 @@ export function ReaderImage({ src, fallbackSrc, pageIndex, fitContain = false }:
       <div className="w-full py-8 px-4 flex flex-col items-center justify-center bg-zinc-900/80 my-1 gap-2 text-center border border-zinc-800">
         <AlertCircle className="w-5 h-5 text-rose-400" />
         <span className="text-xs text-zinc-300">Gagal memuat halaman {pageIndex + 1}</span>
-        <button
-          onClick={handleRetry}
-          className="flex items-center gap-1.5 px-3 py-1.5 mt-1 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-xs text-zinc-200 transition-colors"
-        >
-          <RotateCw className="w-3.5 h-3.5" />
-          <span>Coba Muat Ulang</span>
-        </button>
+        <div className="flex items-center gap-2 mt-1">
+          <button
+            onClick={handleRetry}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-xs text-zinc-200 transition-colors"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Coba Muat Ulang</span>
+          </button>
+          {isTopError && onRetryAll && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRetryAll();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-xs font-medium text-white transition-colors"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>Muat Ulang Semua</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   }

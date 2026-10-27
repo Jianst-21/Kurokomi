@@ -59,6 +59,32 @@ export default function ReaderPage() {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
+  // Global Image Retry for Offline -> Online Recovery
+  const [globalRetryKey, setGlobalRetryKey] = useState(0);
+  const [errorPages, setErrorPages] = useState<Set<number>>(new Set());
+
+  const handlePageErrorChange = React.useCallback((pageIndex: number, hasError: boolean) => {
+    setErrorPages(prev => {
+      const next = new Set(prev);
+      if (hasError) {
+        next.add(pageIndex);
+      } else {
+        next.delete(pageIndex);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleRetryAll = React.useCallback(() => {
+    setErrorPages(new Set());
+    setGlobalRetryKey(k => k + 1);
+  }, []);
+
+  const minErrorIndex = React.useMemo(() => {
+    if (errorPages.size === 0) return null;
+    return Math.min(...Array.from(errorPages));
+  }, [errorPages]);
+
   useEffect(() => {
     setReaderMode(getStoredReaderMode());
   }, []);
@@ -437,6 +463,10 @@ export default function ReaderPage() {
               fallbackSrc={pages[currentPageIndex].fallbackUrl}
               pageIndex={currentPageIndex}
               fitContain={true}
+              globalRetryKey={globalRetryKey}
+              onErrorChange={handlePageErrorChange}
+              isTopError={true}
+              onRetryAll={handleRetryAll}
             />
           )}
 
@@ -456,6 +486,10 @@ export default function ReaderPage() {
               src={item.url}
               fallbackSrc={item.fallbackUrl}
               pageIndex={idx}
+              globalRetryKey={globalRetryKey}
+              onErrorChange={handlePageErrorChange}
+              isTopError={minErrorIndex === idx}
+              onRetryAll={handleRetryAll}
             />
           ))}
 
