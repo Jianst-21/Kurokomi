@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -21,6 +21,15 @@ import {
 } from '@/lib/mangadex';
 import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
 import { saveHistory } from '@/lib/storage';
+import {
+  ReaderMode,
+  getPagedTouchZone,
+  getSwipeDirection,
+  getNextPageIndex,
+  getPrevPageIndex,
+  getStoredReaderMode,
+  setStoredReaderMode,
+} from '@/lib/paged-reader';
 import { ReaderHUD } from '@/components/ReaderHUD';
 import { ReaderImage } from '@/components/ReaderImage';
 
@@ -43,6 +52,16 @@ export default function ReaderPage() {
   const [hudVisible, setHudVisible] = useState(true);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [readProgress, setReadProgress] = useState(0);
+
+  // Manga Paged Mode States
+  const [readerMode, setReaderMode] = useState<ReaderMode>('webtoon');
+  const [currentPageIndex, setCurrentPageIndex] = useState<number>(0);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
+
+  useEffect(() => {
+    setReaderMode(getStoredReaderMode());
+  }, []);
 
   const loadChapter = async () => {
     if (!chapterId) return;
@@ -132,7 +151,11 @@ export default function ReaderPage() {
 
   useEffect(() => {
     loadChapter();
+    setCurrentPageIndex(0);
   }, [chapterId]);
+
+  const isManga = comic?.type === 'manga';
+  const effectiveMode: ReaderMode = isManga ? readerMode : 'webtoon';
 
   // Sort chapters ascending for sequential reading
   const ascChapters = sortChapters(chapters, true);
@@ -147,6 +170,73 @@ export default function ReaderPage() {
 
   const toggleHUD = () => {
     setHudVisible(prev => !prev);
+  };
+
+  const handleNextPage = () => {
+    const next = getNextPageIndex(currentPageIndex, pages.length);
+    if (next === 'next-chapter') {
+      if (nextChapter) {
+        router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
+      }
+    } else {
+      setCurrentPageIndex(next);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  };
+
+  const handlePrevPage = () => {
+    const prev = getPrevPageIndex(currentPageIndex);
+    if (prev === 'prev-chapter') {
+      if (prevChapter) {
+        router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}`);
+      }
+    } else {
+      setCurrentPageIndex(prev);
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  };
+
+  const handleModeChange = (mode: ReaderMode) => {
+    setReaderMode(mode);
+    setStoredReaderMode(mode);
+    setCurrentPageIndex(0);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+
+  const handlePagedClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const zone = getPagedTouchZone(clickX, rect.width);
+    if (zone === 'left') {
+      handlePrevPage();
+    } else if (zone === 'right') {
+      handleNextPage();
+    } else {
+      toggleHUD();
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const endX = e.changedTouches[0].clientX;
+    const endY = e.changedTouches[0].clientY;
+    const diffY = Math.abs(endY - touchStartY.current);
+
+    if (diffY < 60) {
+      const dir = getSwipeDirection(touchStartX.current, endX);
+      if (dir === 'next') {
+        handleNextPage();
+      } else if (dir === 'prev') {
+        handlePrevPage();
+      }
+    }
+    touchStartX.current = null;
+    touchStartY.current = null;
   };
 
   // Auto-hide HUD after 2.5s on initial chapter load
@@ -182,17 +272,21 @@ export default function ReaderPage() {
     };
   }, []);
 
-  // Keyboard navigation for chapter reading
+  // Keyboard navigation for chapter and page reading
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
 
       if (e.key === 'ArrowLeft' || e.key === '[') {
-        if (prevChapter) {
+        if (effectiveMode === 'paged') {
+          handlePrevPage();
+        } else if (prevChapter) {
           router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}`);
         }
       } else if (e.key === 'ArrowRight' || e.key === ']') {
-        if (nextChapter) {
+        if (effectiveMode === 'paged') {
+          handleNextPage();
+        } else if (nextChapter) {
           router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
         }
       } else if (e.key === 'm' || e.key === 'M') {
@@ -204,7 +298,7 @@ export default function ReaderPage() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [prevChapter, nextChapter, mangaId, router]);
+  }, [effectiveMode, currentPageIndex, pages.length, prevChapter, nextChapter, mangaId, router]);
 
   if (isLoading) {
     return (
@@ -249,6 +343,11 @@ export default function ReaderPage() {
         currentChapter={currentChapter?.chapter || '?'}
         mangaId={mangaId}
         readProgress={readProgress}
+        isManga={isManga}
+        readerMode={effectiveMode}
+        currentPage={currentPageIndex + 1}
+        totalPages={pages.length}
+        onModeChange={handleModeChange}
         prevChapterId={prevChapter?.id}
         prevChapterNumber={prevChapter?.chapter}
         nextChapterId={nextChapter?.id}
@@ -256,52 +355,76 @@ export default function ReaderPage() {
         onOpenDrawer={() => setIsDrawerOpen(true)}
       />
 
-      {/* Main Comic Image Stream (Webtoon Scroll) */}
-      <main
-        onClick={toggleHUD}
-        className="reader-container flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
-      >
-        {pages.map((item, idx) => (
-          <ReaderImage
-            key={item.url}
-            src={item.url}
-            fallbackSrc={item.fallbackUrl}
-            pageIndex={idx}
-          />
-        ))}
+      {/* Reader View: Paged (Single Image Fit) vs Webtoon (Continuous Vertical Scroll) */}
+      {effectiveMode === 'paged' ? (
+        <main
+          onClick={handlePagedClick}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          className="relative flex-1 w-full h-[100dvh] flex items-center justify-center bg-black cursor-pointer select-none overflow-hidden"
+        >
+          {pages[currentPageIndex] && (
+            <ReaderImage
+              key={pages[currentPageIndex].url}
+              src={pages[currentPageIndex].url}
+              fallbackSrc={pages[currentPageIndex].fallbackUrl}
+              pageIndex={currentPageIndex}
+              fitContain={true}
+            />
+          )}
 
-        {/* End of Chapter Section */}
-        <div className="w-full p-8 flex flex-col items-center justify-center text-center gap-4 bg-zinc-950 border-t border-zinc-850 my-6">
-          <span className="text-xs text-zinc-400 font-medium">
-            Akhir dari Chapter {currentChapter?.chapter || ''}
-          </span>
+          {/* Minimalist Floating Page Badge in corner */}
+          <div className="absolute bottom-4 right-4 px-2.5 py-1 bg-zinc-900/80 backdrop-blur-sm rounded-md border border-zinc-800 text-[11px] text-zinc-300 font-medium tabular-nums pointer-events-none z-20">
+            {currentPageIndex + 1} / {pages.length}
+          </div>
+        </main>
+      ) : (
+        <main
+          onClick={toggleHUD}
+          className="reader-container flex-1 max-w-lg mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
+        >
+          {pages.map((item, idx) => (
+            <ReaderImage
+              key={item.url}
+              src={item.url}
+              fallbackSrc={item.fallbackUrl}
+              pageIndex={idx}
+            />
+          ))}
 
-          {nextChapter ? (
-            <Link
-              href={`/chapter/${nextChapter.id}?mangaId=${mangaId}`}
-              onClick={e => e.stopPropagation()}
-              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-600/30 transition-all"
-            >
-              <span>Lanjut ke Chapter {nextChapter.chapter}</span>
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          ) : (
-            <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-900">
-              Kamu telah membaca chapter terbaru!
+          {/* End of Chapter Section */}
+          <div className="w-full p-8 flex flex-col items-center justify-center text-center gap-4 bg-zinc-950 border-t border-zinc-850 my-6">
+            <span className="text-xs text-zinc-400 font-medium">
+              Akhir dari Chapter {currentChapter?.chapter || ''}
             </span>
-          )}
 
-          {mangaId && (
-            <Link
-              href={`/manga/${mangaId}`}
-              onClick={e => e.stopPropagation()}
-              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-            >
-              Kembali ke Daftar Chapter
-            </Link>
-          )}
-        </div>
-      </main>
+            {nextChapter ? (
+              <Link
+                href={`/chapter/${nextChapter.id}?mangaId=${mangaId}`}
+                onClick={e => e.stopPropagation()}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-600/30 transition-all"
+              >
+                <span>Lanjut ke Chapter {nextChapter.chapter}</span>
+                <ChevronRight className="w-4 h-4" />
+              </Link>
+            ) : (
+              <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-900">
+                Kamu telah membaca chapter terbaru!
+              </span>
+            )}
+
+            {mangaId && (
+              <Link
+                href={`/manga/${mangaId}`}
+                onClick={e => e.stopPropagation()}
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Kembali ke Daftar Chapter
+              </Link>
+            )}
+          </div>
+        </main>
+      )}
 
       {/* Slide-over Chapter Drawer Modal */}
       {isDrawerOpen && (
