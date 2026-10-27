@@ -415,6 +415,11 @@ export function generateSearchQueries(title: string, altTitles?: string[]): stri
     }
   }
 
+  // 1. Add base titles first (title, and altTitles) so altTitles like Japanese Romaji are checked early
+  for (const raw of rawList) {
+    addClean(raw);
+  }
+
   // Prioritize ASCII/English titles before titles with tone marks/accents
   const asciiList: string[] = [];
   const otherList: string[] = [];

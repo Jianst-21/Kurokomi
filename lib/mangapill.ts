@@ -11,20 +11,22 @@ const mangapillSlugCache = new Map<string, { path: string | null; exp: number }>
 
 export function parseMangaPillSearchHtml(html: string): ComicCardItem[] {
   const items: ComicCardItem[] = [];
-  const cardRegex = /<a href="(\/manga\/(\d+)\/([^"]+))"[^>]*class="[^"]*relative[^"]*"[^>]*>([\s\S]*?)<\/a>\s*<div class="flex flex-col[^"]*">([\s\S]*?)<\/div>/gi;
+  const cardRegex = /<a href="(\/manga\/(\d+)\/([^"]+))"[^>]*class="relative block"[\s\S]*?<div class="flex flex-col[^"]*">([\s\S]*?)<\/div>\s*<\/div>/gi;
   let match;
 
   while ((match = cardRegex.exec(html)) !== null) {
     const rawPath = match[1];
-    const figurePart = match[4];
-    const infoPart = match[5];
+    const fullBlock = match[0];
+    const infoPart = match[4];
 
-    const imgMatch = figurePart.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i);
+    const imgMatch = fullBlock.match(/<img[^>]+(?:data-src|src)="([^"]+)"/i);
     const coverUrl = imgMatch ? imgMatch[1] : '';
 
-    const titleMatch = infoPart.match(/<a[^>]+href="\/manga\/[^"]+"[^>]*>([\s\S]*?)<\/a>/i);
-    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
-    if (!title) continue;
+    const titleMatches = [...infoPart.matchAll(/<div[^>]*class="[^"]*(?:font-black|line-clamp-2)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi)];
+    const primaryTitle = titleMatches[0] ? titleMatches[0][1].replace(/<[^>]+>/g, '').trim() : '';
+    const altTitle = titleMatches[1] ? titleMatches[1][1].replace(/<[^>]+>/g, '').trim() : undefined;
+
+    if (!primaryTitle) continue;
 
     const typeMatch = infoPart.match(/(Manga|Manhwa|Manhua)/i);
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'manga';
@@ -39,7 +41,9 @@ export function parseMangaPillSearchHtml(html: string): ComicCardItem[] {
 
     items.push({
       id: `mangapill--${cleanId}`,
-      title,
+      title: primaryTitle,
+      altTitle,
+      altTitles: altTitle ? [altTitle] : undefined,
       coverUrl,
       type,
     });

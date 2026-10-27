@@ -257,147 +257,192 @@ export async function findSoftkomikSlug(title: string, altTitles: string[] = [])
 }
 
 export async function fetchSoftkomikDetail(slug: string): Promise<ComicDetail | null> {
-  try {
-    const url = `${SOFTKOMIK_BASE}/${slug}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
-    });
+  const tryFetch = async (targetSlug: string): Promise<ComicDetail | null> => {
+    try {
+      const url = `${SOFTKOMIK_BASE}/${targetSlug}`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        next: { revalidate: 300 },
+      });
 
-    if (!res.ok) return null;
-    const html = await res.text();
-    const nextData = extractNextData(html) as Record<string, unknown> | null;
-    const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
-    const stk = pageProps?._stk as string | undefined;
-    if (!stk) return null;
+      if (!res.ok) return null;
+      const html = await res.text();
+      const nextData = extractNextData(html) as Record<string, unknown> | null;
+      const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
+      const stk = pageProps?._stk as string | undefined;
+      if (!stk) return null;
 
-    const decryptedStr = decryptOpenSSLAES(stk);
-    if (!decryptedStr) return null;
+      const decryptedStr = decryptOpenSSLAES(stk);
+      if (!decryptedStr) return null;
 
-    const parsed = JSON.parse(decryptedStr);
-    const data = (parsed.data || {}) as SoftkomikRawItem;
-    if (!data.title) return null;
+      const parsed = JSON.parse(decryptedStr);
+      const data = (parsed.data || {}) as SoftkomikRawItem;
+      if (!data.title) return null;
 
-    const rawType = (data.type || 'other').toLowerCase();
-    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
-    if (rawType.includes('manhwa')) type = 'manhwa';
-    else if (rawType.includes('manhua')) type = 'manhua';
-    else if (rawType.includes('manga')) type = 'manga';
+      const rawType = (data.type || 'other').toLowerCase();
+      let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
+      if (rawType.includes('manhwa')) type = 'manhwa';
+      else if (rawType.includes('manhua')) type = 'manhua';
+      else if (rawType.includes('manga')) type = 'manga';
 
-    let coverUrl = '';
-    if (data.gambar) {
-      coverUrl = data.gambar.startsWith('http')
-        ? data.gambar
-        : `${SOFTKOMIK_COVER_BASE}/${data.gambar}`;
-    }
+      let coverUrl = '';
+      if (data.gambar) {
+        coverUrl = data.gambar.startsWith('http')
+          ? data.gambar
+          : `${SOFTKOMIK_COVER_BASE}/${data.gambar}`;
+      }
 
-    const rawStatus = (data.status || 'ongoing').toLowerCase();
-    let status: 'ongoing' | 'completed' | 'hiatus' | 'cancelled' = 'ongoing';
-    if (rawStatus.includes('tamat') || rawStatus.includes('end') || rawStatus.includes('complete')) {
-      status = 'completed';
-    }
+      const rawStatus = (data.status || 'ongoing').toLowerCase();
+      let status: 'ongoing' | 'completed' | 'hiatus' | 'cancelled' = 'ongoing';
+      if (rawStatus.includes('tamat') || rawStatus.includes('end') || rawStatus.includes('complete')) {
+        status = 'completed';
+      }
 
-    const safeGenres = filterSafeGenres(data.Genre || []);
-    if (!isSafeContent({ title: data.title, genres: safeGenres, contentRating: data.contentRating })) {
+      const safeGenres = filterSafeGenres(data.Genre || []);
+      if (!isSafeContent({ title: data.title, genres: safeGenres, contentRating: data.contentRating })) {
+        return null;
+      }
+
+      const isFullColor = safeGenres.some(g =>
+        g.toLowerCase().includes('color') || g.toLowerCase().includes('warna')
+      );
+
+      return {
+        id: `softkomik--${targetSlug}`,
+        title: data.title,
+        altTitles: data.altTitle ? [data.altTitle] : [],
+        description: data.sinopsis || 'Tidak ada sinopsis.',
+        coverUrl,
+        type,
+        status,
+        genres: safeGenres,
+        isFullColor,
+        author: data.author,
+        artist: data.artist,
+      };
+    } catch {
       return null;
     }
+  };
 
-    const isFullColor = safeGenres.some(g =>
-      g.toLowerCase().includes('color') || g.toLowerCase().includes('warna')
-    );
+  const direct = await tryFetch(slug);
+  if (direct) return direct;
 
-    return {
-      id: `softkomik--${slug}`,
-      title: data.title,
-      altTitles: data.altTitle ? [data.altTitle] : [],
-      description: data.sinopsis || 'Tidak ada sinopsis.',
-      coverUrl,
-      type,
-      status,
-      genres: safeGenres,
-      isFullColor,
-      author: data.author,
-      artist: data.artist,
-    };
-  } catch (e) {
-    console.error('fetchSoftkomikDetail error:', e);
-    return null;
+  if (!slug.endsWith('-bahasa-indonesia')) {
+    const withSuffix = await tryFetch(`${slug}-bahasa-indonesia`);
+    if (withSuffix) return withSuffix;
   }
+  return null;
 }
 
 export async function fetchSoftkomikChapters(slug: string): Promise<ChapterItem[]> {
-  try {
-    const url = `${SOFTKOMIK_BASE}/${slug}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 120 },
-    });
+  const tryFetch = async (targetSlug: string): Promise<ChapterItem[]> => {
+    try {
+      const url = `${SOFTKOMIK_BASE}/${targetSlug}`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        next: { revalidate: 120 },
+      });
 
-    if (!res.ok) return [];
-    const html = await res.text();
-    const nextData = extractNextData(html) as Record<string, unknown> | null;
-    const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
-    const stk = pageProps?._stk as string | undefined;
-    if (!stk) return [];
+      if (!res.ok) return [];
+      const html = await res.text();
+      const nextData = extractNextData(html) as Record<string, unknown> | null;
+      const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
+      const stk = pageProps?._stk as string | undefined;
+      if (!stk) return [];
 
-    const decryptedStr = decryptOpenSSLAES(stk);
-    if (!decryptedStr) return [];
+      const decryptedStr = decryptOpenSSLAES(stk);
+      if (!decryptedStr) return [];
 
-    const parsed = JSON.parse(decryptedStr);
-    const chapterList = (parsed.chapterData?.chapter || []) as Array<{ chapter: string }>;
+      const parsed = JSON.parse(decryptedStr);
+      const chapterList = (parsed.chapterData?.chapter || []) as Array<{ chapter: string }>;
 
-    const chapters: ChapterItem[] = chapterList.map(ch => {
-      const cleanNum = String(ch.chapter).replace(/^0+/, '') || '0';
-      return {
-        id: `softkomik--${slug}__${ch.chapter}`,
-        chapter: cleanNum,
-        title: `Chapter ${cleanNum}`,
-        scanlationGroup: 'Softkomik Sub Indo',
-        publishAt: '',
-        pagesCount: 0,
-      };
-    });
+      const chapters: ChapterItem[] = chapterList.map(ch => {
+        const cleanNum = String(ch.chapter).replace(/^0+/, '') || '0';
+        return {
+          id: `softkomik--${targetSlug}__${ch.chapter}`,
+          chapter: cleanNum,
+          title: `Chapter ${cleanNum}`,
+          scanlationGroup: 'Softkomik Sub Indo',
+          publishAt: '',
+          pagesCount: 0,
+        };
+      });
 
-    return deduplicateChapters(sortChapters(chapters, false));
-  } catch (e) {
-    console.error('fetchSoftkomikChapters error:', e);
-    return [];
+      return deduplicateChapters(sortChapters(chapters, false));
+    } catch {
+      return [];
+    }
+  };
+
+  const direct = await tryFetch(slug);
+  if (direct.length > 0) return direct;
+
+  if (!slug.endsWith('-bahasa-indonesia')) {
+    const withSuffix = await tryFetch(`${slug}-bahasa-indonesia`);
+    if (withSuffix.length > 0) return withSuffix;
   }
+  return [];
 }
 
 export async function fetchSoftkomikChapterImages(slug: string, chapter: string): Promise<ChapterPageItem[]> {
-  try {
-    const url = `${SOFTKOMIK_BASE}/${slug}/chapter/${chapter}`;
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 3600 },
-    });
-
-    if (!res.ok) return [];
-    const html = await res.text();
-    const nextData = extractNextData(html) as Record<string, unknown> | null;
-    const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
-    const stk = pageProps?._stk as string | undefined;
-    if (!stk) return [];
-
-    const decryptedStr = decryptOpenSSLAES(stk);
-    if (!decryptedStr) return [];
-
-    const parsed = JSON.parse(decryptedStr);
-    const imgList = (parsed.imgList || []) as string[];
-
-    return imgList.map(img => {
-      const fullUrl = img.startsWith('http') ? img : `${SOFTKOMIK_IMAGE_BASE}/${img}`;
-      return {
-        url: fullUrl,
-        fallbackUrl: fullUrl,
-      };
-    });
-  } catch (e) {
-    console.error('fetchSoftkomikChapterImages error:', e);
-    return [];
+  const slugCandidates = [slug];
+  if (!slug.endsWith('-bahasa-indonesia')) {
+    slugCandidates.push(`${slug}-bahasa-indonesia`);
   }
+
+  const chapterCandidates: string[] = [chapter];
+  if (chapter.includes('.')) {
+    const [maj, min] = chapter.split('.');
+    chapterCandidates.push(`${maj.padStart(3, '0')}.${min}`);
+    chapterCandidates.push(`${parseInt(maj, 10)}.${min}`);
+  } else {
+    chapterCandidates.push(chapter.padStart(3, '0'));
+    const parsedInt = parseInt(chapter, 10);
+    if (!isNaN(parsedInt)) {
+      chapterCandidates.push(String(parsedInt));
+    }
+  }
+  const uniqueChapters = [...new Set(chapterCandidates)];
+
+  for (const targetSlug of slugCandidates) {
+    for (const ch of uniqueChapters) {
+      try {
+        const url = `${SOFTKOMIK_BASE}/${targetSlug}/chapter/${ch}`;
+        const res = await fetch(url, {
+          headers: { 'User-Agent': USER_AGENT },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          next: { revalidate: 3600 },
+        });
+
+        if (!res.ok) continue;
+        const html = await res.text();
+        const nextData = extractNextData(html) as Record<string, unknown> | null;
+        const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
+        const stk = pageProps?._stk as string | undefined;
+        if (!stk) continue;
+
+        const decryptedStr = decryptOpenSSLAES(stk);
+        if (!decryptedStr) continue;
+
+        const parsed = JSON.parse(decryptedStr);
+        const imgList = (parsed.imgList || []) as string[];
+        if (!imgList.length) continue;
+
+        return imgList.map(img => {
+          const fullUrl = img.startsWith('http') ? img : `${SOFTKOMIK_IMAGE_BASE}/${img}`;
+          return {
+            url: fullUrl,
+            fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`,
+          };
+        });
+      } catch {
+        // try next candidate
+      }
+    }
+  }
+
+  return [];
 }

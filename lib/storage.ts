@@ -3,6 +3,10 @@ import { ComicCardItem, ReadingHistoryItem } from './types';
 const FAVORITES_KEY = 'kurokomi_favorites_v1';
 const HISTORY_KEY = 'kurokomi_history_v1';
 const READ_CHAPTERS_KEY = 'kurokomi_read_chapters_v1';
+const LATEST_PAGE_KEY = 'kurokomi_latest_page_v1';
+const TOP_PAGE_KEY = 'kurokomi_top_page_v1';
+const CHAPTER_SCROLL_PREFIX = 'kurokomi_ch_scroll_';
+const HOME_SCROLL_KEY = 'kurokomi_home_scroll_v1';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
@@ -119,6 +123,16 @@ export function clearHistory(): void {
     localStorage.removeItem(HISTORY_KEY);
   } catch {
     // ignore
+  }
+}
+
+export function removeFromHistory(mangaId: string): void {
+  if (!isBrowser() || !mangaId) return;
+  try {
+    const list = getHistory().filter(h => h.mangaId !== mangaId);
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+  } catch (err) {
+    console.error('Failed to remove item from history:', err);
   }
 }
 

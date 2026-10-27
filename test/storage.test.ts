@@ -6,6 +6,7 @@ import {
   getHistory,
   saveHistory,
   getComicLastRead,
+  removeFromHistory,
   clearHistory,
   markChapterAsRead,
   isChapterRead,
@@ -93,6 +94,34 @@ describe('LocalStorage Helper', () => {
 
     clearHistory();
     expect(getHistory()).toEqual([]);
+  });
+
+  it('removes a single comic from history with removeFromHistory', () => {
+    saveHistory({
+      mangaId: 'm1',
+      title: 'Solo Leveling',
+      coverUrl: '',
+      type: 'manhwa',
+      chapterId: 'ch1',
+      chapterNumber: '1',
+      readAt: '2023-01-01T10:00:00Z',
+    });
+    saveHistory({
+      mangaId: 'm2',
+      title: 'One Piece',
+      coverUrl: '',
+      type: 'manga',
+      chapterId: 'ch2',
+      chapterNumber: '2',
+      readAt: '2023-01-01T11:00:00Z',
+    });
+
+    expect(getHistory().length).toBe(2);
+    removeFromHistory('m1');
+
+    const history = getHistory();
+    expect(history.length).toBe(1);
+    expect(history[0].mangaId).toBe('m2');
   });
 
   it('marks and tracks read chapter IDs in localStorage', () => {

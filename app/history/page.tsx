@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Clock, Trash2, Play, BookOpen, Compass } from 'lucide-react';
+import { Clock, Trash2, Play, BookOpen, Compass, X } from 'lucide-react';
 import { ReadingHistoryItem } from '@/lib/types';
-import { getHistory, clearHistory } from '@/lib/storage';
+import { getHistory, clearHistory, removeFromHistory } from '@/lib/storage';
 import { BottomNav } from '@/components/BottomNav';
 import { DesktopNavbar } from '@/components/DesktopNavbar';
 
@@ -22,6 +22,13 @@ export default function HistoryPage() {
       clearHistory();
       setHistory([]);
     }
+  };
+
+  const handleRemoveItem = (e: React.MouseEvent, mangaId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    removeFromHistory(mangaId);
+    setHistory(prev => prev.filter(item => item.mangaId !== mangaId));
   };
 
   return (
@@ -129,16 +136,25 @@ export default function HistoryPage() {
 
                   {/* Info Column */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
-                    <div>
-                      <Link
-                        href={`/manga/${item.mangaId}`}
-                        className="text-xs font-bold text-zinc-200 line-clamp-1 hover:text-blue-400 transition-colors"
-                      >
-                        {item.title}
-                      </Link>
-                      <div className="text-[11px] text-blue-400 font-semibold mt-0.5">
-                        Chapter {item.chapterNumber}
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/manga/${item.mangaId}`}
+                          className="text-xs font-bold text-zinc-200 line-clamp-1 hover:text-blue-400 transition-colors"
+                        >
+                          {item.title}
+                        </Link>
+                        <div className="text-[11px] text-blue-400 font-semibold mt-0.5">
+                          Chapter {item.chapterNumber}
+                        </div>
                       </div>
+                      <button
+                        onClick={(e) => handleRemoveItem(e, item.mangaId)}
+                        aria-label={`Hapus ${item.title} dari riwayat`}
+                        className="p-1 -mr-1 -mt-0.5 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-zinc-800/60 transition-colors shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
 
                     <div className="flex items-center justify-between mt-2">

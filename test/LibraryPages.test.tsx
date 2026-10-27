@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import FavoritesPage from '@/app/favorites/page';
 import HistoryPage from '@/app/history/page';
@@ -51,5 +51,27 @@ describe('Favorites and History Pages', () => {
     render(<HistoryPage />);
     expect(screen.getByText('Solo Leveling')).toBeInTheDocument();
     expect(screen.getByText(/Chapter 142/i)).toBeInTheDocument();
+  });
+
+  it('allows removing a single comic from history list', async () => {
+    saveHistory({
+      mangaId: 'comic-to-delete',
+      title: 'Comic To Delete',
+      coverUrl: '',
+      type: 'manhwa',
+      chapterId: 'ch1',
+      chapterNumber: '1',
+      readAt: new Date().toISOString(),
+    });
+
+    render(<HistoryPage />);
+    expect(screen.getByText('Comic To Delete')).toBeInTheDocument();
+
+    const deleteBtn = screen.getByRole('button', { name: /hapus comic to delete dari riwayat/i });
+    expect(deleteBtn).toBeInTheDocument();
+
+    fireEvent.click(deleteBtn);
+
+    expect(screen.queryByText('Comic To Delete')).not.toBeInTheDocument();
   });
 });
