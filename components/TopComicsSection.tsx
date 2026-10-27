@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { RefreshCw, AlertCircle, BookOpen, Flame, Crown, Sparkles } from 'lucide-react';
+import { RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchTopComics } from '@/lib/mangadex';
 import { CleanPagination } from './CleanPagination';
@@ -10,12 +10,11 @@ import { CleanPagination } from './CleanPagination';
 const CATEGORIES: Array<{
   id: ComicType;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'all', label: 'Semua Top', icon: Flame },
-  { id: 'manhwa', label: 'Top Manhwa', icon: Crown },
-  { id: 'manga', label: 'Top Manga', icon: BookOpen },
-  { id: 'manhua', label: 'Top Manhua', icon: Sparkles },
+  { id: 'all', label: 'Semua Top' },
+  { id: 'manhwa', label: 'Top Manhwa' },
+  { id: 'manga', label: 'Top Manga' },
+  { id: 'manhua', label: 'Top Manhua' },
 ];
 
 export function TopComicsSection() {
@@ -98,23 +97,21 @@ export function TopComicsSection() {
         <span className="text-[11px] text-zinc-500">Paling Populer</span>
       </div>
 
-      {/* Filter Chips Bar */}
+      {/* Filter Chips Bar (Minimalist & Modern) */}
       <div className="flex gap-2 overflow-x-auto no-scrollbar py-0.5">
         {CATEGORIES.map(c => {
-          const Icon = c.icon;
           const isActive = activeCategory === c.id;
           return (
             <button
               key={c.id}
               onClick={() => handleCategoryChange(c.id)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 border transition-all ${
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold shrink-0 border transition-all ${
                 isActive
-                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm'
-                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/10'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-850'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{c.label}</span>
+              {c.label}
             </button>
           );
         })}
