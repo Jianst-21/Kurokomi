@@ -26,7 +26,7 @@ export default function HistoryPage() {
   return (
     <div className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3">
+      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md border-b border-zinc-800/80 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-blue-500" />

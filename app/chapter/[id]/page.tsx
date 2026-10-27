@@ -370,7 +370,7 @@ export default function ReaderPage() {
           onClick={handlePagedClick}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
-          className="relative flex-1 w-full h-[100dvh] flex items-center justify-center bg-black cursor-pointer select-none overflow-hidden"
+          className="relative flex-1 w-full h-[100dvh] flex items-center justify-center bg-black cursor-pointer select-none overflow-hidden touch-manipulation overscroll-none"
         >
           {pages[currentPageIndex] && (
             <ReaderImage
@@ -443,9 +443,9 @@ export default function ReaderPage() {
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="w-full max-w-xs h-full bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl"
+            className="w-full max-w-xs h-[100dvh] bg-zinc-950 border-l border-zinc-800 flex flex-col shadow-2xl"
           >
-            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+            <div className="flex items-center justify-between p-4 pt-[max(1rem,env(safe-area-inset-top))] border-b border-zinc-800">
               <span className="text-xs font-bold text-zinc-200">Pilih Chapter</span>
               <button
                 onClick={() => setIsDrawerOpen(false)}
@@ -455,7 +455,7 @@ export default function ReaderPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1.5 no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-1.5 no-scrollbar">
               {ascChapters.map(ch => {
                 const isCurrent = ch.id === chapterId;
                 return (

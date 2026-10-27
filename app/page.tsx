@@ -11,7 +11,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-zinc-950 pb-28 text-zinc-100 flex flex-col">
       {/* Top Header - Seamless without border */}
-      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 py-3">
+      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-extrabold text-white text-base shadow-md shadow-blue-600/30">

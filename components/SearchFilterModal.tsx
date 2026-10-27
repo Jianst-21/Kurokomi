@@ -49,7 +49,7 @@ export function SearchFilterModal({
     >
       <div
         onClick={e => e.stopPropagation()}
-        className="w-full max-w-md bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl max-h-[85vh] flex flex-col overflow-hidden shadow-2xl"
+        className="w-full max-w-md bg-zinc-900 border-t sm:border border-zinc-800 rounded-t-2xl sm:rounded-2xl max-h-[85dvh] flex flex-col overflow-hidden shadow-2xl"
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800">
@@ -166,7 +166,7 @@ export function SearchFilterModal({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-zinc-800 flex items-center gap-3 bg-zinc-900/95">
+        <div className="px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-zinc-800 flex items-center gap-3 bg-zinc-900/95">
           <button
             onClick={onReset}
             className="flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-750 text-xs font-semibold text-zinc-300 transition-colors"

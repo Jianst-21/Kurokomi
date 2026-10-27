@@ -99,7 +99,7 @@ export default function SearchPage() {
   return (
     <div className="min-h-screen bg-zinc-950 pb-24 text-zinc-100 flex flex-col">
       {/* Top Search Bar (Only 2 items: Search input on left, Filter icon button on right) */}
-      <header className="sticky top-0 z-30 bg-zinc-950 border-b border-zinc-850 px-4 py-3 shadow-md">
+      <header className="sticky top-0 z-30 bg-zinc-950 border-b border-zinc-850 px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 shadow-md">
         <div className="max-w-md mx-auto flex items-center gap-2">
           {/* Left: Search Input Box */}
           <div className="relative flex-1 flex items-center">

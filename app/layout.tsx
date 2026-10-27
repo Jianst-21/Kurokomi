@@ -4,15 +4,26 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Kurokomi - Baca Komik Bahasa Indonesia",
   description: "Web reader komik manga, manhwa, dan manhua terjemahan Bahasa Indonesia yang cepat, bersih, dan bebas iklan.",
+  applicationName: "Kurokomi",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Kurokomi",
   },
+  formatDetection: {
+    telephone: false,
+  },
   icons: {
-    icon: "/icons/icon-192.svg",
-    apple: "/icons/icon-192.svg",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
