@@ -233,3 +233,121 @@ export function importUserData(jsonString: string): { success: boolean; count: n
     return { success: false, count: 0, error: 'Gagal memproses file cadangan' };
   }
 }
+
+// ---------------------------------------------------------
+// Navigation & Pagination State Persistence (SessionStorage)
+// ---------------------------------------------------------
+
+export function getSavedLatestSectionState(): { type: 'manhwa' | 'manga' | 'manhua'; page: number } {
+  if (typeof window === 'undefined') return { type: 'manhwa', page: 1 };
+  try {
+    const raw = sessionStorage.getItem(LATEST_PAGE_KEY);
+    if (!raw) return { type: 'manhwa', page: 1 };
+    const parsed = JSON.parse(raw);
+    return {
+      type: ['manhwa', 'manga', 'manhua'].includes(parsed.type) ? parsed.type : 'manhwa',
+      page: typeof parsed.page === 'number' && parsed.page > 0 ? parsed.page : 1,
+    };
+  } catch {
+    return { type: 'manhwa', page: 1 };
+  }
+}
+
+export function saveLatestSectionState(type: 'manhwa' | 'manga' | 'manhua', page: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(LATEST_PAGE_KEY, JSON.stringify({ type, page }));
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedTopSectionState(): { category: string; page: number } {
+  if (typeof window === 'undefined') return { category: 'all', page: 1 };
+  try {
+    const raw = sessionStorage.getItem(TOP_PAGE_KEY);
+    if (!raw) return { category: 'all', page: 1 };
+    const parsed = JSON.parse(raw);
+    return {
+      category: parsed.category || 'all',
+      page: typeof parsed.page === 'number' && parsed.page > 0 ? parsed.page : 1,
+    };
+  } catch {
+    return { category: 'all', page: 1 };
+  }
+}
+
+export function saveTopSectionState(category: string, page: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(TOP_PAGE_KEY, JSON.stringify({ category, page }));
+  } catch {
+    // ignore
+  }
+}
+
+// ---------------------------------------------------------
+// Scroll Position Persistence (SessionStorage & LocalStorage)
+// ---------------------------------------------------------
+
+export function saveHomeScrollPosition(y: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(HOME_SCROLL_KEY, String(Math.max(0, Math.round(y))));
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedHomeScrollPosition(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const raw = sessionStorage.getItem(HOME_SCROLL_KEY);
+    return raw ? Number(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveChapterScrollPosition(chapterId: string, scrollY: number, pageIndex: number = 0): void {
+  if (!isBrowser() || !chapterId) return;
+  try {
+    const key = `${CHAPTER_SCROLL_PREFIX}${chapterId}`;
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        y: Math.max(0, Math.round(scrollY)),
+        pageIndex,
+        savedAt: Date.now(),
+      })
+    );
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedChapterScrollPosition(chapterId: string): { y: number; pageIndex: number } | null {
+  if (!isBrowser() || !chapterId) return null;
+  try {
+    const key = `${CHAPTER_SCROLL_PREFIX}${chapterId}`;
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    return {
+      y: typeof parsed.y === 'number' ? parsed.y : 0,
+      pageIndex: typeof parsed.pageIndex === 'number' ? parsed.pageIndex : 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function clearChapterScrollPosition(chapterId: string): void {
+  if (!isBrowser() || !chapterId) return;
+  try {
+    localStorage.removeItem(`${CHAPTER_SCROLL_PREFIX}${chapterId}`);
+  } catch {
+    // ignore
+  }
+}
+

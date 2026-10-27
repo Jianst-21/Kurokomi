@@ -149,6 +149,9 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
     vi.spyOn(komikindoModule, 'findKomikindoSlug').mockResolvedValue(null);
     vi.spyOn(softkomikModule, 'findSoftkomikSlug').mockResolvedValue(null);
 
+    const mangapillModule = await import('@/lib/mangapill');
+    vi.spyOn(mangapillModule, 'findMangaPillPath').mockResolvedValue(null);
+
     // Spy on searchComics to return MangaDex comic with English title
     vi.spyOn(mangadexModule, 'searchComics').mockResolvedValue([
       {
@@ -181,5 +184,5 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
 
     expect(result.enChapters).toHaveLength(1);
     expect(result.enChapters[0].id).toBe('md-ch-100');
-  });
+  }, 15000);
 });

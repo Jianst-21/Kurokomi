@@ -20,7 +20,7 @@ import {
   sortChapters,
 } from '@/lib/mangadex';
 import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
-import { saveHistory } from '@/lib/storage';
+import { saveHistory, saveChapterScrollPosition, getSavedChapterScrollPosition } from '@/lib/storage';
 import {
   ReaderMode,
   getPagedTouchZone,
@@ -154,13 +154,26 @@ export default function ReaderPage() {
       setError('Gagal memuat halaman chapter. Silakan periksa koneksi Anda.');
     } finally {
       setIsLoading(false);
-      window.scrollTo({ top: 0, behavior: 'instant' });
+      // Restore saved reading position if available
+      const saved = getSavedChapterScrollPosition(chapterId);
+      if (saved && saved.y > 0) {
+        setTimeout(() => {
+          window.scrollTo({ top: saved.y, behavior: 'instant' });
+        }, 100);
+      } else {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
     }
   };
 
   useEffect(() => {
     loadChapter();
-    setCurrentPageIndex(0);
+    const saved = getSavedChapterScrollPosition(chapterId);
+    if (saved && typeof saved.pageIndex === 'number' && saved.pageIndex > 0) {
+      setCurrentPageIndex(saved.pageIndex);
+    } else {
+      setCurrentPageIndex(0);
+    }
   }, [chapterId]);
 
   const isManga = comic?.type === 'manga';
@@ -189,6 +202,7 @@ export default function ReaderPage() {
       }
     } else {
       setCurrentPageIndex(next);
+      saveChapterScrollPosition(chapterId, 0, next);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
@@ -201,6 +215,7 @@ export default function ReaderPage() {
       }
     } else {
       setCurrentPageIndex(prev);
+      saveChapterScrollPosition(chapterId, 0, prev);
       window.scrollTo({ top: 0, behavior: 'instant' });
     }
   };
@@ -283,6 +298,10 @@ export default function ReaderPage() {
       if (Math.abs(currentScrollY - lastScrollY) > 10) {
         setHudVisible(false);
         lastScrollY = currentScrollY;
+      }
+      // Save scroll position for returning later or after browser close
+      if (currentScrollY > 50) {
+        saveChapterScrollPosition(chapterId, currentScrollY, currentPageIndex);
       }
       const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
       if (scrollHeight > 0) {

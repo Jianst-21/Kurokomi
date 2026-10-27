@@ -23,8 +23,13 @@ export function parseMangaPillSearchHtml(html: string): ComicCardItem[] {
     const coverUrl = imgMatch ? imgMatch[1] : '';
 
     const titleMatches = [...infoPart.matchAll(/<div[^>]*class="[^"]*(?:font-black|line-clamp-2)[^"]*"[^>]*>([\s\S]*?)<\/div>/gi)];
-    const primaryTitle = titleMatches[0] ? titleMatches[0][1].replace(/<[^>]+>/g, '').trim() : '';
-    const altTitle = titleMatches[1] ? titleMatches[1][1].replace(/<[^>]+>/g, '').trim() : undefined;
+    let primaryTitle = titleMatches[0] ? titleMatches[0][1].replace(/<[^>]+>/g, '').trim() : '';
+    let altTitle = titleMatches[1] ? titleMatches[1][1].replace(/<[^>]+>/g, '').trim() : undefined;
+
+    if (!primaryTitle) {
+      const fallbackTitleMatch = infoPart.match(/<a[^>]+href="\/manga\/[^"]+"[^>]*>([\s\S]*?)<\/a>/i);
+      primaryTitle = fallbackTitleMatch ? fallbackTitleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+    }
 
     if (!primaryTitle) continue;
 

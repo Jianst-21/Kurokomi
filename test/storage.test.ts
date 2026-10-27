@@ -13,6 +13,15 @@ import {
   getReadChapterIds,
   exportUserData,
   importUserData,
+  getSavedLatestSectionState,
+  saveLatestSectionState,
+  getSavedTopSectionState,
+  saveTopSectionState,
+  saveHomeScrollPosition,
+  getSavedHomeScrollPosition,
+  saveChapterScrollPosition,
+  getSavedChapterScrollPosition,
+  clearChapterScrollPosition,
 } from '@/lib/storage';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 
@@ -188,5 +197,27 @@ describe('LocalStorage Helper', () => {
     const emptyObjRes = importUserData('{}');
     expect(emptyObjRes.success).toBe(true);
     expect(emptyObjRes.count).toBe(0);
+  });
+
+  it('persists and restores latest section, top section, and chapter scroll positions', () => {
+    // 1. Latest section pagination & type
+    saveLatestSectionState('manga', 3);
+    expect(getSavedLatestSectionState()).toEqual({ type: 'manga', page: 3 });
+
+    // 2. Top section pagination & category
+    saveTopSectionState('manhua', 2);
+    expect(getSavedTopSectionState()).toEqual({ category: 'manhua', page: 2 });
+
+    // 3. Home scroll position
+    saveHomeScrollPosition(450);
+    expect(getSavedHomeScrollPosition()).toBe(450);
+
+    // 4. Chapter scroll position
+    saveChapterScrollPosition('chapter-abc', 1250, 4);
+    const savedScroll = getSavedChapterScrollPosition('chapter-abc');
+    expect(savedScroll).toEqual({ y: 1250, pageIndex: 4 });
+
+    clearChapterScrollPosition('chapter-abc');
+    expect(getSavedChapterScrollPosition('chapter-abc')).toBeNull();
   });
 });

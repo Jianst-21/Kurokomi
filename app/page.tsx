@@ -1,14 +1,41 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { DesktopNavbar } from '@/components/DesktopNavbar';
 import { LatestUpdatesSection } from '@/components/LatestUpdatesSection';
 import { TopComicsSection } from '@/components/TopComicsSection';
+import { getSavedHomeScrollPosition, saveHomeScrollPosition } from '@/lib/storage';
 
 export default function HomePage() {
+  useEffect(() => {
+    // Restore home scroll position
+    const savedY = getSavedHomeScrollPosition();
+    if (savedY > 0) {
+      setTimeout(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' });
+      }, 50);
+    }
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          saveHomeScrollPosition(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-zinc-950 pb-28 md:pb-12 text-zinc-100 flex flex-col">
       {/* Desktop Navbar (md+) */}

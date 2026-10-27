@@ -28,6 +28,8 @@ vi.mock('@/lib/aggregator', () => ({
 
 vi.mock('@/lib/storage', () => ({
   saveHistory: vi.fn(),
+  getSavedChapterScrollPosition: vi.fn().mockReturnValue(null),
+  saveChapterScrollPosition: vi.fn(),
 }));
 
 describe('Reader Desktop Constraints', () => {

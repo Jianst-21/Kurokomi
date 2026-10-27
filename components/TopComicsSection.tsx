@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { RefreshCw, AlertCircle, BookOpen } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchTopComics } from '@/lib/mangadex';
+import { getSavedTopSectionState, saveTopSectionState } from '@/lib/storage';
 import { CleanPagination } from './CleanPagination';
 
 const CATEGORIES: Array<{
@@ -73,8 +74,9 @@ function TopComicCover({
 }
 
 export function TopComicsSection() {
-  const [activeCategory, setActiveCategory] = useState<ComicType>('all');
-  const [page, setPage] = useState<number>(1);
+  const initial = getSavedTopSectionState();
+  const [activeCategory, setActiveCategory] = useState<ComicType>(initial.category as ComicType);
+  const [page, setPage] = useState<number>(initial.page);
   const [comics, setComics] = useState<ComicCardItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +84,10 @@ export function TopComicsSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const cacheRef = useRef<Map<string, ComicCardItem[]>>(new Map());
   const PAGE_LIMIT = 15;
+
+  useEffect(() => {
+    saveTopSectionState(activeCategory, page);
+  }, [activeCategory, page]);
 
   const scrollToTop = () => {
     if (sectionRef.current && typeof window !== 'undefined') {

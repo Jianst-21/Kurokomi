@@ -391,6 +391,8 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
   const slugCandidates = [slug];
   if (!slug.endsWith('-bahasa-indonesia')) {
     slugCandidates.push(`${slug}-bahasa-indonesia`);
+  } else {
+    slugCandidates.push(slug.replace(/-bahasa-indonesia$/, ''));
   }
 
   const chapterCandidates: string[] = [chapter];

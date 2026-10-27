@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchLatestComicsByType } from '@/lib/mangadex';
+import { getSavedLatestSectionState, saveLatestSectionState } from '@/lib/storage';
 import { HorizontalComicCard } from './HorizontalComicCard';
 import { CleanPagination } from './CleanPagination';
 
@@ -14,8 +15,9 @@ const TYPES: Array<{ id: 'manhwa' | 'manga' | 'manhua'; label: string }> = [
 ];
 
 export function LatestUpdatesSection() {
-  const [activeType, setActiveType] = useState<'manhwa' | 'manga' | 'manhua'>('manhwa');
-  const [page, setPage] = useState<number>(1);
+  const initial = getSavedLatestSectionState();
+  const [activeType, setActiveType] = useState<'manhwa' | 'manga' | 'manhua'>(initial.type);
+  const [page, setPage] = useState<number>(initial.page);
   const [comics, setComics] = useState<ComicCardItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +25,10 @@ export function LatestUpdatesSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const cacheRef = useRef<Map<string, ComicCardItem[]>>(new Map());
   const PAGE_LIMIT = 10;
+
+  useEffect(() => {
+    saveLatestSectionState(activeType, page);
+  }, [activeType, page]);
 
   const scrollToTop = () => {
     if (sectionRef.current && typeof window !== 'undefined') {
