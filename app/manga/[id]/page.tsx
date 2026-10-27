@@ -21,6 +21,7 @@ import { toggleFavorite, isFavorite, getComicLastRead } from '@/lib/storage';
 import { filterSafeGenres } from '@/lib/security';
 import { ChapterList } from '@/components/ChapterList';
 import { BottomNav } from '@/components/BottomNav';
+import { DesktopNavbar } from '@/components/DesktopNavbar';
 
 function DetailCoverImage({ coverUrl, title }: { coverUrl: string; title: string }) {
   const [imgSrc, setImgSrc] = useState(coverUrl);
@@ -147,54 +148,61 @@ export default function MangaDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
-        <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between border-b border-zinc-900">
+        <DesktopNavbar />
+
+        <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between border-b border-zinc-900 md:hidden">
           <div className="w-8 h-8 rounded-lg bg-zinc-900 animate-pulse" />
           <div className="w-32 h-4 rounded bg-zinc-900 animate-pulse" />
           <div className="w-8 h-8 rounded-lg bg-zinc-900 animate-pulse" />
         </header>
 
-        <main className="max-w-md mx-auto w-full px-4 pt-4 flex flex-col gap-5 animate-pulse">
-          {/* Cover & metadata skeleton */}
-          <div className="flex gap-4 items-start">
-            <div className="w-28 shrink-0 aspect-[3/4] rounded-xl bg-zinc-900 border border-zinc-850" />
-            <div className="flex flex-col flex-1 gap-2.5 py-1">
-              <div className="h-5 bg-zinc-800 rounded w-5/6" />
-              <div className="h-3.5 bg-zinc-850 rounded w-1/2" />
-              <div className="flex gap-1.5 mt-1">
-                <div className="h-5 bg-zinc-900 rounded w-14" />
-                <div className="h-5 bg-zinc-900 rounded w-16" />
+        <main className="max-w-6xl mx-auto w-full px-4 pt-4 md:pt-6 flex flex-col gap-5 animate-pulse">
+          {/* Skeleton grid on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 md:gap-8 items-start">
+            {/* Left column skeleton */}
+            <div className="flex flex-col gap-4">
+              <div className="w-full aspect-[3/4] rounded-2xl bg-zinc-900 border border-zinc-850" />
+              <div className="h-11 w-full bg-zinc-900 rounded-xl" />
+              <div className="h-10 w-full bg-zinc-900 rounded-xl" />
+            </div>
+
+            {/* Right column skeleton */}
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-2.5">
+                <div className="h-7 bg-zinc-800 rounded w-2/3" />
+                <div className="h-4 bg-zinc-850 rounded w-1/3" />
+                <div className="flex gap-2 mt-1">
+                  <div className="h-6 bg-zinc-900 rounded w-16" />
+                  <div className="h-6 bg-zinc-900 rounded w-20" />
+                </div>
               </div>
-              <div className="h-3 bg-zinc-900 rounded w-2/3 mt-1" />
+
+              {/* Genres skeleton */}
+              <div className="flex gap-2 items-center">
+                <div className="w-12 h-3 bg-zinc-900 rounded" />
+                <div className="flex gap-1.5">
+                  <div className="w-14 h-5 bg-zinc-900 rounded-md" />
+                  <div className="w-16 h-5 bg-zinc-900 rounded-md" />
+                  <div className="w-12 h-5 bg-zinc-900 rounded-md" />
+                </div>
+              </div>
+
+              {/* Synopsis skeleton */}
+              <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-850 flex flex-col gap-2">
+                <div className="w-20 h-4 bg-zinc-800 rounded" />
+                <div className="w-full h-3 bg-zinc-900 rounded" />
+                <div className="w-5/6 h-3 bg-zinc-900 rounded" />
+                <div className="w-3/4 h-3 bg-zinc-900 rounded" />
+              </div>
+
+              {/* Chapter list skeleton */}
+              <div className="flex flex-col gap-2 mt-2">
+                <div className="w-28 h-4 bg-zinc-800 rounded mb-1" />
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="h-12 w-full bg-zinc-900/50 rounded-xl border border-zinc-850/60" />
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Action button skeleton */}
-          <div className="h-11 w-full bg-zinc-900 rounded-xl" />
-
-          {/* Genres skeleton */}
-          <div className="flex gap-2 items-center">
-            <div className="w-12 h-3 bg-zinc-900 rounded" />
-            <div className="flex gap-1.5">
-              <div className="w-14 h-5 bg-zinc-900 rounded-md" />
-              <div className="w-16 h-5 bg-zinc-900 rounded-md" />
-              <div className="w-12 h-5 bg-zinc-900 rounded-md" />
-            </div>
-          </div>
-
-          {/* Synopsis skeleton */}
-          <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-850 flex flex-col gap-2">
-            <div className="w-16 h-3 bg-zinc-800 rounded" />
-            <div className="w-full h-3 bg-zinc-900 rounded" />
-            <div className="w-5/6 h-3 bg-zinc-900 rounded" />
-            <div className="w-3/4 h-3 bg-zinc-900 rounded" />
-          </div>
-
-          {/* Chapter list skeleton */}
-          <div className="flex flex-col gap-2 mt-2">
-            <div className="w-28 h-4 bg-zinc-800 rounded mb-1" />
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 w-full bg-zinc-900/50 rounded-xl border border-zinc-850/60" />
-            ))}
           </div>
         </main>
       </div>
@@ -231,8 +239,11 @@ export default function MangaDetailPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
-      {/* Top Floating App Bar */}
-      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between">
+      {/* Desktop Navigation */}
+      <DesktopNavbar />
+
+      {/* Top Floating App Bar (Mobile Only) */}
+      <header className="sticky top-0 z-30 bg-zinc-950/95 backdrop-blur-md px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 flex items-center justify-between md:hidden">
         <button
           onClick={handleBack}
           aria-label="Kembali"
@@ -257,179 +268,266 @@ export default function MangaDetailPage() {
       </header>
 
       {/* Main Container */}
-      <main className="max-w-md mx-auto w-full px-4 pt-4 flex flex-col gap-5">
-        {/* Comic Presentation Card */}
-        <div className="flex gap-4 items-start">
-          {/* Cover Image */}
-          <div className="w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-lg relative">
-            <DetailCoverImage coverUrl={comic.coverUrl} title={comic.title} />
-          </div>
+      <main className="max-w-6xl mx-auto w-full px-4 pt-4 md:pt-6">
+        <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 md:gap-8 items-start">
+          {/* Left Column (Desktop) / Top Card Area (Mobile) */}
+          <div className="flex flex-col gap-4">
+            {/* Mobile layout for comic card presentation */}
+            <div className="flex md:hidden gap-4 items-start">
+              <div className="w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-lg relative">
+                <DetailCoverImage coverUrl={comic.coverUrl} title={comic.title} />
+              </div>
+              <div className="flex flex-col flex-1 min-w-0 gap-1.5">
+                <h2 className="text-base font-bold text-zinc-100 leading-snug">
+                  {comic.title}
+                </h2>
+                {comic.altTitles && comic.altTitles.filter(t => t !== comic.title).length > 0 && (
+                  <p className="text-[11px] text-zinc-400 line-clamp-2 italic">
+                    <span className="text-zinc-500 font-medium not-italic">Alt: </span>
+                    {comic.altTitles.filter(t => t !== comic.title).slice(0, 3).join(', ')}
+                  </p>
+                )}
 
-          {/* Details Column */}
-          <div className="flex flex-col flex-1 min-w-0 gap-1.5">
-            <h2 className="text-base font-bold text-zinc-100 leading-snug">
-              {comic.title}
-            </h2>
-            {comic.altTitles && comic.altTitles.filter(t => t !== comic.title).length > 0 && (
-              <p className="text-[11px] text-zinc-400 line-clamp-2 italic">
-                <span className="text-zinc-500 font-medium not-italic">Alt: </span>
-                {comic.altTitles.filter(t => t !== comic.title).slice(0, 3).join(', ')}
-              </p>
-            )}
+                {/* Type & Status Badges */}
+                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                  <span
+                    className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
+                      comic.type === 'manhwa'
+                        ? 'bg-blue-950 text-blue-400 border-blue-900'
+                        : comic.type === 'manhua'
+                        ? 'bg-amber-950 text-amber-400 border-amber-900'
+                        : comic.type === 'manga'
+                        ? 'bg-rose-950 text-rose-400 border-rose-900'
+                        : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                    }`}
+                  >
+                    {comic.type}
+                  </span>
+                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+                    {comic.status === 'completed' ? 'Tamat' : 'Ongoing'}
+                  </span>
+                  {comic.isFullColor && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1">
+                      <Palette className="w-2.5 h-2.5" />
+                      <span>Warna</span>
+                    </span>
+                  )}
+                </div>
 
-            {/* Type & Status Badges */}
-            <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-              <span
-                className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
-                  comic.type === 'manhwa'
-                    ? 'bg-blue-950 text-blue-400 border-blue-900'
-                    : comic.type === 'manhua'
-                    ? 'bg-amber-950 text-amber-400 border-amber-900'
-                    : comic.type === 'manga'
-                    ? 'bg-rose-950 text-rose-400 border-rose-900'
-                    : 'bg-zinc-900 text-zinc-400 border-zinc-800'
-                }`}
-              >
-                {comic.type}
-              </span>
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
-                {comic.status === 'completed' ? 'Tamat' : 'Ongoing'}
-              </span>
-              {comic.isFullColor && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1">
-                  <Palette className="w-2.5 h-2.5" />
-                  <span>Warna</span>
-                </span>
-              )}
+                {/* Author / Year */}
+                <div className="flex flex-col gap-0.5 text-[11px] text-zinc-400 mt-1">
+                  {comic.author && (
+                    <div className="flex items-center gap-1 line-clamp-1">
+                      <User className="w-3 h-3 text-zinc-500 shrink-0" />
+                      <span>{comic.author}</span>
+                    </div>
+                  )}
+                  {comic.year && (
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-zinc-500 shrink-0" />
+                      <span>{comic.year}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Author / Year */}
-            <div className="flex flex-col gap-0.5 text-[11px] text-zinc-400 mt-1">
+            {/* Desktop Cover Poster */}
+            <div className="hidden md:block w-full aspect-[3/4] rounded-2xl overflow-hidden bg-zinc-900 border border-zinc-800 shadow-xl relative">
+              <DetailCoverImage coverUrl={comic.coverUrl} title={comic.title} />
+            </div>
+
+            {/* Action Buttons: Mulai/Lanjut Baca & Favorit */}
+            <div className="flex flex-col gap-2.5">
+              {lastReadChapter ? (
+                <Link
+                  href={`/chapter/${lastReadChapter.chapterId}?mangaId=${comic.id}`}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Lanjut Baca Chapter {lastReadChapter.chapterNumber}</span>
+                </Link>
+              ) : firstChapter ? (
+                <Link
+                  href={`/chapter/${firstChapter.id}?mangaId=${comic.id}`}
+                  className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  <span>Mulai Baca Chapter {firstChapter.chapter}</span>
+                </Link>
+              ) : null}
+
+              {/* Desktop Favorite Button */}
+              <button
+                onClick={handleToggleFavorite}
+                className={`hidden md:flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border text-xs font-semibold transition-all ${
+                  favorited
+                    ? 'bg-blue-600/20 border-blue-500/50 text-blue-300 hover:bg-blue-600/30'
+                    : 'bg-zinc-900 border-zinc-800 text-zinc-300 hover:bg-zinc-850 hover:text-white'
+                }`}
+              >
+                <Bookmark className={`w-4 h-4 ${favorited ? 'fill-current text-blue-400' : ''}`} />
+                <span>{favorited ? 'Tersimpan di Favorit' : 'Tambah ke Favorit'}</span>
+              </button>
+            </div>
+
+            {/* Desktop Left Column Metadata Badges */}
+            <div className="hidden md:flex flex-col gap-3 p-4 rounded-xl bg-zinc-900/40 border border-zinc-850 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 font-medium">Status</span>
+                <span className="font-semibold text-zinc-300">
+                  {comic.status === 'completed' ? 'Tamat' : 'Ongoing'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 font-medium">Tipe</span>
+                <span
+                  className={`uppercase font-bold text-[11px] px-2 py-0.5 rounded border ${
+                    comic.type === 'manhwa'
+                      ? 'bg-blue-950 text-blue-400 border-blue-900'
+                      : comic.type === 'manhua'
+                      ? 'bg-amber-950 text-amber-400 border-amber-900'
+                      : comic.type === 'manga'
+                      ? 'bg-rose-950 text-rose-400 border-rose-900'
+                      : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                  }`}
+                >
+                  {comic.type}
+                </span>
+              </div>
               {comic.author && (
-                <div className="flex items-center gap-1 line-clamp-1">
-                  <User className="w-3 h-3 text-zinc-500 shrink-0" />
-                  <span>{comic.author}</span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-zinc-500 font-medium shrink-0">Author</span>
+                  <span className="font-medium text-zinc-300 text-right truncate">
+                    {comic.author}
+                  </span>
                 </div>
               )}
               {comic.year && (
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-zinc-500 shrink-0" />
-                  <span>{comic.year}</span>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500 font-medium">Rilis</span>
+                  <span className="font-medium text-zinc-300">{comic.year}</span>
+                </div>
+              )}
+              {comic.isFullColor && (
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500 font-medium">Format</span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center gap-1">
+                    <Palette className="w-2.5 h-2.5" />
+                    <span>Warna</span>
+                  </span>
                 </div>
               )}
             </div>
           </div>
-        </div>
 
-        {/* Action Button: Lanjut Baca / Mulai Baca */}
-        {lastReadChapter ? (
-          <Link
-            href={`/chapter/${lastReadChapter.chapterId}?mangaId=${comic.id}`}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Lanjut Baca Chapter {lastReadChapter.chapterNumber}</span>
-          </Link>
-        ) : firstChapter ? (
-          <Link
-            href={`/chapter/${firstChapter.id}?mangaId=${comic.id}`}
-            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Mulai Baca Chapter {firstChapter.chapter}</span>
-          </Link>
-        ) : null}
-
-        {/* Genres Chips */}
-        {comic.genres && filterSafeGenres(comic.genres).length > 0 && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[11px] font-semibold text-zinc-400">Genre:</span>
-            <div className="flex flex-wrap gap-1.5">
-              {filterSafeGenres(comic.genres).map(g => (
-                <Link
-                  key={g}
-                  href={`/search?genre=${encodeURIComponent(g.toLowerCase())}`}
-                  className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-                >
-                  {g}
-                </Link>
-              ))}
+          {/* Right Column (Desktop) */}
+          <div className="flex flex-col gap-5">
+            {/* Desktop Header Info */}
+            <div className="hidden md:flex flex-col gap-2">
+              <h1 className="text-2xl lg:text-3xl font-extrabold text-zinc-100 tracking-tight leading-tight">
+                {comic.title}
+              </h1>
+              {comic.altTitles && comic.altTitles.filter(t => t !== comic.title).length > 0 && (
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  <span className="text-zinc-500 font-medium">Judul alternatif: </span>
+                  {comic.altTitles.filter(t => t !== comic.title).join(', ')}
+                </p>
+              )}
             </div>
-          </div>
-        )}
 
-        {/* Synopsis Section */}
-        {comic.description && (
-          <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
-            <span className="text-xs font-bold text-zinc-300">Sinopsis</span>
-            <p
-              className={`text-xs text-zinc-400 leading-relaxed ${
-                synopsisExpanded ? '' : 'line-clamp-3'
-              }`}
-            >
-              {comic.description}
-            </p>
-            {comic.description.length > 150 && (
-              <button
-                onClick={() => setSynopsisExpanded(!synopsisExpanded)}
-                className="text-[11px] text-blue-400 hover:text-blue-300 font-medium self-start mt-0.5"
-              >
-                {synopsisExpanded ? 'Sembunyikan' : 'Baca Selengkapnya...'}
-              </button>
+            {/* Genres Chips */}
+            {comic.genres && filterSafeGenres(comic.genres).length > 0 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-semibold text-zinc-400">Genre:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {filterSafeGenres(comic.genres).map(g => (
+                    <Link
+                      key={g}
+                      href={`/search?genre=${encodeURIComponent(g.toLowerCase())}`}
+                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                    >
+                      {g}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             )}
-          </div>
-        )}
 
-        {/* Language Selection Tabs */}
-        <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 rounded-xl border border-zinc-800 self-start">
-          <button
-            onClick={() => setSelectedLang('id')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              selectedLang === 'id'
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Languages className="w-3.5 h-3.5" />
-            <span>Indonesia {idChapters.length > 0 ? `(${idChapters.length})` : ''}</span>
-          </button>
-          <button
-            onClick={() => setSelectedLang('en')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              selectedLang === 'en'
-                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Languages className="w-3.5 h-3.5" />
-            <span>English {enChapters.length > 0 ? `(${enChapters.length})` : ''}</span>
-          </button>
-        </div>
+            {/* Synopsis Section */}
+            {comic.description && (
+              <div className="flex flex-col gap-1.5 p-3.5 md:p-4 rounded-xl bg-zinc-900/60 border border-zinc-800/80">
+                <span className="text-xs font-bold text-zinc-300">Sinopsis</span>
+                <p
+                  className={`text-xs text-zinc-400 leading-relaxed ${
+                    synopsisExpanded ? '' : 'line-clamp-3 md:line-clamp-4'
+                  }`}
+                >
+                  {comic.description}
+                </p>
+                {comic.description.length > 150 && (
+                  <button
+                    onClick={() => setSynopsisExpanded(!synopsisExpanded)}
+                    className="text-[11px] text-blue-400 hover:text-blue-300 font-medium self-start mt-0.5"
+                  >
+                    {synopsisExpanded ? 'Sembunyikan' : 'Baca Selengkapnya...'}
+                  </button>
+                )}
+              </div>
+            )}
 
-        {/* Chapter List Section */}
-        {activeChapters.length > 0 ? (
-          <ChapterList
-            mangaId={comic.id}
-            chapters={activeChapters}
-            lastReadChapterId={lastReadChapter?.chapterId}
-          />
-        ) : (
-          <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center flex flex-col items-center gap-2">
-            <p className="text-xs text-zinc-400">
-              {selectedLang === 'id'
-                ? 'Belum ada chapter Bahasa Indonesia untuk judul ini.'
-                : 'Belum ada chapter Bahasa Inggris untuk judul ini.'}
-            </p>
-            {selectedLang === 'id' && enChapters.length > 0 && (
+            {/* Language Selection Tabs */}
+            <div className="flex items-center gap-1.5 p-1 bg-zinc-900/90 rounded-xl border border-zinc-800 self-start">
+              <button
+                onClick={() => setSelectedLang('id')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  selectedLang === 'id'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Languages className="w-3.5 h-3.5" />
+                <span>Indonesia {idChapters.length > 0 ? `(${idChapters.length})` : ''}</span>
+              </button>
               <button
                 onClick={() => setSelectedLang('en')}
-                className="mt-1 text-xs text-blue-400 hover:underline font-semibold"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  selectedLang === 'en'
+                    ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
               >
-                Beralih ke English ({enChapters.length} chapter tersedia)
+                <Languages className="w-3.5 h-3.5" />
+                <span>English {enChapters.length > 0 ? `(${enChapters.length})` : ''}</span>
               </button>
+            </div>
+
+            {/* Chapter List Section */}
+            {activeChapters.length > 0 ? (
+              <ChapterList
+                mangaId={comic.id}
+                chapters={activeChapters}
+                lastReadChapterId={lastReadChapter?.chapterId}
+              />
+            ) : (
+              <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center flex flex-col items-center gap-2">
+                <p className="text-xs text-zinc-400">
+                  {selectedLang === 'id'
+                    ? 'Belum ada chapter Bahasa Indonesia untuk judul ini.'
+                    : 'Belum ada chapter Bahasa Inggris untuk judul ini.'}
+                </p>
+                {selectedLang === 'id' && enChapters.length > 0 && (
+                  <button
+                    onClick={() => setSelectedLang('en')}
+                    className="mt-1 text-xs text-blue-400 hover:underline font-semibold"
+                  >
+                    Beralih ke English ({enChapters.length} chapter tersedia)
+                  </button>
+                )}
+              </div>
             )}
           </div>
-        )}
+        </div>
       </main>
 
       {/* Persistent Bottom Navigation (Home, Search, Favorit, History) */}
