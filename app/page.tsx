@@ -7,33 +7,13 @@ import { BottomNav } from '@/components/BottomNav';
 import { DesktopNavbar } from '@/components/DesktopNavbar';
 import { LatestUpdatesSection } from '@/components/LatestUpdatesSection';
 import { TopComicsSection } from '@/components/TopComicsSection';
-import { getSavedHomeScrollPosition, saveHomeScrollPosition } from '@/lib/storage';
 
 export default function HomePage() {
   useEffect(() => {
-    // Restore home scroll position
-    const savedY = getSavedHomeScrollPosition();
-    if (savedY > 0) {
-      setTimeout(() => {
-        window.scrollTo({ top: savedY, behavior: 'instant' });
-      }, 50);
+    // Enable browser native scroll restoration to avoid synthetic scroll jumps during initial load
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'auto';
     }
-
-    let ticking = false;
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          saveHomeScrollPosition(window.scrollY);
-          ticking = false;
-        });
-        ticking = true;
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
   }, []);
 
   return (
