@@ -31,12 +31,11 @@ export async function GET(req: NextRequest) {
       referer = 'https://mangapill.com/';
     }
 
+    // Whitelisted crawler user-agents bypass Cloudflare datacenter bot challenges
     const upstreamHeaders: Record<string, string> = {
-      'User-Agent':
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
       'Referer': referer,
       'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-      'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
     };
 
     let res = await fetch(urlParam, {
