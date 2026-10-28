@@ -69,8 +69,10 @@ export async function GET(req: NextRequest) {
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
+      const titleMatch = errBody.match(/<title>(.*?)<\/title>/i);
+      const title = titleMatch ? titleMatch[1] : '';
       return NextResponse.json(
-        { error: `Gagal mengambil gambar: ${res.status}`, detail: errBody.substring(0, 300) },
+        { error: `Gagal mengambil gambar: ${res.status}`, title, snippet: errBody.replace(/<[^>]+>/g, ' ').substring(0, 300).trim() },
         { status: res.status }
       );
     }
