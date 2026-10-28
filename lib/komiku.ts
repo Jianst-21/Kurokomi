@@ -101,6 +101,7 @@ export function parseKomikuSearchResults(html: string): ComicCardItem[] {
       coverUrl,
       type,
       isFullColor: false,
+      source: 'komiku',
     });
   }
 
@@ -182,6 +183,7 @@ export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
       updatedAt,
       genres: filterSafeGenres(genres),
       isFullColor,
+      source: 'komiku',
     });
   }
 

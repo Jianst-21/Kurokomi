@@ -11,6 +11,7 @@ export interface ComicCardItem {
   updatedAt?: string;
   isFullColor?: boolean;
   genres?: string[];
+  source?: 'komikindo' | 'softkomik' | 'komiku' | 'mangadex';
 }
 
 export interface ComicDetail {

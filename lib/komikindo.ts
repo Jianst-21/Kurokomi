@@ -58,6 +58,7 @@ export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
       coverUrl,
       type,
       isFullColor: false,
+      source: 'komikindo',
     });
   }
 
@@ -133,6 +134,7 @@ export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
       latestChapter,
       updatedAt,
       isFullColor,
+      source: 'komikindo',
     });
   }
 

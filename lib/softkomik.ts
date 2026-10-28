@@ -132,6 +132,7 @@ export function mapSoftkomikItemToCard(item: SoftkomikRawItem): ComicCardItem {
     updatedAt: formatTimeAgo(item.updated_at),
     genres: filterSafeGenres(item.Genre || []),
     isFullColor,
+    source: 'softkomik',
   };
 }
 
