@@ -59,8 +59,8 @@ export default function ReaderPage() {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
-  // Progressive Windowed Loading (Load current + 4 ahead buffer)
-  const [maxLoadedIndex, setMaxLoadedIndex] = useState<number>(4);
+  // Progressive Windowed Loading (Load current + 2 ahead)
+  const [maxLoadedIndex, setMaxLoadedIndex] = useState<number>(2);
   const imageContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Global Image Retry for Offline -> Online Recovery
@@ -314,43 +314,13 @@ export default function ReaderPage() {
     };
   }, [isDrawerOpen]);
 
-  // IntersectionObserver & Scroll-based calculation for windowed progressive image loading
+  // IntersectionObserver for windowed progressive image loading (Current + 2 ahead)
   useEffect(() => {
     if (pages.length === 0 || typeof window === 'undefined') return;
 
-    // Check visible elements immediately and on scroll
-    const updateVisibleImages = () => {
-      const windowHeight = window.innerHeight || 800;
-      let highestVisible = -1;
-
-      const elements = imageContainerRefs.current;
-      for (let i = 0; i < elements.length; i++) {
-        const el = elements[i];
-        if (el) {
-          const rect = el.getBoundingClientRect();
-          // Element is in or near viewport (within 1000px ahead)
-          if (rect.bottom >= -300 && rect.top <= windowHeight + 1000) {
-            if (i > highestVisible) {
-              highestVisible = i;
-            }
-          }
-        }
-      }
-
-      if (highestVisible !== -1) {
-        setMaxLoadedIndex((prev) => Math.max(prev, highestVisible + 4));
-      }
-    };
-
-    // Run once after DOM paint
-    const initialTimer = setTimeout(updateVisibleImages, 100);
-
     if (!('IntersectionObserver' in window)) {
-      window.addEventListener('scroll', updateVisibleImages, { passive: true });
-      return () => {
-        clearTimeout(initialTimer);
-        window.removeEventListener('scroll', updateVisibleImages);
-      };
+      setMaxLoadedIndex(pages.length);
+      return;
     }
 
     const observer = new IntersectionObserver(
@@ -366,13 +336,13 @@ export default function ReaderPage() {
         });
 
         if (highestVisible !== -1) {
-          setMaxLoadedIndex((prev) => Math.max(prev, highestVisible + 4));
+          setMaxLoadedIndex((prev) => Math.max(prev, highestVisible + 2));
         }
       },
       {
         root: null,
-        rootMargin: '800px 0px', // Pre-trigger 800px ahead for super smooth continuous reading
-        threshold: 0,
+        rootMargin: '300px 0px', // Pre-trigger 300px before appearing
+        threshold: 0.01,
       }
     );
 
@@ -381,18 +351,14 @@ export default function ReaderPage() {
       if (el) observer.observe(el);
     });
 
-    window.addEventListener('scroll', updateVisibleImages, { passive: true });
-
     return () => {
-      clearTimeout(initialTimer);
       observer.disconnect();
-      window.removeEventListener('scroll', updateVisibleImages);
     };
-  }, [pages]);
+  }, [pages.length]);
 
   // Reset or initialize maxLoadedIndex on chapter switch
   useEffect(() => {
-    setMaxLoadedIndex(4);
+    setMaxLoadedIndex(2);
   }, [chapterId]);
   useEffect(() => {
     if (!isLoading && pages.length > 0) {
