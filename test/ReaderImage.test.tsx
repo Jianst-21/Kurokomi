@@ -42,4 +42,17 @@ describe('ReaderImage retry functionality', () => {
     fireEvent.click(reloadAllBtn);
     expect(handleRetryAll).toHaveBeenCalledTimes(1);
   });
+
+  it('renders a placeholder skeleton and does not render img tag when shouldLoad is false', () => {
+    render(
+      <ReaderImage
+        src="https://example.com/ch1-page10.jpg"
+        pageIndex={9}
+        shouldLoad={false}
+      />
+    );
+
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTestId('reader-image-placeholder-9')).toBeInTheDocument();
+  });
 });
