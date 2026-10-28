@@ -161,6 +161,140 @@ function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): C
   };
 }
 
+function parseChapterNumber(chStr?: string): number {
+  if (!chStr) return 0;
+  const clean = chStr.replace(/[^0-9.]/g, '');
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+}
+
+export function mergeLatestComics(
+  sources: ComicCardItem[][],
+  userFavorites: ComicCardItem[] = []
+): ComicCardItem[] {
+  const allItems = sources.flat().filter(isSafeContent);
+
+  // Group by alias
+  interface Cluster {
+    item: ComicCardItem;
+    aliases: Set<string>;
+  }
+
+  const clusters: Cluster[] = [];
+
+  for (const c of allItems) {
+    const rawAliases = [c.title, c.altTitle, ...(c.altTitles || [])].filter(Boolean) as string[];
+    const slugAlias = getSlugAlias(c.id);
+    if (slugAlias) rawAliases.push(slugAlias);
+
+    const normAliases = new Set<string>();
+    for (const a of rawAliases) {
+      const norm = normalizeTitle(a);
+      if (norm) normAliases.add(norm);
+      const clean = cleanComicAlias(a);
+      if (clean) normAliases.add(clean);
+    }
+
+    const matchingClusters: Cluster[] = [];
+    const nonMatchingClusters: Cluster[] = [];
+
+    for (const cluster of clusters) {
+      let matched = false;
+      for (const alias of normAliases) {
+        if (cluster.aliases.has(alias)) {
+          matched = true;
+          break;
+        }
+      }
+      if (matched) {
+        matchingClusters.push(cluster);
+      } else {
+        nonMatchingClusters.push(cluster);
+      }
+    }
+
+    if (matchingClusters.length === 0) {
+      clusters.push({
+        item: { ...c },
+        aliases: normAliases,
+      });
+    } else {
+      let base = matchingClusters[0].item;
+      const combinedAliases = new Set<string>(normAliases);
+      matchingClusters.forEach(mc => mc.aliases.forEach(a => combinedAliases.add(a)));
+
+      // Compare base vs current item 'c'
+      const baseChNum = parseChapterNumber(base.latestChapter);
+      const incomingChNum = parseChapterNumber(c.latestChapter);
+      const baseDateScore = parseDateScore(base.updatedAt);
+      const incomingDateScore = parseDateScore(c.updatedAt);
+
+      // We want to pick whichever has the higher chapter or newer update
+      let winner = base;
+      let loser = c;
+
+      if (incomingChNum > baseChNum) {
+        winner = c;
+        loser = base;
+      } else if (incomingChNum === baseChNum && incomingDateScore > baseDateScore) {
+        winner = c;
+        loser = base;
+      }
+
+      // Title cleanup: avoid titles ending with "Sub Indo" or raw hyphens
+      let cleanTitle = winner.title;
+      if (cleanTitle.toLowerCase().includes('sub indo') && loser.title && !loser.title.toLowerCase().includes('sub indo')) {
+        cleanTitle = loser.title;
+      }
+
+      const mergedItem: ComicCardItem = {
+        ...winner,
+        title: cleanTitle,
+        coverUrl: winner.coverUrl || loser.coverUrl,
+        altTitle: winner.altTitle || loser.altTitle,
+        isFullColor: winner.isFullColor || loser.isFullColor,
+        genres: filterSafeGenres(winner.genres || loser.genres),
+      };
+
+      clusters.length = 0;
+      clusters.push(...nonMatchingClusters, {
+        item: mergedItem,
+        aliases: combinedAliases,
+      });
+    }
+  }
+
+  // Preserve user favorite IDs if available
+  const result = clusters.map(cl => {
+    const item = cl.item;
+    if (userFavorites && userFavorites.length > 0) {
+      const matchFav = userFavorites.find(f => {
+        if (f.id === item.id) return true;
+        const fNorm = cleanComicAlias(f.title);
+        const itemNorm = cleanComicAlias(item.title);
+        return fNorm && itemNorm && fNorm === itemNorm;
+      });
+      if (matchFav) {
+        return {
+          ...item,
+          id: matchFav.id,
+        };
+      }
+    }
+    return item;
+  });
+
+  // Sort chronologically descending
+  return result.sort((a, b) => {
+    const scoreA = parseDateScore(a.updatedAt);
+    const scoreB = parseDateScore(b.updatedAt);
+    if (scoreA > 0 && scoreB > 0 && scoreA !== scoreB) {
+      return scoreB - scoreA;
+    }
+    return 0;
+  });
+}
+
 export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
   interface Cluster {
     item: ComicCardItem;
