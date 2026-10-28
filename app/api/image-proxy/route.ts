@@ -68,8 +68,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
       return NextResponse.json(
-        { error: `Gagal mengambil gambar: ${res.status}` },
+        { error: `Gagal mengambil gambar: ${res.status}`, detail: errBody.substring(0, 300) },
         { status: res.status }
       );
     }
