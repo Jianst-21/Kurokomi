@@ -363,16 +363,20 @@ export async function fetchSoftkomikChapters(slug: string): Promise<ChapterItem[
       if (!decryptedStr) return [];
 
       const parsed = JSON.parse(decryptedStr);
-      const chapterList = (parsed.chapterData?.chapter || []) as Array<{ chapter: string }>;
+      const chapterList = (parsed.chapterData?.chapter || []) as Array<{ chapter: string; updatedAt?: string; updated_at?: string }>;
+      const comicUpdatedAt = parsed.data?.updated_at || parsed.data?.updatedAt || '';
 
-      const chapters: ChapterItem[] = chapterList.map(ch => {
+      const chapters: ChapterItem[] = chapterList.map((ch, idx) => {
         const cleanNum = String(ch.chapter).replace(/^0+/, '') || '0';
+        // Softkomik does not store per-chapter release timestamps in its API;
+        // assign the comic update timestamp to the latest chapter if available
+        const dateStr = ch.updatedAt || ch.updated_at || (idx === 0 ? comicUpdatedAt : '');
         return {
           id: `softkomik--${targetSlug}__${ch.chapter}`,
           chapter: cleanNum,
           title: `Chapter ${cleanNum}`,
           scanlationGroup: 'Softkomik Sub Indo',
-          publishAt: '',
+          publishAt: dateStr,
           pagesCount: 0,
         };
       });
