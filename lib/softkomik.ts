@@ -405,12 +405,16 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
   if (chapter.includes('.')) {
     const [maj, min] = chapter.split('.');
     chapterCandidates.push(`${maj.padStart(3, '0')}.${min}`);
+    chapterCandidates.push(`${maj.padStart(4, '0')}.${min}`);
     chapterCandidates.push(`${parseInt(maj, 10)}.${min}`);
   } else {
     chapterCandidates.push(chapter.padStart(3, '0'));
+    chapterCandidates.push(chapter.padStart(4, '0'));
     const parsedInt = parseInt(chapter, 10);
     if (!isNaN(parsedInt)) {
       chapterCandidates.push(String(parsedInt));
+      chapterCandidates.push(String(parsedInt).padStart(3, '0'));
+      chapterCandidates.push(String(parsedInt).padStart(4, '0'));
     }
   }
   const uniqueChapters = [...new Set(chapterCandidates)];
