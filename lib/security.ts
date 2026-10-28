@@ -12,7 +12,9 @@ export function sanitizeSlug(raw: string | null | undefined): string {
   if (!raw) return '';
   return raw
     .trim()
-    .replace(/[^a-zA-Z0-9_-]/g, '')
+    .replace(/\.{2,}/g, '') // remove consecutive dots like ../ or ..
+    .replace(/[^a-zA-Z0-9_.-]/g, '')
+    .replace(/^\.+|\.+$/g, '') // strip leading/trailing dots
     .slice(0, 150);
 }
 
