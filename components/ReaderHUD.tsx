@@ -174,7 +174,7 @@ export function ReaderHUD({
 
       {/* Floating Scroll to Top Button (Icon-only, synchronized with HUD visibility) */}
       <div
-        className={`fixed right-4 bottom-20 z-40 transition-all duration-200 ${
+        className={`fixed right-4 bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] z-40 transition-all duration-200 ${
           visible
             ? 'translate-y-0 opacity-100 pointer-events-auto'
             : 'translate-y-4 opacity-0 pointer-events-none'
@@ -187,7 +187,7 @@ export function ReaderHUD({
             onScrollToTop?.();
           }}
           aria-label="Kembali ke atas"
-          className="flex items-center justify-center w-10 h-10 rounded-full bg-zinc-900/95 border border-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-800 shadow-lg shadow-black/40 backdrop-blur-md transition-all active:scale-95"
+          className="flex items-center justify-center w-11 h-11 rounded-full bg-zinc-900/95 border border-zinc-700/80 text-zinc-300 hover:text-white hover:bg-zinc-800 shadow-xl shadow-black/50 backdrop-blur-md transition-all active:scale-95 touch-manipulation cursor-pointer"
         >
           <ArrowUp className="w-5 h-5" />
         </button>
