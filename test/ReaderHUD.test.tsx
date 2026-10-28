@@ -111,4 +111,26 @@ describe('ReaderHUD Component', () => {
 
     expect(screen.getByText('5 / 20')).toBeInTheDocument();
   });
+
+  it('renders an icon-only scroll-to-top button with proper accessibility and click handler', () => {
+    const onScrollToTop = vi.fn();
+    render(
+      <ReaderHUD
+        visible={true}
+        comicTitle="Solo Leveling"
+        currentChapter="142"
+        mangaId="m1"
+        onOpenDrawer={vi.fn()}
+        onScrollToTop={onScrollToTop}
+      />
+    );
+
+    const scrollToTopBtn = screen.getByRole('button', { name: /kembali ke atas/i });
+    expect(scrollToTopBtn).toBeInTheDocument();
+    // Must be icon-only: text content should be empty
+    expect(scrollToTopBtn.textContent).toBe('');
+
+    fireEvent.click(scrollToTopBtn);
+    expect(onScrollToTop).toHaveBeenCalledTimes(1);
+  });
 });

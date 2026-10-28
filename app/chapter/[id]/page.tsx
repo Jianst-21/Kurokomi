@@ -293,6 +293,13 @@ export default function ReaderPage() {
     toggleHUD();
   };
 
+  const handleScrollToTop = () => {
+    if (effectiveMode === 'paged') {
+      setCurrentPageIndex(0);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Prevent background scroll bleed-through when chapter drawer is open on iOS
   useEffect(() => {
     if (!isDrawerOpen) return;
@@ -449,6 +456,7 @@ export default function ReaderPage() {
         nextChapterId={nextChapter?.id}
         nextChapterNumber={nextChapter?.chapter}
         onOpenDrawer={() => setIsDrawerOpen(true)}
+        onScrollToTop={handleScrollToTop}
       />
 
       {/* Reader View: Paged (Single Image Fit) vs Webtoon (Continuous Vertical Scroll) */}
