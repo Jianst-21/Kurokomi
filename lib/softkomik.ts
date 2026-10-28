@@ -456,9 +456,10 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
           if (accessId && !fullUrl.includes('?id=') && !fullUrl.includes('&id=')) {
             fullUrl += `?id=${accessId}`;
           }
+          const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`;
           return {
-            url: fullUrl,
-            fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`,
+            url: proxyUrl,
+            fallbackUrl: proxyUrl,
           };
         });
       } catch {

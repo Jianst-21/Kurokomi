@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAllowedImageProxyUrl } from '@/lib/security';
 
+export const runtime = 'edge';
+
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get('url');
 
@@ -29,14 +31,41 @@ export async function GET(req: NextRequest) {
       referer = 'https://mangapill.com/';
     }
 
-    const res = await fetch(urlParam, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': referer,
-      },
+    const upstreamHeaders: Record<string, string> = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': referer,
+      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+    };
+
+    let res = await fetch(urlParam, {
+      headers: upstreamHeaders,
       signal: AbortSignal.timeout(10000),
     });
+
+    // Fallback between Softkomik mirror CDNs if one CDN fails or redirects to promo banner
+    if (host.includes('komik.im')) {
+      const isTrap = res.url.includes('baca-image') || res.headers.get('location')?.includes('baca-image');
+      if (!res.ok || isTrap) {
+        const altUrl = host.includes('image.komik.im')
+          ? urlParam.replace('image.komik.im/softkomik', 'psy1.komik.im').replace('image.komik.im', 'psy1.komik.im')
+          : urlParam.replace('psy1.komik.im', 'image.komik.im/softkomik');
+        if (altUrl !== urlParam) {
+          try {
+            const retryRes = await fetch(altUrl, {
+              headers: upstreamHeaders,
+              signal: AbortSignal.timeout(10000),
+            });
+            if (retryRes.ok && !retryRes.url.includes('baca-image')) {
+              res = retryRes;
+            }
+          } catch {
+            // keep original response
+          }
+        }
+      }
+    }
 
     if (!res.ok) {
       return NextResponse.json(
