@@ -32,6 +32,7 @@ import {
 } from '@/lib/paged-reader';
 import { ReaderHUD } from '@/components/ReaderHUD';
 import { ReaderImage } from '@/components/ReaderImage';
+import { PullUpNextChapter } from '@/components/PullUpNextChapter';
 
 export default function ReaderPage() {
   const params = useParams();
@@ -504,37 +505,16 @@ export default function ReaderPage() {
             />
           ))}
 
-          {/* End of Chapter Section */}
-          <div className="w-full p-8 flex flex-col items-center justify-center text-center gap-4 bg-zinc-950 border-t border-zinc-850 my-6">
-            <span className="text-xs text-zinc-400 font-medium">
-              Akhir dari Chapter {currentChapter?.chapter || ''}
-            </span>
-
-            {nextChapter ? (
-              <Link
-                href={`/chapter/${nextChapter.id}?mangaId=${mangaId}`}
-                onClick={e => e.stopPropagation()}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs shadow-md shadow-blue-600/30 transition-all"
-              >
-                <span>Lanjut ke Chapter {nextChapter.chapter}</span>
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            ) : (
-              <span className="text-xs text-emerald-400 font-semibold bg-emerald-950/60 px-3 py-1.5 rounded-lg border border-emerald-900">
-                Kamu telah membaca chapter terbaru!
-              </span>
-            )}
-
-            {mangaId && (
-              <Link
-                href={`/manga/${mangaId}`}
-                onClick={e => e.stopPropagation()}
-                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-              >
-                Kembali ke Daftar Chapter
-              </Link>
-            )}
-          </div>
+          {/* End of Chapter Section with Pull-Up Circular Loader */}
+          <PullUpNextChapter
+            nextChapter={nextChapter ? { id: nextChapter.id, chapter: nextChapter.chapter } : undefined}
+            mangaId={mangaId}
+            onTriggerNext={() => {
+              if (nextChapter) {
+                router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
+              }
+            }}
+          />
         </main>
       )}
 
