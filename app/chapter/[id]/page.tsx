@@ -325,13 +325,16 @@ export default function ReaderPage() {
         setHudVisible(false);
         lastScrollY = currentScrollY;
       }
+      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progressRatio = scrollHeight > 0 ? currentScrollY / scrollHeight : 0;
+
       // Save scroll position for returning later or after browser close
       if (currentScrollY > 50) {
-        saveChapterScrollPosition(chapterId, currentScrollY, currentPageIndex);
+        saveChapterScrollPosition(chapterId, currentScrollY, currentPageIndex, progressRatio);
       }
-      const scrollHeight = document.documentElement.scrollHeight - window.innerHeight;
+
       if (scrollHeight > 0) {
-        const pct = Math.round((currentScrollY / scrollHeight) * 100);
+        const pct = Math.round(progressRatio * 100);
         const clampedPct = Math.min(100, Math.max(0, pct));
         if (Math.abs(clampedPct - lastReportedProgress) >= 2 || clampedPct === 0 || clampedPct === 100) {
           lastReportedProgress = clampedPct;

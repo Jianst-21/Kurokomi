@@ -376,7 +376,7 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
     }
     if (detail) return detail;
 
-    // Resilient fallback if Komikindo 404s/fails: fallback to Softkomik
+    // Resilient fallback if Komikindo 404s/fails: fallback to Softkomik or Komiku
     try {
       const { findSoftkomikSlug, fetchSoftkomikDetail } = await import('./softkomik');
       const skSlug = await findSoftkomikSlug(slug);
@@ -384,6 +384,19 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
         detail = isBrowser
           ? await fetch(`/api/softkomik?action=detail&slug=${encodeURIComponent(skSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
           : await fetchSoftkomikDetail(skSlug);
+        if (detail) return detail;
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const { findKomikuSlug, fetchKomikuDetail } = await import('./komiku');
+      const kuSlug = await findKomikuSlug(slug);
+      if (kuSlug) {
+        detail = isBrowser
+          ? await fetch(`/api/komiku?action=detail&slug=${encodeURIComponent(kuSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
+          : await fetchKomikuDetail(kuSlug);
         if (detail) return detail;
       }
     } catch {

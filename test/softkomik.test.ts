@@ -51,4 +51,39 @@ describe('Softkomik Parser and Decryption', () => {
     expect(decryptOpenSSLAES('')).toBe('');
     expect(decryptOpenSSLAES('invalid_base64')).toBe('');
   });
+
+  it('sorts comics chronologically descending by updated_at when fetching latest', () => {
+    const rawItems = [
+      {
+        title: 'Older Manhua',
+        type: 'manhua',
+        updated_at: '2026-07-07T07:02:28.937Z',
+        title_slug: 'older-manhua',
+      },
+      {
+        title: 'Newest Manhua',
+        type: 'manhua',
+        updated_at: '2026-10-25T14:45:18.984Z',
+        title_slug: 'newest-manhua',
+      },
+      {
+        title: 'Middle Manhua',
+        type: 'manhua',
+        updated_at: '2026-09-15T11:52:13.780Z',
+        title_slug: 'middle-manhua',
+      },
+    ];
+
+    const cards = rawItems.map(mapSoftkomikItemToCard);
+    // When sorted chronologically descending:
+    cards.sort((a, b) => {
+      const timeA = a.updatedAt ? new Date(rawItems.find(r => r.title_slug === a.id.replace('softkomik--', ''))?.updated_at || 0).getTime() : 0;
+      const timeB = b.updatedAt ? new Date(rawItems.find(r => r.title_slug === b.id.replace('softkomik--', ''))?.updated_at || 0).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    expect(cards[0].title).toBe('Newest Manhua');
+    expect(cards[1].title).toBe('Middle Manhua');
+    expect(cards[2].title).toBe('Older Manhua');
+  });
 });

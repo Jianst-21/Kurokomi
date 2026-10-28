@@ -309,15 +309,22 @@ export function getSavedHomeScrollPosition(): number {
   }
 }
 
-export function saveChapterScrollPosition(chapterId: string, scrollY: number, pageIndex: number = 0): void {
+export function saveChapterScrollPosition(
+  chapterId: string,
+  scrollY: number,
+  pageIndex: number = 0,
+  progressRatio?: number
+): void {
   if (!isBrowser() || !chapterId) return;
   try {
     const key = `${CHAPTER_SCROLL_PREFIX}${chapterId}`;
+    // If user has read to the very end (>= 92%), reset saved scroll so reopening begins at top
+    const isCompleted = typeof progressRatio === 'number' && progressRatio >= 0.92;
     localStorage.setItem(
       key,
       JSON.stringify({
-        y: Math.max(0, Math.round(scrollY)),
-        pageIndex,
+        y: isCompleted ? 0 : Math.max(0, Math.round(scrollY)),
+        pageIndex: isCompleted ? 0 : pageIndex,
         savedAt: Date.now(),
       })
     );

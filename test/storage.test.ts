@@ -217,6 +217,10 @@ describe('LocalStorage Helper', () => {
     const savedScroll = getSavedChapterScrollPosition('chapter-abc');
     expect(savedScroll).toEqual({ y: 1250, pageIndex: 4 });
 
+    // When progress ratio >= 0.95 (finished chapter), it resets position so next visit starts at top
+    saveChapterScrollPosition('chapter-abc', 9500, 20, 0.96);
+    expect(getSavedChapterScrollPosition('chapter-abc')).toEqual({ y: 0, pageIndex: 0 });
+
     clearChapterScrollPosition('chapter-abc');
     expect(getSavedChapterScrollPosition('chapter-abc')).toBeNull();
   });

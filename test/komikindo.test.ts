@@ -98,6 +98,36 @@ describe('Komikindo Provider Parsers', () => {
     });
   });
 
+  it('sorts latest updates chronologically descending by relative date', () => {
+    const multiLatestHtml = `
+      <div class="animepost">
+        <div class="animposx">
+          <a href="https://komikindo.ch/komik/older-manhua/">
+            <img src="https://komikindo.ch/wp-content/uploads/1.jpg" />
+          </a>
+          <div class="bigors">
+            <div class="tt"><h3><a href="https://komikindo.ch/komik/older-manhua/">Older</a></h3></div>
+            <div class="adds"><div class="lsch"><span class="datech">3 bulan lalu</span></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="animepost">
+        <div class="animposx">
+          <a href="https://komikindo.ch/komik/newer-manhua/">
+            <img src="https://komikindo.ch/wp-content/uploads/2.jpg" />
+          </a>
+          <div class="bigors">
+            <div class="tt"><h3><a href="https://komikindo.ch/komik/newer-manhua/">Newer</a></h3></div>
+            <div class="adds"><div class="lsch"><span class="datech">2 hari lalu</span></div></div>
+          </div>
+        </div>
+      </div>
+    `;
+    const items = parseKomikindoLatestUpdates(multiLatestHtml);
+    expect(items[0].title).toBe('Newer');
+    expect(items[1].title).toBe('Older');
+  });
+
   const sampleDetailHtml = `
     <div class="infoanime">
       <h1 class="entry-title">Komik Solo Leveling</h1>

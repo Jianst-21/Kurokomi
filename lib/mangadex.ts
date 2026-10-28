@@ -7,6 +7,7 @@ import {
   ComicType,
 } from './types';
 import { isSafeContent, filterSafeGenres } from './security';
+import { parseDateScore } from './date';
 
 export const MANGADEX_API_BASE = 'https://api.mangadex.org';
 export const MANGADEX_COVER_BASE = 'https://uploads.mangadex.org/covers';
@@ -468,6 +469,8 @@ export async function fetchLatestComicsByType(
   const page = Math.floor(offset / limit) + 1;
   const isBrowser = typeof window !== 'undefined' && !process.env.VITEST;
 
+  let results: ComicCardItem[] = [];
+
   // 1. Primary: Komikindo live real-time stream (fast, strictly chronological, beautiful portrait covers)
   if (isBrowser) {
     try {
@@ -475,7 +478,7 @@ export async function fetchLatestComicsByType(
       if (res.ok) {
         const json = await res.json();
         if (json.comics && json.comics.length > 0) {
-          return json.comics;
+          results = json.comics;
         }
       }
     } catch {
@@ -486,7 +489,7 @@ export async function fetchLatestComicsByType(
       const { fetchKomikindoLatest } = await import('./komikindo');
       const items = await fetchKomikindoLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page, limit);
       if (items && items.length > 0) {
-        return items;
+        results = items;
       }
     } catch {
       // fallback
@@ -494,67 +497,90 @@ export async function fetchLatestComicsByType(
   }
 
   // 2. Secondary: Softkomik real-time stream (clean, high quality Indonesian updates)
-  if (isBrowser) {
-    try {
-      const res = await fetch(`/api/softkomik?action=latest&type=${type}&page=${page}&limit=${limit}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.comics && json.comics.length > 0) {
-          return json.comics;
+  if (results.length === 0) {
+    if (isBrowser) {
+      try {
+        const res = await fetch(`/api/softkomik?action=latest&type=${type}&page=${page}&limit=${limit}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.comics && json.comics.length > 0) {
+            results = json.comics;
+          }
         }
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
-    }
-  } else {
-    try {
-      const { fetchSoftkomikLatest } = await import('./softkomik');
-      const items = await fetchSoftkomikLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page, limit);
-      if (items && items.length > 0) {
-        return items;
+    } else {
+      try {
+        const { fetchSoftkomikLatest } = await import('./softkomik');
+        const items = await fetchSoftkomikLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page, limit);
+        if (items && items.length > 0) {
+          results = items;
+        }
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
     }
   }
 
   // 3. Tertiary: Komiku real-time stream
-  if (isBrowser) {
-    try {
-      const res = await fetch(`/api/komiku?action=latest&type=${type}&page=${page}`);
-      if (res.ok) {
-        const json = await res.json();
-        if (json.comics && json.comics.length > 0) {
-          return json.comics;
+  if (results.length === 0) {
+    if (isBrowser) {
+      try {
+        const res = await fetch(`/api/komiku?action=latest&type=${type}&page=${page}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.comics && json.comics.length > 0) {
+            results = json.comics;
+          }
         }
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
-    }
-  } else {
-    try {
-      const { fetchKomikuLatest } = await import('./komiku');
-      const items = await fetchKomikuLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page);
-      if (items && items.length > 0) {
-        return items;
+    } else {
+      try {
+        const { fetchKomikuLatest } = await import('./komiku');
+        const items = await fetchKomikuLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page);
+        if (items && items.length > 0) {
+          results = items;
+        }
+      } catch {
+        // fallback
       }
-    } catch {
-      // fallback
     }
   }
 
   // 4. Final Fallback: MangaDex (safely caught without unhandled exceptions)
-  try {
-    return await searchComics('', {
-      type,
-      limit,
-      offset,
-      requireIndonesian: true,
-      order: { latestUploadedChapter: 'desc' },
-    });
-  } catch {
-    return [];
+  if (results.length === 0) {
+    try {
+      results = await searchComics('', {
+        type,
+        limit,
+        offset,
+        requireIndonesian: true,
+        order: { latestUploadedChapter: 'desc' },
+      });
+    } catch {
+      results = [];
+    }
   }
+
+  // Guarantee chronological ordering descending across all provider fallbacks
+  if (results.length > 1) {
+    const hasDates = results.some(r => !!r.updatedAt);
+    if (hasDates) {
+      results.sort((a, b) => {
+        const scoreA = parseDateScore(a.updatedAt);
+        const scoreB = parseDateScore(b.updatedAt);
+        if (scoreA > 0 && scoreB > 0 && scoreA !== scoreB) {
+          return scoreB - scoreA;
+        }
+        return 0;
+      });
+    }
+  }
+
+  return results;
 }
 
 export async function fetchTopComics(

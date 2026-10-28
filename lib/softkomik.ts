@@ -166,6 +166,11 @@ export async function fetchSoftkomikLatest(
 
     const items = rawList
       .filter(item => item.contentRating !== '18+' && item.contentRating !== 'adult' && item.contentRating !== 'ecchi')
+      .sort((a, b) => {
+        const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+        const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+        return timeB - timeA;
+      })
       .map(mapSoftkomikItemToCard)
       .filter(isSafeContent);
 

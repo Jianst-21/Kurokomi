@@ -2,6 +2,7 @@ import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './type
 import { deduplicateChapters, sortChapters } from './mangadex';
 import { scoreTitleMatch, generateSearchQueries } from './komiku';
 import { isSafeContent, filterSafeGenres, isValidCoverUrl } from './security';
+import { parseDateScore } from './date';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -135,7 +136,16 @@ export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
     });
   }
 
-  return items.filter(isSafeContent);
+  return items
+    .filter(isSafeContent)
+    .sort((a, b) => {
+      const scoreA = parseDateScore(a.updatedAt);
+      const scoreB = parseDateScore(b.updatedAt);
+      if (scoreA > 0 && scoreB > 0 && scoreA !== scoreB) {
+        return scoreB - scoreA;
+      }
+      return 0;
+    });
 }
 
 export async function fetchKomikindoLatest(
