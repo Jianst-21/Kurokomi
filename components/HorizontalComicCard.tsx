@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Clock, BookOpen, Check } from 'lucide-react';
+import { ArrowRight, Clock, BookOpen, Check, Heart } from 'lucide-react';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 import { formatChapterDate } from '@/lib/date';
-import { getComicLastRead } from '@/lib/storage';
+import { getComicLastRead, isFavorite } from '@/lib/storage';
 
 interface HorizontalComicCardProps {
   comic: ComicCardItem;
@@ -16,6 +16,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   const [imgSrc, setImgSrc] = useState(comic.coverUrl);
   const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [lastRead, setLastRead] = useState<ReadingHistoryItem | undefined>(undefined);
+  const [favorited, setFavorited] = useState<boolean>(false);
 
   useEffect(() => {
     setImgSrc(comic.coverUrl);
@@ -25,6 +26,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
 
   useEffect(() => {
     setLastRead(getComicLastRead(comic.id));
+    setFavorited(isFavorite(comic.id));
   }, [comic.id]);
 
   const handleImgError = () => {
@@ -49,17 +51,25 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
     other: 'bg-zinc-900 text-zinc-400 border-zinc-800',
   };
 
+  // Subtle ambient background tint and borders per provider source
+  const sourceAmbientStyles: Record<string, string> = {
+    komiku: 'border-amber-900/60 hover:border-amber-700/80 bg-gradient-to-r from-amber-950/20 via-zinc-900/95 to-zinc-900/90',
+    softkomik: 'border-indigo-900/60 hover:border-indigo-700/80 bg-gradient-to-r from-indigo-950/20 via-zinc-900/95 to-zinc-900/90',
+    komikindo: 'border-emerald-900/60 hover:border-emerald-700/80 bg-gradient-to-r from-emerald-950/20 via-zinc-900/95 to-zinc-900/90',
+  };
+
   const badgeStyle = typeBadgeColors[comic.type] || typeBadgeColors.other;
   const isRead = Boolean(lastRead);
+  const ambientClass = (comic.source && sourceAmbientStyles[comic.source]) || 'border-zinc-800 hover:border-zinc-750 bg-zinc-900/90';
 
   return (
     <Link
       href={`/manga/${comic.id}`}
       aria-label={comic.title}
-      className={`w-full rounded-2xl p-3 flex gap-3 shadow-lg transition-all group border ${
+      className={`w-full rounded-2xl p-3 flex gap-3 shadow-lg transition-all group border relative ${
         isRead
           ? 'bg-blue-950/20 border-blue-900/60 hover:border-blue-700/80 shadow-blue-950/20'
-          : 'bg-zinc-900/90 border-zinc-800 hover:border-zinc-750'
+          : ambientClass
       }`}
     >
       {/* Left: Comic Cover Poster */}
@@ -81,6 +91,16 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
             <span className="text-[9px] line-clamp-2 leading-tight">
               {comic.title}
             </span>
+          </div>
+        )}
+
+        {/* Minimalist Heart Icon if Favorited */}
+        {favorited && (
+          <div
+            aria-label="Komik Favorit"
+            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center shadow-md border border-rose-500/40"
+          >
+            <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
           </div>
         )}
       </div>

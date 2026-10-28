@@ -154,6 +154,7 @@ describe('Komiku Provider Smart Parsers & Matchers', () => {
       updatedAt: '25 menit lalu',
       genres: ['Romantis'],
       isFullColor: true,
+      source: 'komiku',
     });
   });
 

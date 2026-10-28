@@ -54,6 +54,7 @@ describe('Komikindo Provider Parsers', () => {
       coverUrl: 'https://komikindo.ch/wp-content/uploads/solo-ragnarok.jpg',
       type: 'manhwa',
       isFullColor: false,
+      source: 'komikindo',
     });
     expect(results[1].id).toBe('komikindo--229848-solo-leveling');
     expect(results[1].title).toBe('Solo Leveling');
@@ -95,6 +96,7 @@ describe('Komikindo Provider Parsers', () => {
       latestChapter: 'Ch. 103',
       updatedAt: '3 menit lalu',
       isFullColor: true,
+      source: 'komikindo',
     });
   });
 
