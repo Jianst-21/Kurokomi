@@ -180,12 +180,12 @@ export default function ReaderPage() {
       setError('Gagal memuat halaman chapter. Silakan periksa koneksi Anda.');
     } finally {
       setIsLoading(false);
-      // Restore saved reading position if available
+      // Restore saved reading position if available after DOM renders
       const saved = getSavedChapterScrollPosition(chapterId);
       if (saved && saved.y > 0) {
-        setTimeout(() => {
+        requestAnimationFrame(() => {
           window.scrollTo({ top: saved.y, behavior: 'instant' });
-        }, 100);
+        });
       } else {
         window.scrollTo({ top: 0, behavior: 'instant' });
       }

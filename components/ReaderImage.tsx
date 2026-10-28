@@ -116,7 +116,7 @@ export function ReaderImage({
       className={
         fitContain
           ? "max-h-[100dvh] max-w-full w-auto h-auto block m-auto border-0 outline-none select-none bg-black object-contain pointer-events-none"
-          : "w-full min-h-[50vh] h-auto block m-0 p-0 border-0 outline-none select-none bg-black pointer-events-none [content-visibility:auto] [contain-intrinsic-size:800px]"
+          : "w-full min-h-[50vh] h-auto block m-0 p-0 border-0 outline-none select-none bg-black pointer-events-none"
       }
     />
   );
