@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 
     // Set matching upstream referer to bypass hotlink protection
     let referer = 'https://kurokomi.vercel.app/';
-    if (host.includes('komik.im') || host.includes('softdevices.my.id')) {
+    if (host.includes('komik.im') || host.includes('softdevices.my.id') || host.includes('softkomik')) {
       referer = 'https://softkomik.app/';
     } else if (host.includes('komiku')) {
       referer = 'https://komiku.org/';

@@ -439,10 +439,21 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
         const imgList = (parsed.imgList || []) as string[];
         if (!imgList.length) continue;
 
-        return imgList.map(img => {
-          const fullUrl = img.startsWith('http') ? img : `${SOFTKOMIK_IMAGE_BASE}/${img}`;
+        // Extract access token (?id=...) from HTML if present to bypass Softkomik hotlink protection
+        const tokenMatch = html.match(/(?:image\.komik\.im|psy1\.komik\.im)[^"']*?\?id=([a-zA-Z0-9_-]+)/) ||
+          html.match(/\.webp\?id=([a-zA-Z0-9_-]+)/);
+        const accessId = tokenMatch ? tokenMatch[1] : '';
+
+        // Filter out promotional/watermark banners (e.g. img-file/00-hello)
+        const validImages = imgList.filter(img => !img.includes('00-hello') && !img.includes('baca-image'));
+
+        return validImages.map(img => {
+          let fullUrl = img.startsWith('http') ? img : `${SOFTKOMIK_IMAGE_BASE}/${img}`;
+          if (accessId && !fullUrl.includes('?id=') && !fullUrl.includes('&id=')) {
+            fullUrl += `?id=${accessId}`;
+          }
           return {
-            url: fullUrl,
+            url: `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`,
             fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`,
           };
         });
