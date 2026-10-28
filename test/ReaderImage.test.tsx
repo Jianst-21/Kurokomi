@@ -42,4 +42,29 @@ describe('ReaderImage retry functionality', () => {
     fireEvent.click(reloadAllBtn);
     expect(handleRetryAll).toHaveBeenCalledTimes(1);
   });
+
+  it('triggers auto-recovery when window becomes visible and image is incomplete', () => {
+    const { container } = render(
+      <ReaderImage
+        src="https://example.com/hanging.jpg"
+        pageIndex={0}
+      />
+    );
+
+    const img = container.querySelector('img') as HTMLImageElement;
+    expect(img).toBeInTheDocument();
+    expect(img).toHaveAttribute('data-retry-key', '0');
+
+    // Simulate incomplete image
+    Object.defineProperty(img, 'complete', { value: false, configurable: true });
+    Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+
+    // Trigger visibilitychange to visible
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true });
+    fireEvent(document, new Event('visibilitychange'));
+
+    // Should increment retry key to re-mount and reconnect socket
+    const newImg = container.querySelector('img') as HTMLImageElement;
+    expect(newImg).toHaveAttribute('data-retry-key', '1');
+  });
 });

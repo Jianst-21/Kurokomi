@@ -29,12 +29,15 @@ export function ReaderImage({
   const [hasTriedFallback, setHasTriedFallback] = useState(false);
   const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+  const imgRef = React.useRef<HTMLImageElement>(null);
+  const hasLoadedRef = React.useRef(false);
 
   useEffect(() => {
     setCurrentSrc(src);
     setError(false);
     setHasTriedFallback(false);
     setHasTriedProxy(false);
+    hasLoadedRef.current = false;
     onErrorChange?.(pageIndex, false);
   }, [src, pageIndex, onErrorChange]);
 
@@ -43,11 +46,39 @@ export function ReaderImage({
       setError(false);
       setHasTriedFallback(false);
       setHasTriedProxy(false);
+      hasLoadedRef.current = false;
       setCurrentSrc(src);
       setRetryKey(k => k + 1);
       onErrorChange?.(pageIndex, false);
     }
   }, [globalRetryKey, src, pageIndex, onErrorChange]);
+
+  // Tab Wakeup & Network Reconnect Auto-Recovery
+  useEffect(() => {
+    const handleWakeup = () => {
+      if (document.visibilityState === 'visible' && !error && !hasLoadedRef.current) {
+        const img = imgRef.current;
+        if (img && (!img.complete || img.naturalWidth === 0)) {
+          // Socket was severed during mobile sleep/background - reconnect silently
+          setRetryKey(k => k + 1);
+        }
+      }
+    };
+
+    const handleOnline = () => {
+      if (!error && !hasLoadedRef.current) {
+        setRetryKey(k => k + 1);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleWakeup);
+    window.addEventListener('online', handleOnline);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleWakeup);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [error]);
 
   const handleImageError = () => {
     if (fallbackSrc && !hasTriedFallback && currentSrc !== fallbackSrc) {
@@ -106,12 +137,17 @@ export function ReaderImage({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
+      ref={imgRef}
       key={`${currentSrc}-${retryKey}`}
+      data-retry-key={retryKey}
       src={currentSrc}
       alt={`Halaman ${pageIndex + 1}`}
       loading={pageIndex < 4 ? 'eager' : 'lazy'}
       decoding="async"
       referrerPolicy="no-referrer"
+      onLoad={() => {
+        hasLoadedRef.current = true;
+      }}
       onError={handleImageError}
       className={
         fitContain
