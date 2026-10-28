@@ -561,6 +561,32 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
   }
 }
 
+export function parseKomikuImagesHtml(html: string): ChapterPageItem[] {
+  const imgIdx = html.indexOf('id="Baca_Komik"');
+  const targetHtml = imgIdx !== -1 ? html.slice(imgIdx) : html;
+
+  const imgMatches = [...targetHtml.matchAll(/src="([^"]+)"/g)];
+
+  const urls = imgMatches
+    .map(m => m[1])
+    .filter(u =>
+      u &&
+      u.startsWith('http') &&
+      !u.includes('promosi') &&
+      !u.includes('iklan') &&
+      !u.includes('logo') &&
+      !u.includes('analytics') &&
+      !u.includes('popunder') &&
+      !u.endsWith('.gif')
+    )
+    .map(u => u.replace(/^http:\/\//i, 'https://'));
+
+  return urls.map(u => ({
+    url: u,
+    fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(u)}`,
+  }));
+}
+
 export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChapterNum?: string): Promise<ChapterPageItem[]> {
   try {
     let cleanSlug = chapterSlug.replace(/^\//, '').replace(/\/$/, '');
@@ -593,20 +619,7 @@ export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChap
     if (!res.ok) return [];
 
     const html = await res.text();
-    const imgIdx = html.indexOf('id="Baca_Komik"');
-    const targetHtml = imgIdx !== -1 ? html.slice(imgIdx) : html;
-
-    const imgMatches = [...targetHtml.matchAll(/src="([^"]+)"/g)];
-
-    const urls = imgMatches
-      .map(m => m[1])
-      .filter(u => u && u.startsWith('http') && !u.includes('promosi') && !u.includes('iklan') && !u.includes('logo') && !u.endsWith('.gif'))
-      .map(u => u.replace(/^http:\/\//i, 'https://'));
-
-    return urls.map(u => ({
-      url: u,
-      fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(u)}`,
-    }));
+    return parseKomikuImagesHtml(html);
   } catch (e) {
     console.error('fetchKomikuChapterImages error:', e);
     return [];

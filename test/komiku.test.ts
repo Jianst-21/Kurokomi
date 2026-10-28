@@ -4,6 +4,7 @@ import {
   parseKomikuLatestUpdates,
   parseKomikuChapters,
   parseKomikuDetail,
+  parseKomikuImagesHtml,
   scoreTitleMatch,
   generateSearchQueries,
 } from '@/lib/komiku';
@@ -208,5 +209,21 @@ describe('Komiku Provider Smart Parsers & Matchers', () => {
     const detail = parseKomikuDetail(sampleMangaDetailHtml, 'isekai-yakkyoku');
     expect(detail?.type).toBe('manga');
     expect(detail?.status).toBe('completed');
+  });
+
+  it('filters out analytics and tracking pixels from Komiku chapter images', () => {
+    const sampleHtml = `
+      <div id="Baca_Komik">
+        <img src="https://img.komiku.org/uploads/01.jpg" />
+        <img src="https://img.komiku.org/uploads/02.jpg" />
+        <img src="https://analytics.komiku.org/api/ads/popunder-1" />
+      </div>
+    `;
+    const pages = parseKomikuImagesHtml(sampleHtml);
+    expect(pages).toHaveLength(2);
+    expect(pages.map(p => p.url)).toEqual([
+      'https://img.komiku.org/uploads/01.jpg',
+      'https://img.komiku.org/uploads/02.jpg',
+    ]);
   });
 });

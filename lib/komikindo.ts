@@ -349,7 +349,9 @@ export function parseKomikindoImages(html: string): ChapterPageItem[] {
       !src.includes('iklan') &&
       !src.includes('promosi') &&
       !src.includes('logo') &&
-      !src.includes('banner')
+      !src.includes('banner') &&
+      !src.includes('analytics') &&
+      !src.includes('popunder')
     ) {
       urls.push(src.replace(/^http:\/\//i, 'https://'));
     }
