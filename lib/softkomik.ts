@@ -457,7 +457,7 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
             fullUrl += `?id=${accessId}`;
           }
           return {
-            url: `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`,
+            url: fullUrl,
             fallbackUrl: `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`,
           };
         });
