@@ -25,14 +25,17 @@ export function PullUpNextChapter({
   const wheelAccumulator = useRef<number>(0);
   const wheelTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const PULL_THRESHOLD = 90; // Pixels needed to complete the circle
+  // Increased threshold & require deliberate intent so it never triggers accidentally
+  const PULL_THRESHOLD = 180; // deliberate pull distance
+  const DEADZONE = 25; // ignore minor accidental brush/jitter
 
   const isAtBottom = () => {
     if (typeof window === 'undefined') return false;
     const scrollY = window.scrollY || window.pageYOffset;
     const windowHeight = window.innerHeight;
     const docHeight = document.documentElement.scrollHeight;
-    return scrollY + windowHeight >= docHeight - 25;
+    // Must be truly reached at the very bottom
+    return scrollY + windowHeight >= docHeight - 15;
   };
 
   useEffect(() => {
@@ -56,11 +59,12 @@ export function PullUpNextChapter({
       }
 
       const currentY = e.touches[0].clientY;
-      const diffY = touchStartY.current - currentY; // positive = dragging upwards
+      const rawDiffY = touchStartY.current - currentY; // positive = dragging upwards
 
-      if (diffY > 0 && isAtBottom()) {
-        // Resistance curve
-        const pull = Math.min(diffY, PULL_THRESHOLD * 1.5);
+      if (rawDiffY > DEADZONE && isAtBottom()) {
+        const effectiveDiff = rawDiffY - DEADZONE;
+        // Smooth logarithmic resistance curve: harder as it approaches 100%
+        const pull = Math.min(effectiveDiff, PULL_THRESHOLD * 1.4);
         currentPull.current = pull;
         const ratio = Math.min(1, Math.max(0, pull / PULL_THRESHOLD));
         setProgress(ratio);
@@ -91,7 +95,8 @@ export function PullUpNextChapter({
       }
 
       if (isAtBottom()) {
-        wheelAccumulator.current += Math.min(e.deltaY, 40);
+        // Slower accumulation to avoid rapid accidental triggers on trackpad
+        wheelAccumulator.current += Math.min(e.deltaY, 20);
         const ratio = Math.min(1, Math.max(0, wheelAccumulator.current / PULL_THRESHOLD));
         setProgress(ratio);
 
@@ -103,11 +108,11 @@ export function PullUpNextChapter({
           return;
         }
 
-        // Slowly decay if user stops scrolling
+        // Decay if user stops scrolling
         wheelTimeout.current = setTimeout(() => {
           wheelAccumulator.current = 0;
           setProgress(0);
-        }, 300);
+        }, 350);
       }
     };
 
@@ -194,7 +199,7 @@ export function PullUpNextChapter({
         {/* Center Indicator Icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           {isFull ? (
-            <Check className="w-5 h-5 text-emerald-400 animate-bounce" />
+            <Check className="w-5 h-5 text-emerald-400 scale-110 transition-transform duration-200" />
           ) : (
             <ArrowUp
               className={`w-5 h-5 transition-transform duration-150 ${
