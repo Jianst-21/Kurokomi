@@ -12,7 +12,6 @@ interface ReaderImageProps {
   onErrorChange?: (pageIndex: number, hasError: boolean) => void;
   isTopError?: boolean;
   onRetryAll?: () => void;
-  shouldLoad?: boolean;
 }
 
 export function ReaderImage({
@@ -24,7 +23,6 @@ export function ReaderImage({
   onErrorChange,
   isTopError = false,
   onRetryAll,
-  shouldLoad = true,
 }: ReaderImageProps) {
   const [currentSrc, setCurrentSrc] = useState(src);
   const [error, setError] = useState(false);
@@ -74,26 +72,6 @@ export function ReaderImage({
     setRetryKey(k => k + 1);
     onErrorChange?.(pageIndex, false);
   };
-
-  if (!shouldLoad) {
-    return (
-      <div
-        data-testid={`reader-image-placeholder-${pageIndex}`}
-        className={
-          fitContain
-            ? "max-h-[100dvh] max-w-full w-full h-[80vh] flex items-center justify-center bg-zinc-950 animate-pulse select-none pointer-events-none"
-            : "w-full min-h-[60vh] h-auto flex items-center justify-center bg-zinc-950/90 animate-pulse select-none pointer-events-none border-b border-zinc-900/40"
-        }
-      >
-        <div className="flex flex-col items-center gap-2 opacity-30">
-          <div className="w-8 h-8 rounded-full border-2 border-zinc-700 border-t-zinc-400 animate-spin" />
-          <span className="text-[11px] font-medium tracking-wider text-zinc-500 uppercase">
-            Halaman {pageIndex + 1}
-          </span>
-        </div>
-      </div>
-    );
-  }
 
   if (error) {
     return (

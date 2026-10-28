@@ -59,10 +59,6 @@ export default function ReaderPage() {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
-  // Progressive Windowed Loading (Load current + 2 ahead)
-  const [maxLoadedIndex, setMaxLoadedIndex] = useState<number>(2);
-  const imageContainerRefs = useRef<(HTMLDivElement | null)[]>([]);
-
   // Global Image Retry for Offline -> Online Recovery
   const [globalRetryKey, setGlobalRetryKey] = useState(0);
   const [errorPages, setErrorPages] = useState<Set<number>>(new Set());
@@ -314,52 +310,7 @@ export default function ReaderPage() {
     };
   }, [isDrawerOpen]);
 
-  // IntersectionObserver for windowed progressive image loading (Current + 2 ahead)
-  useEffect(() => {
-    if (pages.length === 0 || typeof window === 'undefined') return;
-
-    if (!('IntersectionObserver' in window)) {
-      setMaxLoadedIndex(pages.length);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let highestVisible = -1;
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            const idx = Number(entry.target.getAttribute('data-page-index'));
-            if (!isNaN(idx) && idx > highestVisible) {
-              highestVisible = idx;
-            }
-          }
-        });
-
-        if (highestVisible !== -1) {
-          setMaxLoadedIndex((prev) => Math.max(prev, highestVisible + 2));
-        }
-      },
-      {
-        root: null,
-        rootMargin: '300px 0px', // Pre-trigger 300px before appearing
-        threshold: 0.01,
-      }
-    );
-
-    const elements = imageContainerRefs.current;
-    elements.forEach((el) => {
-      if (el) observer.observe(el);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [pages.length]);
-
-  // Reset or initialize maxLoadedIndex on chapter switch
-  useEffect(() => {
-    setMaxLoadedIndex(2);
-  }, [chapterId]);
+  // Auto-hide HUD after 2.5s on initial chapter load
   useEffect(() => {
     if (!isLoading && pages.length > 0) {
       const timer = setTimeout(() => {
@@ -523,36 +474,11 @@ export default function ReaderPage() {
               fallbackSrc={pages[currentPageIndex].fallbackUrl}
               pageIndex={currentPageIndex}
               fitContain={true}
-              shouldLoad={true}
               globalRetryKey={globalRetryKey}
               onErrorChange={handlePageErrorChange}
               isTopError={true}
               onRetryAll={handleRetryAll}
             />
-          )}
-
-          {/* Hidden Preload for next 2 pages in paged mode */}
-          {pages[currentPageIndex + 1] && (
-            <div className="hidden" aria-hidden="true">
-              <ReaderImage
-                key={pages[currentPageIndex + 1].url}
-                src={pages[currentPageIndex + 1].url}
-                fallbackSrc={pages[currentPageIndex + 1].fallbackUrl}
-                pageIndex={currentPageIndex + 1}
-                shouldLoad={true}
-              />
-            </div>
-          )}
-          {pages[currentPageIndex + 2] && (
-            <div className="hidden" aria-hidden="true">
-              <ReaderImage
-                key={pages[currentPageIndex + 2].url}
-                src={pages[currentPageIndex + 2].url}
-                fallbackSrc={pages[currentPageIndex + 2].fallbackUrl}
-                pageIndex={currentPageIndex + 2}
-                shouldLoad={true}
-              />
-            </div>
           )}
 
           {/* Minimalist Floating Page Badge in corner */}
@@ -565,30 +491,18 @@ export default function ReaderPage() {
           onClick={handleWebtoonTap}
           className="reader-container flex-1 max-w-2xl mx-auto w-full flex flex-col items-center bg-black cursor-pointer pt-0"
         >
-          {pages.map((item, idx) => {
-            const shouldLoad = idx <= maxLoadedIndex;
-            return (
-              <div
-                key={item.url}
-                ref={(el) => {
-                  imageContainerRefs.current[idx] = el;
-                }}
-                data-page-index={idx}
-                className="w-full"
-              >
-                <ReaderImage
-                  src={item.url}
-                  fallbackSrc={item.fallbackUrl}
-                  pageIndex={idx}
-                  shouldLoad={shouldLoad}
-                  globalRetryKey={globalRetryKey}
-                  onErrorChange={handlePageErrorChange}
-                  isTopError={minErrorIndex === idx}
-                  onRetryAll={handleRetryAll}
-                />
-              </div>
-            );
-          })}
+          {pages.map((item, idx) => (
+            <ReaderImage
+              key={item.url}
+              src={item.url}
+              fallbackSrc={item.fallbackUrl}
+              pageIndex={idx}
+              globalRetryKey={globalRetryKey}
+              onErrorChange={handlePageErrorChange}
+              isTopError={minErrorIndex === idx}
+              onRetryAll={handleRetryAll}
+            />
+          ))}
 
           {/* End of Chapter Section */}
           <div className="w-full p-8 flex flex-col items-center justify-center text-center gap-4 bg-zinc-950 border-t border-zinc-850 my-6">
