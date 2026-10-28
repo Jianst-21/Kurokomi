@@ -31,6 +31,28 @@ export async function GET(req: NextRequest) {
       referer = 'https://mangapill.com/';
     }
 
+    // Softkomik CDN hotlink bypass: forward through Cloudflare Worker if available
+    if (host.includes('komik.im')) {
+      const cfWorker = process.env.CF_WORKER_PROXY || 'https://kurokomi-image-proxy.kurokomi.workers.dev';
+      try {
+        const workerRes = await fetch(`${cfWorker}/?url=${encodeURIComponent(urlParam)}`, {
+          signal: AbortSignal.timeout(10000),
+        });
+        if (workerRes.ok) {
+          const contentType = workerRes.headers.get('content-type') || 'image/webp';
+          const buffer = await workerRes.arrayBuffer();
+          return new NextResponse(buffer, {
+            headers: {
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400, immutable',
+            },
+          });
+        }
+      } catch {
+        // Fall back to direct fetch
+      }
+    }
+
     // Whitelisted crawler user-agents bypass Cloudflare datacenter bot challenges
     const upstreamHeaders: Record<string, string> = {
       'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',

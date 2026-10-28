@@ -456,10 +456,12 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
           if (accessId && !fullUrl.includes('?id=') && !fullUrl.includes('&id=')) {
             fullUrl += `?id=${accessId}`;
           }
-          const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`;
+          const workerBase = process.env.NEXT_PUBLIC_CF_WORKER_PROXY || 'https://kurokomi-image-proxy.kurokomi.workers.dev';
+          const primaryUrl = `${workerBase}/?url=${encodeURIComponent(fullUrl)}`;
+          const fallbackUrl = `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`;
           return {
-            url: proxyUrl,
-            fallbackUrl: proxyUrl,
+            url: primaryUrl,
+            fallbackUrl: fallbackUrl,
           };
         });
       } catch {
