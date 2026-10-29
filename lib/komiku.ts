@@ -128,7 +128,10 @@ export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
     }
 
     const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
-    const coverUrl = imgMatch ? imgMatch[1] : '';
+    let coverUrl = imgMatch ? imgMatch[1] : '';
+    if (coverUrl.includes('?resize=')) {
+      coverUrl = coverUrl.split('?')[0];
+    }
 
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
     const typeMatch = block.match(/<b>\s*(Manga|Manhwa|Manhua)\s*<\/b>/i);
