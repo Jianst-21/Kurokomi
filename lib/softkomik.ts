@@ -8,6 +8,34 @@ export const SOFTKOMIK_BASE = 'https://softkomik.app';
 export const SOFTKOMIK_COVER_BASE = 'https://cover.softdevices.my.id/softkomik-cover';
 export const SOFTKOMIK_IMAGE_BASE = 'https://image.komik.im/softkomik';
 export const SOFTKOMIK_ENCRYPTION_KEY = 'nYTInq9MwR4pWa8yeXtu/2iO3t9nGP65WHpWEvqpEdU=';
+export const SOFTKOMIK_DEFAULT_TOKEN = 'T4Kmwztku';
+
+export function extractSoftkomikToken(html: string): string {
+  // 1. Try URL parameter in preloads or image tags
+  const tokenMatch = html.match(/(?:image\.komik\.im|psy1\.komik\.im)[^"']*?\?id=([a-zA-Z0-9_-]+)/) ||
+    html.match(/\.webp\?id=([a-zA-Z0-9_-]+)/);
+  if (tokenMatch && tokenMatch[1]) {
+    return tokenMatch[1];
+  }
+
+  // 2. Try inline token declaration in scripts e.g. String("...").trim()
+  const scriptMatch = html.match(/String\(["']([a-zA-Z0-9_-]{8,})["']\)\.trim\(\)/);
+  if (scriptMatch && scriptMatch[1]) {
+    return scriptMatch[1];
+  }
+
+  // 3. Fallback to known valid default token
+  return SOFTKOMIK_DEFAULT_TOKEN;
+}
+
+export function buildSoftkomikPageUrl(rawPathOrUrl: string, token: string = SOFTKOMIK_DEFAULT_TOKEN): string {
+  let fullUrl = rawPathOrUrl.startsWith('http') ? rawPathOrUrl : `${SOFTKOMIK_IMAGE_BASE}/${rawPathOrUrl}`;
+  if (token && !fullUrl.includes('?id=') && !fullUrl.includes('&id=')) {
+    const separator = fullUrl.includes('?') ? '&' : '?';
+    fullUrl += `${separator}id=${token}`;
+  }
+  return fullUrl;
+}
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 const FETCH_TIMEOUT_MS = 4000;
@@ -448,18 +476,13 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
         if (!imgList.length) continue;
 
         // Extract access token (?id=...) from HTML if present to bypass Softkomik hotlink protection
-        const tokenMatch = html.match(/(?:image\.komik\.im|psy1\.komik\.im)[^"']*?\?id=([a-zA-Z0-9_-]+)/) ||
-          html.match(/\.webp\?id=([a-zA-Z0-9_-]+)/);
-        const accessId = tokenMatch ? tokenMatch[1] : '';
+        const accessId = extractSoftkomikToken(html);
 
         // Filter out promotional/watermark banners (e.g. img-file/00-hello)
         const validImages = imgList.filter(img => !img.includes('00-hello') && !img.includes('baca-image'));
 
         return validImages.map(img => {
-          let fullUrl = img.startsWith('http') ? img : `${SOFTKOMIK_IMAGE_BASE}/${img}`;
-          if (accessId && !fullUrl.includes('?id=') && !fullUrl.includes('&id=')) {
-            fullUrl += `?id=${accessId}`;
-          }
+          const fullUrl = buildSoftkomikPageUrl(img, accessId);
           const workerBase = process.env.NEXT_PUBLIC_CF_WORKER_PROXY || 'https://kurokomi-image-proxy.kurokomi.workers.dev';
           const primaryUrl = `${workerBase}/?url=${encodeURIComponent(fullUrl)}`;
           const fallbackUrl = `/api/image-proxy?url=${encodeURIComponent(fullUrl)}`;
