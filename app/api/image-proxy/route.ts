@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAllowedImageProxyUrl } from '@/lib/security';
-import { SOFTKOMIK_DEFAULT_TOKEN } from '@/lib/softkomik';
 
 export const runtime = 'edge';
 
 export const SOFTKOMIK_TRAP_BANNER_SIZE = 213850;
+export const SOFTKOMIK_DEFAULT_TOKEN = 'T4Kmwztku';
 
 export function isSoftkomikPromoBanner(byteLength: number): boolean {
   return byteLength === SOFTKOMIK_TRAP_BANNER_SIZE;
