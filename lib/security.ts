@@ -63,6 +63,8 @@ const ALLOWED_IMAGE_HOSTS = [
   'img.komiku.org',
   'komiku.id',
   'komiku.com',
+  'komiku.to',
+  'thumbnail.komiku.to',
   'komikindo.ch',
   'komikindo.tv',
   'komikindo.co',

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+@theme {
+  --color-zinc-750: #333338;
+  --color-zinc-850: #202023;
+  --color-border: #27272a;
+}
+
 :root {
   --background: #09090b;
   --foreground: #f4f4f5;
@@ -8,6 +14,12 @@
   --border: #27272a;
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
+}
+
+*,
+::before,
+::after {
+  border-color: #27272a;
 }
 
 html {
