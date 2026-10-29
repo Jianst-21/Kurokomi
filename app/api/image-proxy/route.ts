@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAllowedImageProxyUrl } from '@/lib/security';
+import { SOFTKOMIK_DEFAULT_TOKEN } from '@/lib/softkomik';
 
 export const runtime = 'edge';
+
+export const SOFTKOMIK_TRAP_BANNER_SIZE = 213850;
+
+export function isSoftkomikPromoBanner(byteLength: number): boolean {
+  return byteLength === SOFTKOMIK_TRAP_BANNER_SIZE;
+}
 
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get('url');
@@ -33,20 +40,29 @@ export async function GET(req: NextRequest) {
 
     // Softkomik CDN hotlink bypass: forward through Cloudflare Worker if available
     if (host.includes('komik.im')) {
+      // Ensure ?id= token is present
+      let targetUrl = urlParam;
+      if (!targetUrl.includes('?id=') && !targetUrl.includes('&id=')) {
+        const sep = targetUrl.includes('?') ? '&' : '?';
+        targetUrl = `${targetUrl}${sep}id=${SOFTKOMIK_DEFAULT_TOKEN}`;
+      }
+
       const cfWorker = process.env.CF_WORKER_PROXY || 'https://kurokomi-image-proxy.kurokomi.workers.dev';
       try {
-        const workerRes = await fetch(`${cfWorker}/?url=${encodeURIComponent(urlParam)}`, {
+        const workerRes = await fetch(`${cfWorker}/?url=${encodeURIComponent(targetUrl)}`, {
           signal: AbortSignal.timeout(10000),
         });
         if (workerRes.ok) {
           const contentType = workerRes.headers.get('content-type') || 'image/webp';
           const buffer = await workerRes.arrayBuffer();
-          return new NextResponse(buffer, {
-            headers: {
-              'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400, immutable',
-            },
-          });
+          if (!isSoftkomikPromoBanner(buffer.byteLength)) {
+            return new NextResponse(buffer, {
+              headers: {
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=604800, s-maxage=2592000, stale-while-revalidate=86400, immutable',
+              },
+            });
+          }
         }
       } catch {
         // Fall back to direct fetch
@@ -69,9 +85,13 @@ export async function GET(req: NextRequest) {
     if (host.includes('komik.im')) {
       const isTrap = res.url.includes('baca-image') || res.headers.get('location')?.includes('baca-image');
       if (!res.ok || isTrap) {
-        const altUrl = host.includes('image.komik.im')
+        let altUrl = host.includes('image.komik.im')
           ? urlParam.replace('image.komik.im/softkomik', 'psy1.komik.im').replace('image.komik.im', 'psy1.komik.im')
           : urlParam.replace('psy1.komik.im', 'image.komik.im/softkomik');
+        if (!altUrl.includes('?id=') && !altUrl.includes('&id=')) {
+          const sep = altUrl.includes('?') ? '&' : '?';
+          altUrl = `${altUrl}${sep}id=${SOFTKOMIK_DEFAULT_TOKEN}`;
+        }
         if (altUrl !== urlParam) {
           try {
             const retryRes = await fetch(altUrl, {
@@ -99,7 +119,32 @@ export async function GET(req: NextRequest) {
     }
 
     const contentType = res.headers.get('content-type') || 'image/jpeg';
-    const buffer = await res.arrayBuffer();
+    let buffer = await res.arrayBuffer();
+
+    // Secondary check: if direct fetch returned Softkomik trap banner, retry mirror CDN with default token
+    if (host.includes('komik.im') && isSoftkomikPromoBanner(buffer.byteLength)) {
+      let altUrl = host.includes('image.komik.im')
+        ? urlParam.replace('image.komik.im/softkomik', 'psy1.komik.im').replace('image.komik.im', 'psy1.komik.im')
+        : urlParam.replace('psy1.komik.im', 'image.komik.im/softkomik');
+      if (!altUrl.includes('?id=') && !altUrl.includes('&id=')) {
+        const sep = altUrl.includes('?') ? '&' : '?';
+        altUrl = `${altUrl}${sep}id=${SOFTKOMIK_DEFAULT_TOKEN}`;
+      }
+      try {
+        const retryRes = await fetch(altUrl, {
+          headers: upstreamHeaders,
+          signal: AbortSignal.timeout(10000),
+        });
+        if (retryRes.ok) {
+          const retryBuf = await retryRes.arrayBuffer();
+          if (!isSoftkomikPromoBanner(retryBuf.byteLength)) {
+            buffer = retryBuf;
+          }
+        }
+      } catch {
+        // Fall back to original buffer
+      }
+    }
 
     return new NextResponse(buffer, {
       headers: {
