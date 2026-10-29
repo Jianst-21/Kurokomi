@@ -97,6 +97,61 @@ export function normalizeChapterKey(ch: string): string {
   return clean.toLowerCase().replace(/^0+/, '') || '0';
 }
 
+export function extractChapterNumber(chapterId: string): string | null {
+  if (!chapterId) return null;
+  const decoded = decodeURIComponent(chapterId).trim();
+
+  // Guard: standard UUID format is an opaque ID (e.g. MangaDex), not a chapter slug
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(decoded)) {
+    return null;
+  }
+
+  // Softkomik pattern: softkomik--slug__<chapter>
+  const softkomikMatch = decoded.match(/__([0-9.]+)(?:[?&#]|$)/);
+  if (softkomikMatch) {
+    return normalizeChapterKey(softkomikMatch[1]);
+  }
+
+  // Common pattern: chapter-123, ch-123, ch.123, c-123 (with optional suffix like -bahasa-indonesia or -indo)
+  const chMatch = decoded.match(/(?:^|[-_/])(?:chapter|ch|chap)[-.]?([0-9.]+)/i);
+  if (chMatch) {
+    return normalizeChapterKey(chMatch[1]);
+  }
+
+  // Fallback pattern: -c-123 or /c-123
+  const cDashMatch = decoded.match(/(?:^|[-_/])c-([0-9.]+)/i);
+  if (cDashMatch) {
+    return normalizeChapterKey(cDashMatch[1]);
+  }
+
+  // Trailing digits pattern: e.g. slug-123 or slug_123
+  const endNumMatch = decoded.match(/[-_]([0-9.]+)$/);
+  if (endNumMatch) {
+    return normalizeChapterKey(endNumMatch[1]);
+  }
+
+  return null;
+}
+
+export function findChapterMatch(chapters: ChapterItem[], chapterId: string): ChapterItem | null {
+  if (!chapters || chapters.length === 0 || !chapterId) return null;
+  const decodedId = decodeURIComponent(chapterId);
+
+  // 1. Exact ID match (raw or decoded)
+  const exact = chapters.find(c => c.id === chapterId || decodeURIComponent(c.id) === decodedId);
+  if (exact) return exact;
+
+  // 2. Number-based match
+  const extractedNum = extractChapterNumber(chapterId);
+  if (extractedNum) {
+    const normTarget = normalizeChapterKey(extractedNum);
+    const byNum = chapters.find(c => normalizeChapterKey(c.chapter) === normTarget);
+    if (byNum) return byNum;
+  }
+
+  return null;
+}
+
 export function mergeAndSortChapters(
   ...chapterArrays: ChapterItem[][]
 ): ChapterItem[] {

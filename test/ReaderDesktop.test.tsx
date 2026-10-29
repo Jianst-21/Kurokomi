@@ -21,15 +21,20 @@ vi.mock('@/lib/mangadex', () => ({
   sortChapters: vi.fn().mockReturnValue([]),
 }));
 
-vi.mock('@/lib/aggregator', () => ({
-  fetchUnifiedComicDetail: vi.fn().mockResolvedValue({ id: 'softkomik--solo-leveling', title: 'Solo Leveling', type: 'manhwa' }),
-  fetchUnifiedChapters: vi.fn().mockResolvedValue({ idChapters: [], enChapters: [] }),
-}));
+vi.mock('@/lib/aggregator', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/aggregator')>();
+  return {
+    ...actual,
+    fetchUnifiedComicDetail: vi.fn().mockResolvedValue({ id: 'softkomik--solo-leveling', title: 'Solo Leveling', type: 'manhwa' }),
+    fetchUnifiedChapters: vi.fn().mockResolvedValue({ idChapters: [], enChapters: [] }),
+  };
+});
 
 vi.mock('@/lib/storage', () => ({
   saveHistory: vi.fn(),
   getSavedChapterScrollPosition: vi.fn().mockReturnValue(null),
   saveChapterScrollPosition: vi.fn(),
+  getComicLastRead: vi.fn().mockReturnValue(undefined),
 }));
 
 describe('Reader Desktop Constraints', () => {

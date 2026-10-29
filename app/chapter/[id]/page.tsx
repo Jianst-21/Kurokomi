@@ -19,8 +19,18 @@ import {
   fetchMangaIdFromChapter,
   sortChapters,
 } from '@/lib/mangadex';
-import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
-import { saveHistory, saveChapterScrollPosition, getSavedChapterScrollPosition } from '@/lib/storage';
+import {
+  fetchUnifiedComicDetail,
+  fetchUnifiedChapters,
+  extractChapterNumber,
+  findChapterMatch,
+} from '@/lib/aggregator';
+import {
+  saveHistory,
+  saveChapterScrollPosition,
+  getSavedChapterScrollPosition,
+  getComicLastRead,
+} from '@/lib/storage';
 import {
   ReaderMode,
   getPagedTouchZone,
@@ -152,7 +162,8 @@ export default function ReaderPage() {
           let activeList = chapters;
           if (activeList.length === 0) {
             const { idChapters, enChapters } = await fetchUnifiedChapters(detailData);
-            activeList = enChapters.some(c => c.id === chapterId)
+            const matchesEn = Boolean(findChapterMatch(enChapters, chapterId));
+            activeList = matchesEn
               ? enChapters
               : (idChapters.length > 0 ? idChapters : enChapters);
 
@@ -161,10 +172,15 @@ export default function ReaderPage() {
             }
           }
 
-          // Extract chapter number for history
-          const numMatch = chapterId.match(/chapter-([0-9.]+)/i);
-          const currentCh = activeList.find(c => c.id === chapterId);
-          const chNum = currentCh?.chapter || (numMatch ? numMatch[1] : '1');
+          // Extract chapter number for history robustly across all providers
+          const matchedCh = findChapterMatch(activeList, chapterId);
+          const extractedNum = extractChapterNumber(chapterId);
+          const existingHistory = targetMangaId ? getComicLastRead(targetMangaId) : undefined;
+          const chNum =
+            matchedCh?.chapter ||
+            extractedNum ||
+            (existingHistory?.chapterId === chapterId ? existingHistory.chapterNumber : undefined) ||
+            '1';
 
           saveHistory({
             mangaId: detailData.id,
@@ -209,8 +225,10 @@ export default function ReaderPage() {
   // Sort chapters ascending for sequential reading
   const ascChapters = sortChapters(chapters, true);
 
-  const currentIndex = ascChapters.findIndex(c => c.id === chapterId);
-  const currentChapter = currentIndex >= 0 ? ascChapters[currentIndex] : null;
+  const currentChapter = findChapterMatch(ascChapters, chapterId);
+  const currentIndex = currentChapter
+    ? ascChapters.findIndex(c => c.id === currentChapter.id)
+    : ascChapters.findIndex(c => c.id === chapterId);
 
   const prevChapter = currentIndex > 0 ? ascChapters[currentIndex - 1] : null;
   const nextChapter = currentIndex >= 0 && currentIndex < ascChapters.length - 1
@@ -444,7 +462,7 @@ export default function ReaderPage() {
       <ReaderHUD
         visible={hudVisible}
         comicTitle={comic?.title || 'Komik'}
-        currentChapter={currentChapter?.chapter || '?'}
+        currentChapter={currentChapter?.chapter || extractChapterNumber(chapterId) || '?'}
         mangaId={mangaId}
         readProgress={readProgress}
         isManga={isManga}
@@ -540,7 +558,7 @@ export default function ReaderPage() {
 
             <div className="flex-1 overflow-y-auto p-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] flex flex-col gap-1.5 no-scrollbar">
               {ascChapters.map(ch => {
-                const isCurrent = ch.id === chapterId;
+                const isCurrent = currentChapter ? ch.id === currentChapter.id : ch.id === chapterId;
                 return (
                   <Link
                     key={ch.id}

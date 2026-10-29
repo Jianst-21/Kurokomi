@@ -144,9 +144,12 @@ export default function HistoryPage() {
                         >
                           {item.title}
                         </Link>
-                        <div className="text-[11px] text-blue-400 font-semibold mt-0.5">
+                        <Link
+                          href={`/chapter/${item.chapterId}?mangaId=${item.mangaId}`}
+                          className="text-[11px] text-blue-400 font-semibold mt-0.5 hover:underline inline-block"
+                        >
                           Chapter {item.chapterNumber}
-                        </div>
+                        </Link>
                       </div>
                       <button
                         onClick={(e) => handleRemoveItem(e, item.mangaId)}
