@@ -85,11 +85,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            className={`w-full h-full ${
-              imgSrc.includes('horizontal') || imgSrc.includes('manga_img_horizontal')
-                ? 'object-contain bg-zinc-950 p-1'
-                : 'object-cover object-center'
-            }`}
+            className="w-full h-full object-cover object-center"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-zinc-500 gap-1 bg-zinc-900">
