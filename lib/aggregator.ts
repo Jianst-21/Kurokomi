@@ -757,8 +757,21 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   // 5. MangaPill: Fetch English chapters from MangaPill for complete manga scanlations
   const mpEnPromise = (async (): Promise<ChapterItem[]> => {
     try {
-      const { findMangaPillPath, fetchMangaPillChapters } = await import('./mangapill');
-      const mpPath = await findMangaPillPath(comic.title, comic.altTitles);
+      const altParam = (comic.altTitles || []).slice(0, 10).join('|');
+      let mpPath: string | null = null;
+      if (isBrowser) {
+        const pathRes = await fetch(
+          `/api/mangapill?action=slug&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`
+        );
+        if (pathRes.ok) {
+          const pathData = await pathRes.json();
+          mpPath = pathData.path || null;
+        }
+      } else {
+        const { findMangaPillPath } = await import('./mangapill');
+        mpPath = await findMangaPillPath(comic.title, comic.altTitles);
+      }
+
       if (mpPath) {
         if (isBrowser) {
           const res = await fetch(`/api/mangapill?action=chapters&path=${encodeURIComponent(mpPath)}`);
@@ -767,6 +780,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
             return data.chapters || [];
           }
         } else {
+          const { fetchMangaPillChapters } = await import('./mangapill');
           return await fetchMangaPillChapters(mpPath);
         }
       }
