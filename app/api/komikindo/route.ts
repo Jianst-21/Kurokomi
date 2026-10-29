@@ -13,6 +13,10 @@ const CACHE_HEADERS = {
   'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
 };
 
+const NO_STORE_HEADERS = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate',
+};
+
 const LATEST_CACHE_HEADERS = {
   'Cache-Control': 'public, s-maxage=60, max-age=60, stale-while-revalidate=120',
 };
@@ -42,7 +46,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
       }
       const detail = await fetchKomikindoDetail(slug);
-      return NextResponse.json({ detail }, { headers: CACHE_HEADERS });
+      return NextResponse.json(
+        { detail },
+        { headers: detail ? CACHE_HEADERS : NO_STORE_HEADERS }
+      );
     }
 
     if (action === 'latest') {
@@ -59,7 +66,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
       }
       const chapters = await fetchKomikindoChapters(slug);
-      return NextResponse.json({ chapters }, { headers: CACHE_HEADERS });
+      return NextResponse.json(
+        { chapters },
+        { headers: chapters.length > 0 ? CACHE_HEADERS : NO_STORE_HEADERS }
+      );
     }
 
     if (action === 'pages') {
@@ -68,7 +78,10 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Chapter slug tidak valid' }, { status: 400 });
       }
       const pages = await fetchKomikindoChapterImages(chapterSlug);
-      return NextResponse.json({ pages }, { headers: CACHE_HEADERS });
+      return NextResponse.json(
+        { pages },
+        { headers: pages.length > 0 ? CACHE_HEADERS : NO_STORE_HEADERS }
+      );
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });

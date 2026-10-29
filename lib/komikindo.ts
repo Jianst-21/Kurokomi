@@ -254,12 +254,12 @@ export function parseKomikindoDetail(html: string, slug: string): ComicDetail | 
 
     // Genres
     const genres: string[] = [];
-    const genreMatches = [...html.matchAll(/<div class="genre-info"[^>]*>([\s\S]*?)<\/div>/gi)];
+    const genreMatches = [...html.matchAll(/<div class="genre-info[^"]*"[^>]*>([\s\S]*?)<\/div>/gi)];
     if (genreMatches[0]) {
-      const aMatches = [...genreMatches[0][1].matchAll(/<a[^>]*>([^<]+)<\/a>/gi)];
+      const aMatches = [...genreMatches[0][1].matchAll(/<a[^>]*>([\s\S]*?)<\/a>/gi)];
       for (const gm of aMatches) {
-        const g = gm[1].trim();
-        if (g) genres.push(g);
+        const g = gm[1].replace(/<[^>]+>/g, '').trim();
+        if (g && !genres.includes(g)) genres.push(g);
       }
     }
 

@@ -338,9 +338,9 @@ export function parseKomikuDetail(html: string, slug: string): ComicDetail | nul
     const genres: string[] = [];
     const genreMatches = [...html.matchAll(/<ul class="genre"[^>]*>([\s\S]*?)<\/ul>/gi)];
     if (genreMatches[0]) {
-      const aMatches = [...genreMatches[0][1].matchAll(/<a[^>]*>([^<]+)<\/a>/gi)];
+      const aMatches = [...genreMatches[0][1].matchAll(/<a[^>]*>([\s\S]*?)<\/a>/gi)];
       for (const gm of aMatches) {
-        const g = gm[1].trim();
+        const g = gm[1].replace(/<[^>]+>/g, '').trim();
         if (g && !genres.includes(g)) genres.push(g);
       }
     }
