@@ -1,4 +1,4 @@
-import { ComicCardItem, ChapterItem, ChapterPageItem } from './types';
+import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { generateSearchQueries, scoreTitleMatch } from './komiku';
 import { isSafeContent } from './security';
 
@@ -170,6 +170,68 @@ export async function findMangaPillPath(title: string, altTitles: string[] = [])
 
   mangapillSlugCache.set(cacheKey, { path: bestPath, exp: Date.now() + MANGAPILL_CACHE_TTL });
   return bestPath;
+}
+
+export function parseMangaPillDetailHtml(html: string, path: string): ComicDetail | null {
+  try {
+    const titleMatch = html.match(/<h1[^>]*class="[^"]*text-xl[^"]*"[^>]*>([\s\S]*?)<\/h1>/i) ||
+      html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    const title = titleMatch ? titleMatch[1].replace(/<[^>]+>/g, '').trim() : '';
+    if (!title) return null;
+
+    const imgMatch = html.match(/<div class="flex[^"]*">[\s\S]*?<img[^>]+(?:data-src|src)="([^"]+)"/i) ||
+      html.match(/<img[^>]+(?:data-src|src)="([^"]+)"[^>]*alt="[^"]*poster/i);
+    const coverUrl = imgMatch ? imgMatch[1] : '';
+
+    const descMatch = html.match(/<p class="text-xs text-secondary[^"]*"[^>]*>([\s\S]*?)<\/p>/i) ||
+      html.match(/<p[^>]*class="[^"]*description[^"]*"[^>]*>([\s\S]*?)<\/p>/i);
+    const description = descMatch ? descMatch[1].replace(/<[^>]+>/g, '').trim() : 'Tidak ada sinopsis.';
+
+    const typeMatch = html.match(/(Manga|Manhwa|Manhua)/i);
+    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'manga';
+    if (typeMatch) {
+      const t = typeMatch[1].toLowerCase();
+      if (t === 'manhwa') type = 'manhwa';
+      else if (t === 'manhua') type = 'manhua';
+      else if (t === 'manga') type = 'manga';
+    }
+
+    const cleanId = path.replace(/^\//, '').replace(/\//g, '___');
+
+    return {
+      id: `mangapill--${cleanId}`,
+      title,
+      altTitles: [],
+      description,
+      coverUrl,
+      type,
+      status: 'ongoing',
+      genres: [],
+      isFullColor: type === 'manhwa' || type === 'manhua',
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchMangaPillDetail(comicPath: string): Promise<ComicDetail | null> {
+  try {
+    const cleanPath = comicPath.startsWith('/') ? comicPath : `/${comicPath}`;
+    const url = `${MANGAPILL_BASE}${cleanPath}`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      next: { revalidate: 300 },
+    });
+
+    if (!res.ok) return null;
+    const html = await res.text();
+    return parseMangaPillDetailHtml(html, cleanPath);
+  } catch (e) {
+    console.error('fetchMangaPillDetail error:', e);
+    return null;
+  }
 }
 
 export async function fetchMangaPillChapters(mangaPath: string): Promise<ChapterItem[]> {

@@ -166,7 +166,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
           {/* Genres Chips */}
           {comic.genres && comic.genres.length > 0 && (
             <div className="flex items-center gap-1 flex-wrap mt-0.5">
-              {comic.genres.slice(0, 3).map(g => (
+              {comic.genres.map(g => (
                 <span
                   key={g}
                   className="text-[9px] bg-zinc-800/80 text-zinc-300 px-1.5 py-0.5 rounded border border-zinc-750"

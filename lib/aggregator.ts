@@ -32,21 +32,34 @@ function getCoverQualityScore(coverUrl?: string, providerId?: string): number {
   let score = 10;
   const lower = coverUrl.toLowerCase();
 
-  // Komiku high-resolution manga_thumbnail or upload posters
-  if (lower.includes('thumbnail.komiku') || lower.includes('komiku.to') || lower.includes('manga_thumbnail')) {
+  // Severe penalty for landscape/horizontal banners (e.g. manga_img_horizontal, 450x235)
+  // These look terribly zoomed when placed into vertical portrait 3:4 cards.
+  if (
+    lower.includes('horizontal') ||
+    lower.includes('resize=450,235') ||
+    lower.includes('manga_img_horizontal') ||
+    lower.includes('resize=30,18')
+  ) {
+    return 1;
+  }
+
+  // Komiku high-resolution vertical poster (manga_thumbnail or detail covers)
+  if (
+    (lower.includes('thumbnail.komiku') || lower.includes('komiku.to') || lower.includes('komiku.org')) &&
+    (lower.includes('manga_thumbnail') || lower.includes('/new/img/') || lower.includes('img_68'))
+  ) {
+    score += 50;
+  }
+  // Komikindo vertical series masterimage (usually 236x316 or full portrait)
+  else if (lower.includes('komikindo') || lower.includes('masterimage-series')) {
     score += 40;
   }
-  // Komikindo series masterimage
-  else if (lower.includes('komikindo') || lower.includes('masterimage-series')) {
-    score += 30;
-  }
-  // Softkomik cover
+  // Softkomik full cover image
   else if (lower.includes('softdevices.my.id') || lower.includes('softkomik-cover')) {
-    // If it's an uploaded head crop (nodeJs/members) vs full image-cover
     if (lower.includes('image-cover')) {
-      score += 25;
+      score += 35;
     } else {
-      score += 15;
+      score += 20;
     }
   }
 
@@ -532,12 +545,24 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
 
     // Fallback if Komiku 404s (e.g. Komiku removed the comic, fallback to Komikindo)
     try {
-      const { findKomikindoSlug, fetchKomikindoDetail } = await import('./komikindo');
-      const kiSlug = await findKomikindoSlug(slug);
+      let kiSlug: string | null = null;
+      if (isBrowser) {
+        const sr = await fetch(`/api/komikindo?action=slug&title=${encodeURIComponent(slug)}`);
+        if (sr.ok) {
+          const sjson = await sr.json();
+          kiSlug = sjson.slug || null;
+        }
+      } else {
+        const { findKomikindoSlug } = await import('./komikindo');
+        kiSlug = await findKomikindoSlug(slug);
+      }
       if (kiSlug) {
         detail = isBrowser
-          ? await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(kiSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
-          : await fetchKomikindoDetail(kiSlug);
+          ? await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(kiSlug)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(d => d ? d.detail : null)
+              .catch(() => null)
+          : await (await import('./komikindo')).fetchKomikindoDetail(kiSlug);
         if (detail) return detail;
       }
     } catch {
@@ -564,12 +589,24 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
 
     // Resilient fallback if Komikindo 404s/fails: fallback to Softkomik or Komiku
     try {
-      const { findSoftkomikSlug, fetchSoftkomikDetail } = await import('./softkomik');
-      const skSlug = await findSoftkomikSlug(slug);
+      let skSlug: string | null = null;
+      if (isBrowser) {
+        const sr = await fetch(`/api/softkomik?action=slug&title=${encodeURIComponent(slug)}`);
+        if (sr.ok) {
+          const sjson = await sr.json();
+          skSlug = sjson.slug || null;
+        }
+      } else {
+        const { findSoftkomikSlug } = await import('./softkomik');
+        skSlug = await findSoftkomikSlug(slug);
+      }
       if (skSlug) {
         detail = isBrowser
-          ? await fetch(`/api/softkomik?action=detail&slug=${encodeURIComponent(skSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
-          : await fetchSoftkomikDetail(skSlug);
+          ? await fetch(`/api/softkomik?action=detail&slug=${encodeURIComponent(skSlug)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(d => d ? d.detail : null)
+              .catch(() => null)
+          : await (await import('./softkomik')).fetchSoftkomikDetail(skSlug);
         if (detail) return detail;
       }
     } catch {
@@ -577,12 +614,24 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
     }
 
     try {
-      const { findKomikuSlug, fetchKomikuDetail } = await import('./komiku');
-      const kuSlug = await findKomikuSlug(slug);
+      let kuSlug: string | null = null;
+      if (isBrowser) {
+        const sr = await fetch(`/api/komiku?action=search&title=${encodeURIComponent(slug)}&slugOnly=true`);
+        if (sr.ok) {
+          const sjson = await sr.json();
+          kuSlug = sjson.slug || null;
+        }
+      } else {
+        const { findKomikuSlug } = await import('./komiku');
+        kuSlug = await findKomikuSlug(slug);
+      }
       if (kuSlug) {
         detail = isBrowser
-          ? await fetch(`/api/komiku?action=detail&slug=${encodeURIComponent(kuSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
-          : await fetchKomikuDetail(kuSlug);
+          ? await fetch(`/api/komiku?action=detail&slug=${encodeURIComponent(kuSlug)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(d => d ? d.detail : null)
+              .catch(() => null)
+          : await (await import('./komiku')).fetchKomikuDetail(kuSlug);
         if (detail) return detail;
       }
     } catch {
@@ -609,18 +658,50 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
 
     // Resilient fallback if Softkomik 404s/fails: fallback to Komikindo
     try {
-      const { findKomikindoSlug, fetchKomikindoDetail } = await import('./komikindo');
-      const kiSlug = await findKomikindoSlug(slug);
+      let kiSlug: string | null = null;
+      if (isBrowser) {
+        const sr = await fetch(`/api/komikindo?action=slug&title=${encodeURIComponent(slug)}`);
+        if (sr.ok) {
+          const sjson = await sr.json();
+          kiSlug = sjson.slug || null;
+        }
+      } else {
+        const { findKomikindoSlug } = await import('./komikindo');
+        kiSlug = await findKomikindoSlug(slug);
+      }
       if (kiSlug) {
         detail = isBrowser
-          ? await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(kiSlug)}`).then(r => r.json()).then(d => d.detail).catch(() => null)
-          : await fetchKomikindoDetail(kiSlug);
+          ? await fetch(`/api/komikindo?action=detail&slug=${encodeURIComponent(kiSlug)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(d => d ? d.detail : null)
+              .catch(() => null)
+          : await (await import('./komikindo')).fetchKomikindoDetail(kiSlug);
         if (detail) return detail;
       }
     } catch {
       // ignore
     }
 
+    return null;
+  }
+
+  // 4. MangaPill provider
+  if (decodedId.startsWith('mangapill--')) {
+    const raw = decodedId.replace(/^mangapill--/, '');
+    const cleanPath = '/' + raw.replace(/___/g, '/');
+    let detail: ComicDetail | null = null;
+    if (isBrowser) {
+      // In browser, try resolving detail or search
+      const res = await fetch(`/api/mangapill?action=detail&path=${encodeURIComponent(cleanPath)}`);
+      if (res.ok) {
+        const json = await res.json();
+        detail = json.detail || null;
+      }
+    } else {
+      const { fetchMangaPillDetail } = await import('./mangapill');
+      detail = await fetchMangaPillDetail(cleanPath);
+    }
+    if (detail) return detail;
     return null;
   }
 

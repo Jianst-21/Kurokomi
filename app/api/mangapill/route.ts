@@ -4,6 +4,7 @@ import {
   findMangaPillPath,
   fetchMangaPillChapters,
   fetchMangaPillChapterImages,
+  fetchMangaPillDetail,
   searchMangaPill,
 } from '@/lib/mangapill';
 
@@ -28,6 +29,15 @@ export async function GET(req: NextRequest) {
 
       const comics = await searchMangaPill(q);
       return NextResponse.json({ comics }, { headers: CACHE_HEADERS });
+    }
+
+    if (action === 'detail') {
+      const pathParam = searchParams.get('path') || '';
+      if (!pathParam) {
+        return NextResponse.json({ error: 'Parameter path wajib diisi' }, { status: 400 });
+      }
+      const detail = await fetchMangaPillDetail(pathParam);
+      return NextResponse.json({ detail }, { headers: CACHE_HEADERS });
     }
 
     if (action === 'chapters') {
