@@ -444,22 +444,31 @@ export default function MangaDetailPage() {
             </div>
 
             {/* Genres Chips */}
-            {comic.genres && filterSafeGenres(comic.genres).length > 0 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-semibold text-zinc-400">Genre:</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {filterSafeGenres(comic.genres).map(g => (
-                    <Link
-                      key={g}
-                      href={`/search?genre=${encodeURIComponent(g.toLowerCase())}`}
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
-                    >
-                      {g}
-                    </Link>
-                  ))}
+            {(() => {
+              const safeGenres = filterSafeGenres(comic.genres);
+              return (
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[11px] font-semibold text-zinc-400">Genre:</span>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {safeGenres.length > 0 ? (
+                      safeGenres.map(g => (
+                        <Link
+                          key={g}
+                          href={`/search?genre=${encodeURIComponent(g.toLowerCase())}`}
+                          className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors"
+                        >
+                          {g}
+                        </Link>
+                      ))
+                    ) : (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900/60 border border-zinc-850 text-zinc-500 italic">
+                        Belum Dikategorikan
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Synopsis Section */}
             {comic.description && (

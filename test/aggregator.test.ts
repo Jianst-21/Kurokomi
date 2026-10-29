@@ -3,7 +3,7 @@ import * as mangadexModule from '@/lib/mangadex';
 import * as komikuModule from '@/lib/komiku';
 import * as komikindoModule from '@/lib/komikindo';
 import * as softkomikModule from '@/lib/softkomik';
-import { mergeAndSortChapters, deduplicateComics, fetchUnifiedChapters } from '@/lib/aggregator';
+import { mergeAndSortChapters, deduplicateComics, fetchUnifiedChapters, enrichDetailGenres } from '@/lib/aggregator';
 import { ChapterItem, ComicCardItem } from '@/lib/types';
 
 describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
@@ -185,4 +185,42 @@ describe('Aggregator - Chapter Merging & Comic Deduplication', () => {
     expect(result.enChapters).toHaveLength(1);
     expect(result.enChapters[0].id).toBe('md-ch-100');
   }, 15000);
+
+  it('enriches empty genres using MangaDex via altTitles when primary title yields no results', async () => {
+    const searchSpy = vi.spyOn(mangadexModule, 'searchComics').mockImplementation(async (query: string) => {
+      if (query === 'Virus Ruler ID') {
+        return [];
+      }
+      if (query === 'The King of Virus') {
+        return [
+          {
+            id: 'md-virus-uuid',
+            title: 'The King of Virus',
+            coverUrl: 'http://md.jpg',
+            type: 'manhua',
+            genres: ['Action', 'Fantasy', 'Sci-Fi'],
+          },
+        ];
+      }
+      return [];
+    });
+
+    const detail = {
+      id: 'komiku--virus-ruler',
+      title: 'Virus Ruler ID',
+      altTitles: ['Aku Sang Penguasa Virus', 'The King of Virus'],
+      description: 'Sinopsis virus',
+      coverUrl: 'http://komiku.jpg',
+      type: 'manhua' as const,
+      status: 'ongoing' as const,
+      genres: [],
+      isFullColor: false,
+    };
+
+    const enriched = await enrichDetailGenres(detail);
+    expect(enriched).not.toBeNull();
+    expect(enriched?.genres).toEqual(['Action', 'Fantasy', 'Sci-Fi']);
+
+    searchSpy.mockRestore();
+  });
 });

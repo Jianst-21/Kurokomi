@@ -560,14 +560,31 @@ export async function searchComicsUnified(
   });
 }
 
-async function enrichDetailGenres(detail: ComicDetail | null): Promise<ComicDetail | null> {
+export async function enrichDetailGenres(detail: ComicDetail | null): Promise<ComicDetail | null> {
   if (!detail) return null;
   if (!detail.genres || detail.genres.length === 0) {
     try {
-      const mdMatches = await mangadex.searchComics(detail.title, { limit: 3 }).catch(() => []);
-      const matched = mdMatches.find(m => m.genres && m.genres.length > 0);
-      if (matched && matched.genres) {
-        detail.genres = filterSafeGenres(matched.genres);
+      // Gather search candidates: primary title first, followed by clean altTitles
+      const candidates: string[] = [];
+      if (detail.title && detail.title.trim()) {
+        candidates.push(detail.title.trim());
+      }
+      if (detail.altTitles && Array.isArray(detail.altTitles)) {
+        for (const alt of detail.altTitles) {
+          const cleanAlt = (alt || '').trim();
+          if (cleanAlt && !candidates.includes(cleanAlt)) {
+            candidates.push(cleanAlt);
+          }
+        }
+      }
+
+      for (const query of candidates.slice(0, 4)) {
+        const mdMatches = await mangadex.searchComics(query, { limit: 3 }).catch(() => []);
+        const matched = mdMatches.find(m => m.genres && m.genres.length > 0);
+        if (matched && matched.genres && matched.genres.length > 0) {
+          detail.genres = filterSafeGenres(matched.genres);
+          if (detail.genres.length > 0) break;
+        }
       }
     } catch {
       // ignore
