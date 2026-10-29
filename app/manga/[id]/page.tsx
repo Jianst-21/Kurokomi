@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { ComicDetail, ChapterItem } from '@/lib/types';
 import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
-import { toggleFavorite, isFavorite, getComicLastRead } from '@/lib/storage';
+import { toggleFavorite, isFavorite, getComicLastRead, saveComicCoverCache } from '@/lib/storage';
 import { filterSafeGenres } from '@/lib/security';
 import { ChapterList } from '@/components/ChapterList';
 import { BottomNav } from '@/components/BottomNav';
@@ -93,6 +93,13 @@ export default function MangaDetailPage() {
 
       setComic(detailData);
       setFavorited(isFavorite(mangaId));
+
+      if (detailData.coverUrl) {
+        saveComicCoverCache(mangaId, detailData.coverUrl);
+        if (detailData.id && detailData.id !== mangaId) {
+          saveComicCoverCache(detailData.id, detailData.coverUrl);
+        }
+      }
 
       const historyItem = getComicLastRead(mangaId);
       if (historyItem) {

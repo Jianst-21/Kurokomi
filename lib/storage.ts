@@ -7,9 +7,39 @@ const LATEST_PAGE_KEY = 'kurokomi_latest_page_v1';
 const TOP_PAGE_KEY = 'kurokomi_top_page_v1';
 const CHAPTER_SCROLL_PREFIX = 'kurokomi_ch_scroll_';
 const HOME_SCROLL_KEY = 'kurokomi_home_scroll_v1';
+const COMIC_COVERS_KEY = 'kurokomi_comic_covers_v1';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
+}
+
+export function saveComicCoverCache(comicId: string, coverUrl: string): void {
+  if (!isBrowser() || !comicId || !coverUrl) return;
+  try {
+    const raw = localStorage.getItem(COMIC_COVERS_KEY);
+    const map: Record<string, string> = raw ? JSON.parse(raw) : {};
+    map[comicId] = coverUrl;
+    // Limit cache size to 300 entries
+    const keys = Object.keys(map);
+    if (keys.length > 300) {
+      delete map[keys[0]];
+    }
+    localStorage.setItem(COMIC_COVERS_KEY, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+}
+
+export function getCachedComicCover(comicId: string): string | null {
+  if (!isBrowser() || !comicId) return null;
+  try {
+    const raw = localStorage.getItem(COMIC_COVERS_KEY);
+    if (!raw) return null;
+    const map: Record<string, string> = JSON.parse(raw);
+    return map[comicId] || null;
+  } catch {
+    return null;
+  }
 }
 
 export function getReadChapterIds(): string[] {

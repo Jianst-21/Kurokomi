@@ -22,6 +22,59 @@ function getProviderPriority(id: string): number {
   return 5; // MangaDex or other
 }
 
+/**
+ * Evaluates the quality and aesthetic completeness of a cover poster.
+ * Komiku full poster thumbnails and Komikindo full posters are full-body/comic-cover compositions,
+ * whereas cropped webp heads (like some softkomik crops) score lower.
+ */
+function getCoverQualityScore(coverUrl?: string, providerId?: string): number {
+  if (!coverUrl) return 0;
+  let score = 10;
+  const lower = coverUrl.toLowerCase();
+
+  // Komiku high-resolution manga_thumbnail or upload posters
+  if (lower.includes('thumbnail.komiku') || lower.includes('komiku.to') || lower.includes('manga_thumbnail')) {
+    score += 40;
+  }
+  // Komikindo series masterimage
+  else if (lower.includes('komikindo') || lower.includes('masterimage-series')) {
+    score += 30;
+  }
+  // Softkomik cover
+  else if (lower.includes('softdevices.my.id') || lower.includes('softkomik-cover')) {
+    // If it's an uploaded head crop (nodeJs/members) vs full image-cover
+    if (lower.includes('image-cover')) {
+      score += 25;
+    } else {
+      score += 15;
+    }
+  }
+
+  // Bonus if provider matches high priority
+  if (providerId) {
+    const priority = getProviderPriority(providerId);
+    score += (5 - priority) * 5;
+  }
+
+  return score;
+}
+
+function pickPreferredCover(
+  coverA: string | undefined,
+  idA: string | undefined,
+  coverB: string | undefined,
+  idB: string | undefined
+): string {
+  if (!coverA && !coverB) return '';
+  if (!coverA) return coverB!;
+  if (!coverB) return coverA;
+
+  const scoreA = getCoverQualityScore(coverA, idA);
+  const scoreB = getCoverQualityScore(coverB, idB);
+
+  return scoreB > scoreA ? coverB : coverA;
+}
+
 export function normalizeChapterKey(ch: string): string {
   const clean = (ch || '').trim().replace(/^ch(?:\.|apter)?\s*/i, '');
   const num = parseFloat(clean);
@@ -121,7 +174,7 @@ function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): C
 
   // Provider priority: Komiku (1) > Komikindo (2) > Softkomik (3) > MangaDex (4)
   let resultId = existing.id;
-  let resultCover = existing.coverUrl;
+  let resultCover = pickPreferredCover(existing.coverUrl, existing.id, incoming.coverUrl, incoming.id);
   let resultType = existing.type;
   let resultLatestChapter = existing.latestChapter;
   let resultIsFullColor = existing.isFullColor;
@@ -129,7 +182,6 @@ function mergeTwoComicItems(existing: ComicCardItem, incoming: ComicCardItem): C
 
   if (getProviderPriority(incoming.id) < getProviderPriority(existing.id)) {
     resultId = incoming.id;
-    if (incoming.coverUrl) resultCover = incoming.coverUrl;
     if (incoming.type && incoming.type !== 'other') resultType = incoming.type;
     if (incoming.latestChapter) resultLatestChapter = incoming.latestChapter;
     if (incoming.isFullColor !== undefined) resultIsFullColor = incoming.isFullColor;
@@ -250,7 +302,7 @@ export function mergeLatestComics(
       const mergedItem: ComicCardItem = {
         ...winner,
         title: cleanTitle,
-        coverUrl: winner.coverUrl || loser.coverUrl,
+        coverUrl: pickPreferredCover(winner.coverUrl, winner.id, loser.coverUrl, loser.id),
         altTitle: winner.altTitle || loser.altTitle,
         isFullColor: winner.isFullColor || loser.isFullColor,
         genres: filterSafeGenres(winner.genres || loser.genres),

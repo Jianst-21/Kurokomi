@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Clock, BookOpen, Check, Heart } from 'lucide-react';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 import { formatChapterDate } from '@/lib/date';
-import { getComicLastRead, isFavorite } from '@/lib/storage';
+import { getComicLastRead, isFavorite, getCachedComicCover } from '@/lib/storage';
 
 interface HorizontalComicCardProps {
   comic: ComicCardItem;
@@ -19,10 +19,12 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   const [favorited, setFavorited] = useState<boolean>(false);
 
   useEffect(() => {
-    setImgSrc(comic.coverUrl);
+    // If we have a cached high-fidelity cover from the detail page, prefer it
+    const cachedCover = getCachedComicCover(comic.id);
+    setImgSrc(cachedCover || comic.coverUrl);
     setHasTriedProxy(false);
     setImgError(false);
-  }, [comic.coverUrl]);
+  }, [comic.id, comic.coverUrl]);
 
   useEffect(() => {
     setLastRead(getComicLastRead(comic.id));
