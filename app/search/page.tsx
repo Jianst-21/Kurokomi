@@ -201,7 +201,7 @@ export default function SearchPage() {
             {Array.from({ length: 12 }).map((_, i) => (
               <div
                 key={i}
-                className="flex flex-col gap-2 rounded-xl bg-zinc-900/60 p-1.5 border border-zinc-800/60 animate-pulse"
+                className="flex flex-col gap-2 rounded-xl bg-zinc-900/60 p-1.5 border border-zinc-850 animate-pulse"
               >
                 <div className="aspect-[3/4] w-full bg-zinc-800 rounded-lg" />
                 <div className="h-3 w-4/5 bg-zinc-800 rounded" />

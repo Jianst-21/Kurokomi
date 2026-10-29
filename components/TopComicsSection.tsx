@@ -220,7 +220,7 @@ export function TopComicsSection() {
               <Link
                 key={comic.id}
                 href={`/manga/${comic.id}`}
-                className="flex flex-col gap-1.5 bg-zinc-900/50 hover:bg-zinc-900 rounded-xl p-1.5 border border-zinc-850 hover:border-zinc-750 transition-all group"
+                className="flex flex-col gap-1.5 bg-zinc-900/50 hover:bg-zinc-900 rounded-xl p-1.5 border border-zinc-850 hover:border-zinc-800 transition-all group"
               >
                 {/* Poster Cover */}
                 <TopComicCover comic={comic} rank={rank} rankBadgeStyle={rankBadgeStyle} />

@@ -72,8 +72,8 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
           : ambientClass
       }`}
     >
-      {/* Left: Comic Cover Poster */}
-      <div className="w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-zinc-850 border border-zinc-750/60 relative shadow-md">
+      {/* Left: Comic Cover Poster - identical 3:4 portrait aspect ratio as detail page */}
+      <div className="w-24 sm:w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-850 border border-zinc-750/60 relative shadow-md">
         {imgSrc && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -83,7 +83,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
             loading="lazy"
             decoding="async"
             referrerPolicy="no-referrer"
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-cover object-center"
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-zinc-500 gap-1 bg-zinc-900">

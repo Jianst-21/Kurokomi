@@ -50,7 +50,7 @@ export function ComicCard({ comic }: ComicCardProps) {
       className={`comic-grid-card group flex flex-col rounded-xl overflow-hidden border transition-all active:bg-zinc-850 ${
         hasRead
           ? 'bg-blue-950/20 border-blue-900/60 shadow-sm shadow-blue-950/20'
-          : 'bg-zinc-900/70 border-zinc-800/80'
+          : 'bg-zinc-900/70 border-zinc-850 hover:border-zinc-800'
       }`}
     >
       {/* Cover Image Container */}

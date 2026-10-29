@@ -112,7 +112,7 @@ export default function HistoryPage() {
               return (
                 <div
                   key={`${item.mangaId}-${item.chapterId}`}
-                  className="flex items-center gap-3 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-zinc-700 transition-all"
+                  className="flex items-center gap-3 p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-850 hover:border-zinc-800 transition-all"
                 >
                   {/* Cover Thumbnail */}
                   <Link
