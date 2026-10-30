@@ -74,4 +74,41 @@ describe('BottomNav Component Responsive', () => {
     expect(nav).toBeInTheDocument();
     expect(nav?.className).toContain('md:hidden');
   });
+
+  it('shows red dot notification on Favorite tab when there is an unread update', () => {
+    localStorage.setItem(
+      'kurokomi_favorites_v1',
+      JSON.stringify([
+        {
+          id: 'fav-1',
+          title: 'Naruto',
+          latestChapter: 'Ch. 700',
+          latestChapterId: 'ch-700',
+        },
+      ])
+    );
+
+    render(<BottomNav />);
+    expect(screen.getByLabelText('Ada update favorit')).toBeInTheDocument();
+  });
 });
+
+describe('DesktopNavbar Red Dot Indicator', () => {
+  it('shows red dot notification on Favorit link when there is an unread update', () => {
+    localStorage.setItem(
+      'kurokomi_favorites_v1',
+      JSON.stringify([
+        {
+          id: 'fav-1',
+          title: 'Naruto',
+          latestChapter: 'Ch. 700',
+          latestChapterId: 'ch-700',
+        },
+      ])
+    );
+
+    render(<DesktopNavbar />);
+    expect(screen.getByLabelText('Ada update favorit')).toBeInTheDocument();
+  });
+});
+

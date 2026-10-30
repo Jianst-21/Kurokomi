@@ -1,18 +1,24 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search } from 'lucide-react';
+import { hasAnyFavoriteUpdate } from '@/lib/storage';
 
 export function DesktopNavbar() {
   const pathname = usePathname();
   const router = useRouter();
   const [query, setQuery] = useState('');
+  const [hasFavoriteUpdate, setHasFavoriteUpdate] = useState(false);
+
+  useEffect(() => {
+    setHasFavoriteUpdate(hasAnyFavoriteUpdate());
+  }, [pathname]);
 
   const navLinks = [
     { label: 'Beranda', href: '/' },
-    { label: 'Favorit', href: '/favorites' },
+    { label: 'Favorit', href: '/favorites', badge: hasFavoriteUpdate },
     { label: 'Riwayat', href: '/history' },
   ];
 
@@ -71,13 +77,23 @@ export function DesktopNavbar() {
               <Link
                 key={item.href}
                 href={item.href}
-                className={`text-sm transition-colors ${
+                className={`text-sm transition-colors relative flex items-center gap-1.5 ${
                   isActive
                     ? 'text-blue-500 font-semibold'
                     : 'text-zinc-400 hover:text-zinc-200 font-medium'
                 }`}
               >
-                {item.label}
+                <span>{item.label}</span>
+                {item.badge && (
+                  <span
+                    aria-label="Ada update favorit"
+                    title="Ada update komik favorit"
+                    className="relative flex h-2 w-2"
+                  >
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-2 ring-zinc-950" />
+                  </span>
+                )}
               </Link>
             );
           })}
