@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { RefreshCw, AlertCircle } from 'lucide-react';
 import { ComicCardItem, ComicType } from '@/lib/types';
 import { fetchLatestComicsByType } from '@/lib/mangadex';
-import { getSavedLatestSectionState, saveLatestSectionState } from '@/lib/storage';
+import { getSavedLatestSectionState, saveLatestSectionState, isFavorite, updateFavoriteComic } from '@/lib/storage';
 import { HorizontalComicCard } from './HorizontalComicCard';
 import { CleanPagination } from './CleanPagination';
 
@@ -54,6 +54,16 @@ export function LatestUpdatesSection() {
       const results = await fetchLatestComicsByType(type, PAGE_LIMIT, offset);
       cacheRef.current.set(cacheKey, results);
       setComics(results);
+
+      // Automatically sync latestChapter to favorites if any of these comics are favorited
+      results.forEach(c => {
+        if (isFavorite(c.id) && c.latestChapter) {
+          updateFavoriteComic(c.id, {
+            latestChapter: c.latestChapter,
+            latestChapterId: c.latestChapterId,
+          });
+        }
+      });
     } catch {
       setError('Gagal memuat update terbaru.');
     } finally {

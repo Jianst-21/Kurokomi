@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { ComicDetail, ChapterItem } from '@/lib/types';
 import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
-import { toggleFavorite, isFavorite, getComicLastRead, saveComicCoverCache } from '@/lib/storage';
+import { toggleFavorite, isFavorite, getComicLastRead, saveComicCoverCache, updateFavoriteComic } from '@/lib/storage';
 import { filterSafeGenres } from '@/lib/security';
 import { ChapterList } from '@/components/ChapterList';
 import { BottomNav } from '@/components/BottomNav';
@@ -121,6 +121,16 @@ export default function MangaDetailPage() {
       } else if (mdEnChaps.length > 0) {
         setSelectedLang('en');
       }
+
+      // Sync latest chapter to favorites if already favorited
+      const primaryChapters = mergedIdChapters.length > 0 ? mergedIdChapters : mdEnChaps;
+      if (primaryChapters.length > 0 && isFavorite(mangaId)) {
+        const latest = primaryChapters[0];
+        updateFavoriteComic(mangaId, {
+          latestChapter: latest.chapter ? `Ch. ${latest.chapter}` : latest.title,
+          latestChapterId: latest.id,
+        });
+      }
     } catch {
       setError('Gagal memuat detail komik. Silakan coba kembali.');
     } finally {
@@ -134,12 +144,15 @@ export default function MangaDetailPage() {
 
   const handleToggleFavorite = () => {
     if (!comic) return;
+    const latest = activeChapters[0];
     const newState = toggleFavorite({
       id: comic.id,
       title: comic.title,
       coverUrl: comic.coverUrl,
       type: comic.type,
       isFullColor: comic.isFullColor,
+      latestChapter: latest ? (latest.chapter ? `Ch. ${latest.chapter}` : latest.title) : undefined,
+      latestChapterId: latest?.id,
     });
     setFavorited(newState);
   };

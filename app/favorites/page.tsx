@@ -4,7 +4,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Bookmark, Compass } from 'lucide-react';
 import { ComicCardItem } from '@/lib/types';
-import { getFavorites, exportUserData, importUserData } from '@/lib/storage';
+import { getFavorites, exportUserData, importUserData, updateFavoriteComic } from '@/lib/storage';
+import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
 import { ComicCard } from '@/components/ComicCard';
 import { BottomNav } from '@/components/BottomNav';
 import { DesktopNavbar } from '@/components/DesktopNavbar';
@@ -17,7 +18,48 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     setMounted(true);
-    setFavorites(getFavorites());
+    const initialFavs = getFavorites();
+    setFavorites(initialFavs);
+
+    const refreshFavorites = () => {
+      setFavorites(getFavorites());
+    };
+
+    window.addEventListener('kurokomi_favorites_updated', refreshFavorites);
+    window.addEventListener('storage', refreshFavorites);
+
+    // Background sync: for any favorite comic that lacks latestChapter or to refresh updates
+    const syncMissingChapters = async () => {
+      const favList = getFavorites();
+      const needSync = favList.filter(c => !c.latestChapter);
+      if (needSync.length === 0) return;
+
+      for (const comic of needSync) {
+        try {
+          const detail = await fetchUnifiedComicDetail(comic.id);
+          if (detail) {
+            const { idChapters, enChapters } = await fetchUnifiedChapters(detail);
+            const chapters = idChapters.length > 0 ? idChapters : enChapters;
+            if (chapters.length > 0) {
+              const latest = chapters[0];
+              updateFavoriteComic(comic.id, {
+                latestChapter: latest.chapter ? `Ch. ${latest.chapter}` : latest.title,
+                latestChapterId: latest.id,
+              });
+            }
+          }
+        } catch {
+          // ignore background sync error
+        }
+      }
+    };
+
+    syncMissingChapters();
+
+    return () => {
+      window.removeEventListener('kurokomi_favorites_updated', refreshFavorites);
+      window.removeEventListener('storage', refreshFavorites);
+    };
   }, []);
 
   const handleExport = () => {

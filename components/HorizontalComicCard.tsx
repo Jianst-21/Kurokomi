@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowRight, Clock, BookOpen, Check, Heart } from 'lucide-react';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 import { formatChapterDate } from '@/lib/date';
-import { getComicLastRead, isFavorite, getCachedComicCover } from '@/lib/storage';
+import { getComicLastRead, isFavorite, getCachedComicCover, hasComicUpdate } from '@/lib/storage';
 
 interface HorizontalComicCardProps {
   comic: ComicCardItem;
@@ -17,6 +17,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [lastRead, setLastRead] = useState<ReadingHistoryItem | undefined>(undefined);
   const [favorited, setFavorited] = useState<boolean>(false);
+  const [hasUpdate, setHasUpdate] = useState<boolean>(false);
 
   useEffect(() => {
     // If we have a cached high-fidelity cover from the detail page, prefer it
@@ -27,9 +28,20 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   }, [comic.id, comic.coverUrl]);
 
   useEffect(() => {
-    setLastRead(getComicLastRead(comic.id));
-    setFavorited(isFavorite(comic.id));
-  }, [comic.id]);
+    const refresh = () => {
+      setLastRead(getComicLastRead(comic.id));
+      setFavorited(isFavorite(comic.id));
+      setHasUpdate(hasComicUpdate(comic));
+    };
+    refresh();
+
+    window.addEventListener('kurokomi_favorites_updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('kurokomi_favorites_updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
+  }, [comic]);
 
   const handleImgError = () => {
     if (!hasTriedProxy && comic.coverUrl && !imgSrc.startsWith('/api/image-proxy')) {
@@ -103,6 +115,16 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
             className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center shadow-md border border-rose-500/40"
           >
             <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+            {hasUpdate && (
+              <span
+                aria-label="Update baru"
+                title="Ada chapter baru"
+                className="absolute -top-1 -right-1 flex h-2.5 w-2.5"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
+              </span>
+            )}
           </div>
         )}
       </div>

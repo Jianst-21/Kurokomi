@@ -24,8 +24,18 @@ export function ComicCard({ comic }: ComicCardProps) {
   }, [comic.coverUrl]);
 
   useEffect(() => {
-    setHasRead(Boolean(getComicLastRead(comic.id)));
-    setHasUpdate(hasComicUpdate(comic));
+    const refresh = () => {
+      setHasRead(Boolean(getComicLastRead(comic.id)));
+      setHasUpdate(hasComicUpdate(comic));
+    };
+    refresh();
+
+    window.addEventListener('kurokomi_favorites_updated', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('kurokomi_favorites_updated', refresh);
+      window.removeEventListener('storage', refresh);
+    };
   }, [comic]);
 
   const handleImageError = () => {

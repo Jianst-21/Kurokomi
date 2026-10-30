@@ -13,7 +13,15 @@ export function DesktopNavbar() {
   const [hasFavoriteUpdate, setHasFavoriteUpdate] = useState(false);
 
   useEffect(() => {
-    setHasFavoriteUpdate(hasAnyFavoriteUpdate());
+    const updateStatus = () => setHasFavoriteUpdate(hasAnyFavoriteUpdate());
+    updateStatus();
+
+    window.addEventListener('kurokomi_favorites_updated', updateStatus);
+    window.addEventListener('storage', updateStatus);
+    return () => {
+      window.removeEventListener('kurokomi_favorites_updated', updateStatus);
+      window.removeEventListener('storage', updateStatus);
+    };
   }, [pathname]);
 
   const navLinks = [

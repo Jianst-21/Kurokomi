@@ -24,6 +24,7 @@ import {
   clearChapterScrollPosition,
   hasComicUpdate,
   hasAnyFavoriteUpdate,
+  updateFavoriteComic,
 } from '@/lib/storage';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 
@@ -298,6 +299,29 @@ describe('LocalStorage Helper', () => {
         readAt: new Date().toISOString(),
       });
       expect(hasComicUpdate(comic)).toBe(false);
+    });
+
+    it('updates favorite comic latestChapter metadata with updateFavoriteComic', () => {
+      const comic: ComicCardItem = {
+        id: 'comic-3',
+        title: 'Bleach',
+        coverUrl: 'https://example.com/bleach.jpg',
+        type: 'manga',
+      };
+
+      toggleFavorite(comic);
+      expect(hasComicUpdate(getFavorites()[0])).toBe(false); // No latestChapter yet
+
+      // Background update syncs new chapter
+      updateFavoriteComic('comic-3', {
+        latestChapter: 'Ch. 686',
+        latestChapterId: 'ch-686',
+      });
+
+      const updated = getFavorites().find(c => c.id === 'comic-3')!;
+      expect(updated.latestChapter).toBe('Ch. 686');
+      expect(hasComicUpdate(updated)).toBe(true);
+      expect(hasAnyFavoriteUpdate()).toBe(true);
     });
   });
 });

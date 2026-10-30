@@ -13,6 +13,12 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';
 }
 
+function notifyFavoritesChanged(): void {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('kurokomi_favorites_updated'));
+  }
+}
+
 export function saveComicCoverCache(comicId: string, coverUrl: string): void {
   if (!isBrowser() || !comicId || !coverUrl) return;
   try {
@@ -68,6 +74,7 @@ export function markChapterAsRead(chapterId: string): void {
         ids.shift();
       }
       localStorage.setItem(READ_CHAPTERS_KEY, JSON.stringify(ids));
+      notifyFavoritesChanged();
     }
   } catch (err) {
     console.error('Failed to mark chapter as read:', err);
@@ -98,10 +105,12 @@ export function toggleFavorite(comic: ComicCardItem): boolean {
     if (index >= 0) {
       list.splice(index, 1);
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+      notifyFavoritesChanged();
       return false;
     } else {
       list.unshift(comic);
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+      notifyFavoritesChanged();
       return true;
     }
   } catch {
@@ -142,6 +151,7 @@ export function saveHistory(item: ReadingHistoryItem): void {
     }
 
     localStorage.setItem(HISTORY_KEY, JSON.stringify(list));
+    notifyFavoritesChanged();
   } catch (err) {
     console.error('Failed to save reading history:', err);
   }
@@ -425,5 +435,21 @@ export function hasAnyFavoriteUpdate(): boolean {
   if (!favorites.length) return false;
   return favorites.some(comic => hasComicUpdate(comic));
 }
+
+export function updateFavoriteComic(id: string, updates: Partial<ComicCardItem>): void {
+  if (!isBrowser() || !id) return;
+  try {
+    const list = getFavorites();
+    const index = list.findIndex(c => c.id === id);
+    if (index >= 0) {
+      list[index] = { ...list[index], ...updates };
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
+      notifyFavoritesChanged();
+    }
+  } catch {
+    // ignore
+  }
+}
+
 
 
