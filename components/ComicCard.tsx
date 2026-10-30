@@ -57,94 +57,98 @@ export function ComicCard({ comic }: ComicCardProps) {
   const typeInfo = typeLabels[comic.type] || typeLabels.other;
 
   return (
-    <Link
-      href={`/manga/${comic.id}`}
-      className={`comic-grid-card group flex flex-col rounded-xl overflow-hidden border transition-all active:bg-zinc-850 ${
-        hasRead
-          ? 'bg-blue-950/20 border-blue-900/60 shadow-sm shadow-blue-950/20'
-          : 'bg-zinc-900/70 border-zinc-850 hover:border-zinc-800'
-      }`}
-    >
-      {/* Cover Image Container */}
-      <div className="relative aspect-[3/4] w-full bg-zinc-950 overflow-hidden">
-        {imgSrc && !imageError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imgSrc}
-            alt={comic.title}
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            onError={handleImageError}
-            className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-600 gap-2 p-3 text-center">
-            <BookOpen className="w-8 h-8 opacity-40" />
-            <span className="text-[11px] line-clamp-2">{comic.title}</span>
-          </div>
-        )}
+    <div className="relative group/card flex flex-col h-full">
+      <Link
+        href={`/manga/${comic.id}`}
+        className={`comic-grid-card group flex flex-col flex-1 rounded-xl overflow-hidden border transition-all active:bg-zinc-850 ${
+          hasRead
+            ? 'bg-blue-950/20 border-blue-900/60 shadow-sm shadow-blue-950/20'
+            : 'bg-zinc-900/70 border-zinc-850 hover:border-zinc-800'
+        }`}
+      >
+        {/* Cover Image Container */}
+        <div className="relative aspect-[3/4] w-full bg-zinc-950 overflow-hidden">
+          {imgSrc && !imageError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imgSrc}
+              alt={comic.title}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              onError={handleImageError}
+              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-900 text-zinc-600 gap-2 p-3 text-center">
+              <BookOpen className="w-8 h-8 opacity-40" />
+              <span className="text-[11px] line-clamp-2">{comic.title}</span>
+            </div>
+          )}
 
-        {/* Top Badges */}
-        <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none gap-1">
-          <span
-            className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md border ${typeInfo.color}`}
-          >
-            {typeInfo.label}
-          </span>
-          <div className="flex items-center gap-1">
-            {hasUpdate && (
-              <span
-                aria-label="Update baru"
-                title="Ada chapter baru"
-                className="relative flex h-2.5 w-2.5 mr-0.5"
-              >
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
-              </span>
-            )}
-            {hasRead && (
-              <span className="bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
-                <Check className="w-2.5 h-2.5" />
-                <span>Dibaca</span>
-              </span>
-            )}
-            {comic.isFullColor && (
-              <span className="bg-amber-500 text-zinc-950 text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
-                <Palette className="w-2.5 h-2.5" />
-                <span>Warna</span>
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Latest Chapter Badge at bottom of cover */}
-        {comic.latestChapter && (
-          <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent p-2 pt-4">
-            <span className="text-[10px] font-medium text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded border border-blue-900">
-              {comic.latestChapter}
+          {/* Top Badges */}
+          <div className="absolute top-1.5 left-1.5 right-1.5 flex items-center justify-between pointer-events-none gap-1">
+            <span
+              className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-md border ${typeInfo.color}`}
+            >
+              {typeInfo.label}
             </span>
+            <div className="flex items-center gap-1">
+              {hasRead && (
+                <span className="bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
+                  <Check className="w-2.5 h-2.5" />
+                  <span>Dibaca</span>
+                </span>
+              )}
+              {comic.isFullColor && (
+                <span className="bg-amber-500 text-zinc-950 text-[9px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
+                  <Palette className="w-2.5 h-2.5" />
+                  <span>Warna</span>
+                </span>
+              )}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Info Container */}
-      <div className="p-2 flex flex-col flex-1 justify-between gap-1">
-        <div>
-          <h3
-            className={`text-xs font-semibold line-clamp-2 leading-snug ${
-              hasRead ? 'text-blue-300' : 'text-zinc-200'
-            }`}
-          >
-            {comic.title}
-          </h3>
-          {comic.altTitle && comic.altTitle !== comic.title && (
-            <p className="text-[10px] text-zinc-500 line-clamp-1 italic mt-0.5">
-              Alt: {comic.altTitle}
-            </p>
+          {/* Latest Chapter Badge at bottom of cover */}
+          {comic.latestChapter && (
+            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-zinc-950 via-zinc-950/70 to-transparent p-2 pt-4">
+              <span className="text-[10px] font-medium text-blue-400 bg-blue-950 px-1.5 py-0.5 rounded border border-blue-900">
+                {comic.latestChapter}
+              </span>
+            </div>
           )}
         </div>
-      </div>
-    </Link>
+
+        {/* Info Container */}
+        <div className="p-2 flex flex-col flex-1 justify-between gap-1">
+          <div>
+            <h3
+              className={`text-xs font-semibold line-clamp-2 leading-snug ${
+                hasRead ? 'text-blue-300' : 'text-zinc-200'
+              }`}
+            >
+              {comic.title}
+            </h3>
+            {comic.altTitle && comic.altTitle !== comic.title && (
+              <p className="text-[10px] text-zinc-500 line-clamp-1 italic mt-0.5">
+                Alt: {comic.altTitle}
+              </p>
+            )}
+          </div>
+        </div>
+      </Link>
+
+      {/* Floating Red Dot Indicator outside top-right corner */}
+      {hasUpdate && (
+        <span
+          aria-label="Update baru"
+          title="Ada chapter baru"
+          className="absolute -top-1 -right-1 z-20 flex h-2.5 w-2.5 pointer-events-none"
+        >
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
+        </span>
+      )}
+    </div>
   );
 }

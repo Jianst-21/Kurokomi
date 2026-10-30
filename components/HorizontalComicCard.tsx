@@ -77,57 +77,48 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
   const ambientClass = (comic.source && sourceAmbientStyles[comic.source]) || 'border-zinc-800 hover:border-zinc-750 bg-zinc-900/90';
 
   return (
-    <Link
-      href={`/manga/${comic.id}`}
-      aria-label={comic.title}
-      className={`w-full rounded-2xl p-3 flex gap-3 shadow-lg transition-all group border relative ${
-        isRead
-          ? 'bg-blue-950/20 border-blue-900/60 hover:border-blue-700/80 shadow-blue-950/20'
-          : ambientClass
-      }`}
-    >
-      {/* Left: Comic Cover Poster - identical 3:4 portrait aspect ratio as detail page */}
-      <div className="w-24 sm:w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-850 border border-zinc-750/60 relative shadow-md flex items-center justify-center">
-        {imgSrc && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imgSrc}
-            alt={comic.title}
-            onError={handleImgError}
-            loading="lazy"
-            decoding="async"
-            referrerPolicy="no-referrer"
-            className="w-full h-full object-cover object-center"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-zinc-500 gap-1 bg-zinc-900">
-            <BookOpen className="w-6 h-6 stroke-1 text-zinc-600" />
-            <span className="text-[9px] line-clamp-2 leading-tight">
-              {comic.title}
-            </span>
-          </div>
-        )}
-
-        {/* Minimalist Heart Icon if Favorited */}
-        {favorited && (
-          <div
-            aria-label="Komik Favorit"
-            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center shadow-md border border-rose-500/40"
-          >
-            <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-            {hasUpdate && (
-              <span
-                aria-label="Update baru"
-                title="Ada chapter baru"
-                className="absolute -top-1 -right-1 flex h-2.5 w-2.5"
-              >
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
+    <div className="relative group/hcard w-full">
+      <Link
+        href={`/manga/${comic.id}`}
+        aria-label={comic.title}
+        className={`w-full rounded-2xl p-3 flex gap-3 shadow-lg transition-all group border ${
+          isRead
+            ? 'bg-blue-950/20 border-blue-900/60 hover:border-blue-700/80 shadow-blue-950/20'
+            : ambientClass
+        }`}
+      >
+        {/* Left: Comic Cover Poster - identical 3:4 portrait aspect ratio as detail page */}
+        <div className="w-24 sm:w-28 shrink-0 aspect-[3/4] rounded-xl overflow-hidden bg-zinc-850 border border-zinc-750/60 relative shadow-md flex items-center justify-center">
+          {imgSrc && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imgSrc}
+              alt={comic.title}
+              onError={handleImgError}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+              className="w-full h-full object-cover object-center"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center text-zinc-500 gap-1 bg-zinc-900">
+              <BookOpen className="w-6 h-6 stroke-1 text-zinc-600" />
+              <span className="text-[9px] line-clamp-2 leading-tight">
+                {comic.title}
               </span>
-            )}
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+
+          {/* Minimalist Heart Icon if Favorited */}
+          {favorited && (
+            <div
+              aria-label="Komik Favorit"
+              className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center shadow-md border border-rose-500/40"
+            >
+              <Heart className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+            </div>
+          )}
+        </div>
 
       {/* Right: Info Details */}
       <div className="flex flex-col flex-1 justify-between min-w-0">
@@ -218,5 +209,18 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
         </div>
       </div>
     </Link>
+
+    {/* Floating Red Dot Indicator outside top-right corner of horizontal card */}
+    {hasUpdate && (
+      <span
+        aria-label="Update baru"
+        title="Ada chapter baru"
+        className="absolute -top-1 -right-1 z-20 flex h-2.5 w-2.5 pointer-events-none"
+      >
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
+      </span>
+    )}
+  </div>
   );
 }
