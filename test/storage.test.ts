@@ -252,9 +252,10 @@ describe('LocalStorage Helper', () => {
         mangaId: 'comic-1',
         title: 'One Piece',
         coverUrl: 'https://example.com/op.jpg',
+        type: 'manga',
         chapterId: 'ch-1100',
-        chapterTitle: 'Ch. 1100',
-        timestamp: Date.now(),
+        chapterNumber: 'Ch. 1100',
+        readAt: new Date().toISOString(),
       });
 
       // Now it's read -> update should be false
@@ -279,9 +280,10 @@ describe('LocalStorage Helper', () => {
         mangaId: 'comic-2',
         title: 'Jujutsu Kaisen',
         coverUrl: 'https://example.com/jjk.jpg',
+        type: 'manga',
         chapterId: 'ch-249',
-        chapterTitle: 'Chapter 249',
-        timestamp: Date.now(),
+        chapterNumber: 'Chapter 249',
+        readAt: new Date().toISOString(),
       });
       expect(hasComicUpdate(comic)).toBe(true);
 
@@ -290,9 +292,10 @@ describe('LocalStorage Helper', () => {
         mangaId: 'comic-2',
         title: 'Jujutsu Kaisen',
         coverUrl: 'https://example.com/jjk.jpg',
+        type: 'manga',
         chapterId: 'ch-250',
-        chapterTitle: 'Chapter 250',
-        timestamp: Date.now(),
+        chapterNumber: 'Chapter 250',
+        readAt: new Date().toISOString(),
       });
       expect(hasComicUpdate(comic)).toBe(false);
     });

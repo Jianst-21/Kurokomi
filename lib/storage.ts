@@ -413,7 +413,7 @@ export function hasComicUpdate(comic: ComicCardItem): boolean {
     return false;
   }
 
-  if (comic.latestChapter && lastRead.chapterTitle && lastRead.chapterTitle.trim().toLowerCase() === comic.latestChapter.trim().toLowerCase()) {
+  if (comic.latestChapter && lastRead.chapterNumber && lastRead.chapterNumber.trim().toLowerCase() === comic.latestChapter.trim().toLowerCase()) {
     return false;
   }
 

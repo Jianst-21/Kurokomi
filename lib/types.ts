@@ -8,6 +8,7 @@ export interface ComicCardItem {
   coverUrl: string;
   type: 'manga' | 'manhwa' | 'manhua' | 'other';
   latestChapter?: string;
+  latestChapterId?: string;
   updatedAt?: string;
   isFullColor?: boolean;
   genres?: string[];
