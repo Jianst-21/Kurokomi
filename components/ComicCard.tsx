@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Palette, BookOpen, Check } from 'lucide-react';
 import { ComicCardItem } from '@/lib/types';
-import { getComicLastRead } from '@/lib/storage';
+import { getComicLastRead, hasComicUpdate } from '@/lib/storage';
 
 interface ComicCardProps {
   comic: ComicCardItem;
@@ -15,6 +15,7 @@ export function ComicCard({ comic }: ComicCardProps) {
   const [imgSrc, setImgSrc] = useState(comic.coverUrl);
   const [hasTriedProxy, setHasTriedProxy] = useState(false);
   const [hasRead, setHasRead] = useState(false);
+  const [hasUpdate, setHasUpdate] = useState(false);
 
   useEffect(() => {
     setImgSrc(comic.coverUrl);
@@ -24,7 +25,8 @@ export function ComicCard({ comic }: ComicCardProps) {
 
   useEffect(() => {
     setHasRead(Boolean(getComicLastRead(comic.id)));
-  }, [comic.id]);
+    setHasUpdate(hasComicUpdate(comic));
+  }, [comic]);
 
   const handleImageError = () => {
     if (!hasTriedProxy && comic.coverUrl && !imgSrc.startsWith('/api/image-proxy')) {
@@ -81,6 +83,16 @@ export function ComicCard({ comic }: ComicCardProps) {
             {typeInfo.label}
           </span>
           <div className="flex items-center gap-1">
+            {hasUpdate && (
+              <span
+                aria-label="Update baru"
+                title="Ada chapter baru"
+                className="relative flex h-2.5 w-2.5 mr-0.5"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
+              </span>
+            )}
             {hasRead && (
               <span className="bg-blue-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-md flex items-center gap-0.5 shadow-sm">
                 <Check className="w-2.5 h-2.5" />
