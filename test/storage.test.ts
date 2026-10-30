@@ -22,6 +22,8 @@ import {
   saveChapterScrollPosition,
   getSavedChapterScrollPosition,
   clearChapterScrollPosition,
+  hasComicUpdate,
+  hasAnyFavoriteUpdate,
 } from '@/lib/storage';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 
@@ -223,5 +225,76 @@ describe('LocalStorage Helper', () => {
 
     clearChapterScrollPosition('chapter-abc');
     expect(getSavedChapterScrollPosition('chapter-abc')).toBeNull();
+  });
+
+  describe('Favorite Update Detection', () => {
+    it('detects update when comic is in favorites, has a latestChapter, and latestChapter is unread', () => {
+      const comic: ComicCardItem = {
+        id: 'comic-1',
+        title: 'One Piece',
+        coverUrl: 'https://example.com/op.jpg',
+        type: 'manga',
+        latestChapter: 'Ch. 1100',
+        latestChapterId: 'ch-1100',
+      };
+
+      // Not favorited yet -> should not flag as favorite update
+      expect(hasComicUpdate(comic)).toBe(false);
+
+      // Add to favorites
+      toggleFavorite(comic);
+      expect(hasComicUpdate(comic)).toBe(true);
+      expect(hasAnyFavoriteUpdate()).toBe(true);
+
+      // Read the latest chapter
+      markChapterAsRead('ch-1100');
+      saveHistory({
+        mangaId: 'comic-1',
+        title: 'One Piece',
+        coverUrl: 'https://example.com/op.jpg',
+        chapterId: 'ch-1100',
+        chapterTitle: 'Ch. 1100',
+        timestamp: Date.now(),
+      });
+
+      // Now it's read -> update should be false
+      expect(hasComicUpdate(comic)).toBe(false);
+      expect(hasAnyFavoriteUpdate()).toBe(false);
+    });
+
+    it('works when only latestChapter title is available without latestChapterId', () => {
+      const comic: ComicCardItem = {
+        id: 'comic-2',
+        title: 'Jujutsu Kaisen',
+        coverUrl: 'https://example.com/jjk.jpg',
+        type: 'manga',
+        latestChapter: 'Chapter 250',
+      };
+
+      toggleFavorite(comic);
+      expect(hasComicUpdate(comic)).toBe(true);
+
+      // History has older chapter
+      saveHistory({
+        mangaId: 'comic-2',
+        title: 'Jujutsu Kaisen',
+        coverUrl: 'https://example.com/jjk.jpg',
+        chapterId: 'ch-249',
+        chapterTitle: 'Chapter 249',
+        timestamp: Date.now(),
+      });
+      expect(hasComicUpdate(comic)).toBe(true);
+
+      // History updated to Chapter 250
+      saveHistory({
+        mangaId: 'comic-2',
+        title: 'Jujutsu Kaisen',
+        coverUrl: 'https://example.com/jjk.jpg',
+        chapterId: 'ch-250',
+        chapterTitle: 'Chapter 250',
+        timestamp: Date.now(),
+      });
+      expect(hasComicUpdate(comic)).toBe(false);
+    });
   });
 });

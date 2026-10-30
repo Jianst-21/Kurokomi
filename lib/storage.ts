@@ -388,3 +388,42 @@ export function clearChapterScrollPosition(chapterId: string): void {
   }
 }
 
+// ---------------------------------------------------------
+// Favorite Update Detection
+// ---------------------------------------------------------
+
+export function hasComicUpdate(comic: ComicCardItem): boolean {
+  if (!comic || !isFavorite(comic.id)) return false;
+  if (!comic.latestChapter && !comic.latestChapterId) return false;
+
+  // 1. If latestChapterId is provided and already marked read
+  if (comic.latestChapterId && isChapterRead(comic.latestChapterId)) {
+    return false;
+  }
+
+  // 2. Check history entry
+  const lastRead = getComicLastRead(comic.id);
+  if (!lastRead) {
+    // Not read yet, but in favorites with a latestChapter -> has unread update
+    return true;
+  }
+
+  // If lastRead matches latestChapterId or latestChapter title
+  if (comic.latestChapterId && lastRead.chapterId === comic.latestChapterId) {
+    return false;
+  }
+
+  if (comic.latestChapter && lastRead.chapterTitle && lastRead.chapterTitle.trim().toLowerCase() === comic.latestChapter.trim().toLowerCase()) {
+    return false;
+  }
+
+  return true;
+}
+
+export function hasAnyFavoriteUpdate(): boolean {
+  const favorites = getFavorites();
+  if (!favorites.length) return false;
+  return favorites.some(comic => hasComicUpdate(comic));
+}
+
+
