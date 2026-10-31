@@ -111,8 +111,19 @@ export default function ReaderPage() {
         throw new Error('Halaman chapter tidak dapat dimuat.');
       }
       setPages(pageUrls);
+      setIsLoading(false);
 
-      // Resolve comic metadata and chapters
+      // Restore saved reading position as soon as pages are ready
+      const saved = getSavedChapterScrollPosition(chapterId);
+      if (saved && saved.y > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: saved.y, behavior: 'instant' });
+        });
+      } else {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+      }
+
+      // Resolve comic metadata and chapters in the background without blocking the reader view
       let targetMangaId = mangaId;
       if (!targetMangaId) {
         if (chapterId.startsWith('softkomik--')) {
@@ -197,15 +208,6 @@ export default function ReaderPage() {
       setError('Gagal memuat halaman chapter. Silakan periksa koneksi Anda.');
     } finally {
       setIsLoading(false);
-      // Restore saved reading position if available after DOM renders
-      const saved = getSavedChapterScrollPosition(chapterId);
-      if (saved && saved.y > 0) {
-        requestAnimationFrame(() => {
-          window.scrollTo({ top: saved.y, behavior: 'instant' });
-        });
-      } else {
-        window.scrollTo({ top: 0, behavior: 'instant' });
-      }
     }
   };
 

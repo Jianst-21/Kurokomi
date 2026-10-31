@@ -77,7 +77,23 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: 'Chapter slug tidak valid' }, { status: 400 });
       }
       const fallbackNum = searchParams.get('num') || undefined;
-      const pages = await fetchKomikuChapterImages(chapterSlug, fallbackNum);
+      let pages = await fetchKomikuChapterImages(chapterSlug, fallbackNum);
+
+      // Fast server-side fallback if Komiku blocked by Cloudflare (403) or returns empty
+      if (pages.length === 0) {
+        const chapterMatch = chapterSlug.match(/^(.*?)-chapter-([0-9.]+)/i);
+        if (chapterMatch) {
+          const comicSlug = chapterMatch[1];
+          const chapterNum = chapterMatch[2];
+          try {
+            const { fetchSoftkomikChapterImages } = await import('@/lib/softkomik');
+            pages = await fetchSoftkomikChapterImages(comicSlug, chapterNum);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
       return NextResponse.json(
         { pages },
         { headers: pages.length > 0 ? CACHE_HEADERS : NO_STORE_HEADERS }
