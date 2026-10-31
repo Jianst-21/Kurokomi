@@ -129,8 +129,11 @@ export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
 
     const imgMatch = block.match(/<img[^>]+src="([^"]+)"/i);
     let coverUrl = imgMatch ? imgMatch[1] : '';
-    if (coverUrl.includes('?resize=')) {
+    if (coverUrl.includes('?')) {
       coverUrl = coverUrl.split('?')[0];
+    }
+    if (coverUrl.includes('&#038;')) {
+      coverUrl = coverUrl.split('&#038;')[0];
     }
 
     let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';

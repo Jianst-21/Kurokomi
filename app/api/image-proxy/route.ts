@@ -81,6 +81,24 @@ export async function GET(req: NextRequest) {
       signal: AbortSignal.timeout(10000),
     });
 
+    // Fallback for Komiku covers: if thumbnail.komiku.org fails (404/403), retry without query parameters
+    if (!res.ok && host.includes('komiku') && (urlParam.includes('?') || urlParam.includes('&#038;'))) {
+      const cleanUrl = urlParam.split('?')[0].split('&#038;')[0];
+      if (cleanUrl !== urlParam) {
+        try {
+          const retryRes = await fetch(cleanUrl, {
+            headers: upstreamHeaders,
+            signal: AbortSignal.timeout(10000),
+          });
+          if (retryRes.ok) {
+            res = retryRes;
+          }
+        } catch {
+          // keep original response
+        }
+      }
+    }
+
     // Fallback between Softkomik mirror CDNs if one CDN fails or redirects to promo banner
     if (host.includes('komik.im')) {
       const isTrap = res.url.includes('baca-image') || res.headers.get('location')?.includes('baca-image');

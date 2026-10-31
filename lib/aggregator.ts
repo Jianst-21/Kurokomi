@@ -22,6 +22,14 @@ function getProviderPriority(id: string): number {
   return 5; // MangaDex or other
 }
 
+function getChapterProviderPriority(id: string): number {
+  if (id.startsWith('softkomik--')) return 1;
+  if (id.startsWith('komikindo--')) return 2;
+  if (id.startsWith('komiku--')) return 3;
+  if (id.startsWith('mangapill--')) return 4;
+  return 5; // MangaDex or other
+}
+
 /**
  * Evaluates the quality and aesthetic completeness of a cover poster.
  * Komiku full poster thumbnails and Komikindo full posters are full-body/comic-cover compositions,
@@ -174,16 +182,16 @@ export function mergeAndSortChapters(
       if (itemDate > existingDate) {
         map.set(key, { ...item, chapter: key });
       } else if (itemDate === existingDate) {
-        // Tie-break by provider priority: Komiku (1) > Komikindo (2) > Softkomik (3) > MangaDex (4)
-        if (getProviderPriority(item.id) < getProviderPriority(existing.id)) {
+        // Tie-break by chapter provider priority: Softkomik (1) > Komikindo (2) > Komiku (3) > MangaDex (4)
+        if (getChapterProviderPriority(item.id) < getChapterProviderPriority(existing.id)) {
           map.set(key, { ...item, chapter: key });
         }
       }
     } else if (itemDate > 0 && existingDate === 0) {
       map.set(key, { ...item, chapter: key });
     } else if (itemDate === 0 && existingDate === 0) {
-      // Tie-break by provider priority
-      if (getProviderPriority(item.id) < getProviderPriority(existing.id)) {
+      // Tie-break by chapter provider priority
+      if (getChapterProviderPriority(item.id) < getChapterProviderPriority(existing.id)) {
         map.set(key, { ...item, chapter: key });
       }
     }

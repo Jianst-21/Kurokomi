@@ -718,20 +718,48 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
     // If chapter ID is from Komiku provider (komiku--chapterSlug or komiku:...)
     if (decodedId.startsWith('komiku--') || decodedId.startsWith('komiku:')) {
       const chapterSlug = decodedId.replace(/^komiku(--|:)/, '');
+      let pages: ChapterPageItem[] = [];
 
       if (typeof window !== 'undefined') {
         const res = await fetch(`/api/komiku?action=pages&chapter=${encodeURIComponent(chapterSlug)}`);
         if (res.ok) {
           const data = await res.json();
-          const pages = data.pages || [];
-          if (pages.length > 0) {
-            chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
-          }
-          return pages;
+          pages = data.pages || [];
         }
       } else {
         const { fetchKomikuChapterImages } = await import('./komiku');
-        return await fetchKomikuChapterImages(chapterSlug);
+        pages = await fetchKomikuChapterImages(chapterSlug);
+      }
+
+      // Fallback: If Komiku chapter images fail or get blocked by Cloudflare (403),
+      // attempt fallback to Softkomik by extracting comic slug & chapter number
+      if (pages.length === 0) {
+        const chapterMatch = chapterSlug.match(/^(.*?)-chapter-([0-9.]+)/i);
+        if (chapterMatch) {
+          const comicSlug = chapterMatch[1];
+          const chapterNum = chapterMatch[2];
+          try {
+            if (typeof window !== 'undefined') {
+              const res = await fetch(`/api/softkomik?action=pages&slug=${encodeURIComponent(comicSlug)}&chapter=${encodeURIComponent(chapterNum)}`);
+              if (res.ok) {
+                const data = await res.json();
+                pages = data.pages || [];
+              }
+            } else {
+              const { fetchSoftkomikChapterImages } = await import('./softkomik');
+              pages = await fetchSoftkomikChapterImages(comicSlug, chapterNum);
+            }
+          } catch {
+            // ignore fallback error
+          }
+        }
+      }
+
+      if (pages.length > 0) {
+        if (typeof window !== 'undefined') {
+          chapterPagesMemoryCache.set(decodedId, { pages, exp: Date.now() + PAGES_CACHE_TTL_MS });
+        }
+        return pages;
       }
       return [];
     }
