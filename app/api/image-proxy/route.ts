@@ -6,6 +6,16 @@ export const runtime = 'edge';
 export const SOFTKOMIK_TRAP_BANNER_SIZE = 213850;
 export const SOFTKOMIK_DEFAULT_TOKEN = 'T4Kmwztku';
 
+// 1x1 transparent GIF fallback when upstream image cannot be found (404/not found)
+// Prevents console errors and broken image icons in browser
+const TRANSPARENT_1PX_GIF = new Uint8Array([
+  0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00,
+  0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0x21,
+  0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00,
+  0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x01, 0x44,
+  0x00, 0x3b
+]);
+
 export function isSoftkomikPromoBanner(byteLength: number): boolean {
   return byteLength === SOFTKOMIK_TRAP_BANNER_SIZE;
 }
@@ -127,6 +137,18 @@ export async function GET(req: NextRequest) {
     }
 
     if (!res.ok) {
+      // If cover image or page was not found (404/410/etc) on upstream CDN (e.g. outdated Softkomik cover CDN),
+      // return 200 with transparent pixel image to gracefully allow client onError/placeholder handling without browser 404 noise
+      if (res.status === 404 || res.status === 410) {
+        return new NextResponse(TRANSPARENT_1PX_GIF, {
+          status: 200,
+          headers: {
+            'Content-Type': 'image/gif',
+            'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+          },
+        });
+      }
+
       const errBody = await res.text().catch(() => '');
       const titleMatch = errBody.match(/<title>(.*?)<\/title>/i);
       const title = titleMatch ? titleMatch[1] : '';
