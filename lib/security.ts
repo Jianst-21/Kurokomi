@@ -75,6 +75,9 @@ const ALLOWED_IMAGE_HOSTS = [
   'blogger.com',
   'bp.blogspot.com',
   'ggpht.com',
+  'qimanga.com',
+  'media.qimanga.com',
+  'media.qimanhwa.com',
 ];
 
 /**

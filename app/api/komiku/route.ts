@@ -122,6 +122,25 @@ export async function GET(req: NextRequest) {
               // ignore
             }
           }
+
+          // Try 3: QiManga fallback (qimanga.com)
+          if (pages.length === 0) {
+            try {
+              const { fetchQimangaChapterImages, findQimangaSlug } = await import('@/lib/qimanga');
+              let qiPages = await fetchQimangaChapterImages(rawComicSlug, chapterNum);
+              if (qiPages.length === 0) {
+                const qiSlug = await findQimangaSlug(queryTitle);
+                if (qiSlug) {
+                  qiPages = await fetchQimangaChapterImages(qiSlug, chapterNum);
+                }
+              }
+              if (qiPages.length > 0) {
+                pages = qiPages;
+              }
+            } catch {
+              // ignore
+            }
+          }
         }
       }
 

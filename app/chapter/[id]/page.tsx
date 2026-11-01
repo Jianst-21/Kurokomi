@@ -148,6 +148,13 @@ export default function ReaderPage() {
             targetMangaId = `komikindo--${slug}`;
             setMangaId(targetMangaId);
           }
+        } else if (chapterId.startsWith('qimanga--')) {
+          const raw = chapterId.replace(/^qimanga--/, '');
+          const slug = raw.split('__')[0];
+          if (slug) {
+            targetMangaId = `qimanga--${slug}`;
+            setMangaId(targetMangaId);
+          }
         } else if (chapterId.startsWith('mangapill--')) {
           const raw = chapterId.replace(/^mangapill--/, '');
           const parts = raw.split('___');
