@@ -36,14 +36,20 @@ export function scoreTitleMatch(query: string, candidate: string): number {
   if (qTokens.length === 0 || cTokens.length === 0) return 0;
 
   // Token overlap ratio with support for Romaji particle variants (ha vs wa, wo vs o)
-  const normalizeParticle = (token: string) => {
-    if (token === 'ha') return 'wa';
-    if (token === 'wo') return 'o';
-    return token;
+  // and pluralization stems (strip trailing 's' if word >= 4 chars)
+  const normalizeToken = (token: string) => {
+    let t = token.toLowerCase();
+    if (t === 'ha') return 'wa';
+    if (t === 'wo') return 'o';
+    // Stem common English plurals (e.g. monsters -> monster)
+    if (t.length >= 4 && t.endsWith('s') && !t.endsWith('ss')) {
+      t = t.slice(0, -1);
+    }
+    return t;
   };
 
-  const qNormalizedTokens = qTokens.map(normalizeParticle);
-  const cNormalizedTokens = cTokens.map(normalizeParticle);
+  const qNormalizedTokens = qTokens.map(normalizeToken);
+  const cNormalizedTokens = cTokens.map(normalizeToken);
 
   // Check if all query tokens are present
   const allInCandidate = qNormalizedTokens.every(qt => cNormalizedTokens.includes(qt));
@@ -596,6 +602,36 @@ export function parseKomikuImagesHtml(html: string): ChapterPageItem[] {
   }));
 }
 
+export async function fetchViaFlareSolverr(targetUrl: string): Promise<string | null> {
+  const solverBase = process.env.CF_SOLVER_URL || process.env.NEXT_PUBLIC_CF_SOLVER_URL;
+  if (!solverBase) return null;
+
+  try {
+    const cleanSolver = solverBase.replace(/\/$/, '');
+    const res = await fetch(`${cleanSolver}/v1`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        cmd: 'request.get',
+        url: targetUrl,
+        maxTimeout: 45000,
+      }),
+      signal: AbortSignal.timeout(50000),
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.status === 'ok' && data.solution?.response) {
+      return data.solution.response as string;
+    }
+  } catch (err) {
+    console.warn('FlareSolverr request failed:', err);
+  }
+  return null;
+}
+
 export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChapterNum?: string): Promise<ChapterPageItem[]> {
   try {
     let cleanSlug = chapterSlug.replace(/^\//, '').replace(/\/$/, '');
@@ -623,6 +659,17 @@ export async function fetchKomikuChapterImages(chapterSlug: string, fallbackChap
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
         next: { revalidate: 300 },
       });
+    }
+
+    // 3. If blocked by Cloudflare (403), attempt bypass via FlareSolverr (Zeabur / self-hosted) if configured
+    if (res.status === 403 || !res.ok) {
+      const solvedHtml = await fetchViaFlareSolverr(url);
+      if (solvedHtml) {
+        const pages = parseKomikuImagesHtml(solvedHtml);
+        if (pages.length > 0) {
+          return pages;
+        }
+      }
     }
 
     if (!res.ok) return [];

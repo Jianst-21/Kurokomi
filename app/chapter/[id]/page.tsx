@@ -10,6 +10,7 @@ import {
   X,
   ChevronRight,
   Check,
+  ExternalLink,
 } from 'lucide-react';
 import { ChapterItem, ChapterPageItem, ComicDetail } from '@/lib/types';
 import {
@@ -434,11 +435,54 @@ export default function ReaderPage() {
   }
 
   if (error || !pages.length) {
+    let sourceUrl: string | null = null;
+    let sourceName = 'Komiku';
+
+    if (chapterId.startsWith('komiku--')) {
+      const slug = chapterId.replace(/^komiku--/, '');
+      sourceUrl = `https://komiku.org/${slug}/`;
+      sourceName = 'Komiku';
+    } else if (chapterId.startsWith('komikindo--')) {
+      const slug = chapterId.replace(/^komikindo--/, '');
+      sourceUrl = `https://komikindo.ch/${slug}/`;
+      sourceName = 'Komikindo';
+    } else if (chapterId.startsWith('softkomik--')) {
+      const raw = chapterId.replace(/^softkomik--/, '');
+      const parts = raw.split('__');
+      if (parts[0] && parts[1]) {
+        sourceUrl = `https://softkomik.app/${parts[0]}/chapter/${parts[1]}`;
+        sourceName = 'Softkomik';
+      }
+    }
+
     return (
-      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-4 text-center">
-        <AlertCircle className="w-10 h-10 text-rose-500" />
-        <p className="text-sm text-zinc-300 max-w-xs">{error || 'Chapter tidak ditemukan'}</p>
-        <div className="flex items-center gap-2">
+      <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-5 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-rose-500" />
+        </div>
+
+        <div className="flex flex-col gap-1 max-w-sm">
+          <h2 className="text-sm font-semibold text-zinc-100">Chapter Belum Dapat Dimuat</h2>
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            {sourceUrl
+              ? `Chapter ini diproteksi oleh Cloudflare atau belum selesai diunggah di server mirror. Anda dapat membacanya langsung di situs sumbernya.`
+              : (error || 'Halaman chapter tidak dapat dimuat.')}
+          </p>
+        </div>
+
+        {sourceUrl && (
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all transform active:scale-95"
+          >
+            <span>Buka di {sourceName} Asli</span>
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+        )}
+
+        <div className="flex items-center gap-2 mt-2">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
@@ -448,7 +492,7 @@ export default function ReaderPage() {
           </button>
           <button
             onClick={() => loadChapter()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-850 hover:bg-zinc-800 border border-zinc-750 text-zinc-300 text-xs font-medium rounded-lg transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Coba Lagi</span>
