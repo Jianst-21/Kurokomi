@@ -435,68 +435,54 @@ export default function ReaderPage() {
   }
 
   if (error || !pages.length) {
-    let sourceUrl: string | null = null;
-    let sourceName = 'Komiku';
-
-    if (chapterId.startsWith('komiku--')) {
-      const slug = chapterId.replace(/^komiku--/, '');
-      sourceUrl = `https://komiku.org/${slug}/`;
-      sourceName = 'Komiku';
-    } else if (chapterId.startsWith('komikindo--')) {
-      const slug = chapterId.replace(/^komikindo--/, '');
-      sourceUrl = `https://komikindo.ch/${slug}/`;
-      sourceName = 'Komikindo';
-    } else if (chapterId.startsWith('softkomik--')) {
-      const raw = chapterId.replace(/^softkomik--/, '');
-      const parts = raw.split('__');
-      if (parts[0] && parts[1]) {
-        sourceUrl = `https://softkomik.app/${parts[0]}/chapter/${parts[1]}`;
-        sourceName = 'Softkomik';
-      }
-    }
+    const isCloudflareBlocked = chapterId.startsWith('komiku--');
+    const chNum = currentChapter?.chapter || extractChapterNumber(chapterId) || '';
 
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-6 gap-5 text-center">
-        <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
-          <AlertCircle className="w-7 h-7 text-rose-500" />
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+          <AlertCircle className="w-7 h-7 text-amber-500" />
         </div>
 
-        <div className="flex flex-col gap-1 max-w-sm">
-          <h2 className="text-sm font-semibold text-zinc-100">Chapter Belum Dapat Dimuat</h2>
+        <div className="flex flex-col gap-1.5 max-w-sm">
+          <h2 className="text-sm font-semibold text-zinc-100">
+            {isCloudflareBlocked
+              ? `Chapter ${chNum ? chNum : ''} Sedang Dalam Proses`
+              : 'Chapter Belum Dapat Dimuat'}
+          </h2>
           <p className="text-xs text-zinc-400 leading-relaxed">
-            {sourceUrl
-              ? `Chapter ini diproteksi oleh Cloudflare atau belum selesai diunggah di server mirror. Anda dapat membacanya langsung di situs sumbernya.`
-              : (error || 'Halaman chapter tidak dapat dimuat.')}
+            {isCloudflareBlocked
+              ? `Chapter ini baru saja dirilis dan sedang diproses oleh server mirror bebas iklan. Gambar akan otomatis muncul di sini segera setelah sinkronisasi selesai.`
+              : (error || 'Halaman chapter tidak dapat dimuat. Silakan periksa koneksi internet Anda.')}
           </p>
         </div>
 
-        {sourceUrl && (
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all transform active:scale-95"
-          >
-            <span>Buka di {sourceName} Asli</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        )}
+        <div className="flex flex-col sm:flex-row items-center gap-2 mt-2 w-full max-w-xs">
+          {prevChapter && (
+            <Link
+              href={`/chapter/${prevChapter.id}?mangaId=${mangaId}`}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all transform active:scale-95"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Baca Chapter Sebelumnya (Ch {prevChapter.chapter})</span>
+            </Link>
+          )}
 
-        <div className="flex items-center gap-2 mt-2">
-          <button
-            onClick={() => router.back()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-xs font-medium rounded-lg hover:bg-zinc-800 transition-colors"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Kembali</span>
-          </button>
-          <button
-            onClick={() => loadChapter()}
-            className="flex items-center gap-1.5 px-4 py-2 bg-zinc-850 hover:bg-zinc-800 border border-zinc-750 text-zinc-300 text-xs font-medium rounded-lg transition-colors"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Coba Lagi</span>
-          </button>
+          <div className="flex items-center gap-2 w-full">
+            <button
+              onClick={() => router.back()}
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-zinc-900 border border-zinc-800 text-zinc-300 text-xs font-medium rounded-xl hover:bg-zinc-850 transition-colors"
+            >
+              <span>Kembali</span>
+            </button>
+            <button
+              onClick={() => loadChapter()}
+              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 bg-zinc-850 hover:bg-zinc-800 border border-zinc-750 text-zinc-300 text-xs font-medium rounded-xl transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Coba Lagi</span>
+            </button>
+          </div>
         </div>
       </div>
     );
