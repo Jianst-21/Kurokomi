@@ -108,7 +108,7 @@ export async function fetchQimangaChapters(slug: string): Promise<ChapterItem[]>
           id: `qimanga--${cleanSlug}__${ch.slug}`,
           chapter: chapterNum,
           title: ch.title || `Chapter ${chapterNum}`,
-          scanlationGroup: 'QiManga Sub Indo',
+          scanlationGroup: 'QiManga (EN)',
           publishAt: ch.createdAt || '',
           pagesCount: 0,
         };

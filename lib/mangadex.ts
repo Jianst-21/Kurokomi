@@ -811,43 +811,6 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
               // ignore fallback error
             }
           }
-
-          // Fallback 3: QiManga (qimanga.com)
-          if (pages.length === 0) {
-            try {
-              if (typeof window !== 'undefined') {
-                const res = await fetch(`/api/qimanga?action=pages&slug=${encodeURIComponent(rawComicSlug)}&chapter=${encodeURIComponent(chapterNum)}`);
-                if (res.ok) {
-                  const data = await res.json();
-                  pages = data.pages || [];
-                }
-                if (pages.length === 0) {
-                  const slugRes = await fetch(`/api/qimanga?action=slug&title=${encodeURIComponent(queryTitle)}`);
-                  if (slugRes.ok) {
-                    const slugData = await slugRes.json();
-                    if (slugData.slug) {
-                      const res2 = await fetch(`/api/qimanga?action=pages&slug=${encodeURIComponent(slugData.slug)}&chapter=${encodeURIComponent(chapterNum)}`);
-                      if (res2.ok) {
-                        const data2 = await res2.json();
-                        pages = data2.pages || [];
-                      }
-                    }
-                  }
-                }
-              } else {
-                const { fetchQimangaChapterImages, findQimangaSlug } = await import('./qimanga');
-                pages = await fetchQimangaChapterImages(rawComicSlug, chapterNum);
-                if (pages.length === 0) {
-                  const qiSlug = await findQimangaSlug(queryTitle);
-                  if (qiSlug) {
-                    pages = await fetchQimangaChapterImages(qiSlug, chapterNum);
-                  }
-                }
-              }
-            } catch {
-              // ignore fallback error
-            }
-          }
         }
       }
 

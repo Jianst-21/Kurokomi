@@ -1080,8 +1080,8 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
     mpEnPromise,
   ]);
 
-  const idChapters = mergeAndSortChapters(komikuChaps, komikindoChaps, softkomikChaps, qimangaChaps, mdIdChaps);
-  const enChapters = mergeAndSortChapters(mpEnChaps, mdEnChaps);
+  const idChapters = mergeAndSortChapters(komikuChaps, komikindoChaps, softkomikChaps, mdIdChaps);
+  const enChapters = mergeAndSortChapters(qimangaChaps, mpEnChaps, mdEnChaps);
 
   const result = {
     idChapters,
