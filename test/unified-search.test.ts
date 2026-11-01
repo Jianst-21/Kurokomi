@@ -3,6 +3,7 @@ import { searchComicsUnified } from '@/lib/aggregator';
 import * as komikuModule from '@/lib/komiku';
 import * as komikindoModule from '@/lib/komikindo';
 import * as softkomikModule from '@/lib/softkomik';
+import * as qimangaModule from '@/lib/qimanga';
 import * as mangadexModule from '@/lib/mangadex';
 import { ComicCardItem } from '@/lib/types';
 
@@ -18,6 +19,7 @@ describe('searchComicsUnified', () => {
     ]);
 
     vi.spyOn(softkomikModule, 'searchSoftkomik').mockResolvedValue([]);
+    vi.spyOn(qimangaModule, 'searchQimanga').mockResolvedValue([]);
 
     vi.spyOn(mangadexModule, 'searchComics').mockResolvedValue([
       { id: 'md-solo', title: 'Solo Leveling', coverUrl: 'md-img.jpg', type: 'manhwa' },
@@ -41,6 +43,7 @@ describe('searchComicsUnified', () => {
 
   it('respects comic type filtering when searching', async () => {
     vi.spyOn(softkomikModule, 'searchSoftkomik').mockResolvedValue([]);
+    vi.spyOn(qimangaModule, 'searchQimanga').mockResolvedValue([]);
     const results = await searchComicsUnified('Solo', { type: 'manhwa' });
     expect(results.every(r => r.type === 'manhwa')).toBe(true);
   });

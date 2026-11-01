@@ -119,6 +119,55 @@ export async function fetchQimangaChapters(slug: string): Promise<ChapterItem[]>
   }
 }
 
+export async function fetchQimangaDetail(slug: string): Promise<ComicDetail | null> {
+  try {
+    const cleanSlug = slug.replace(/^qimanga--/, '').replace(/^\//, '').replace(/\/$/, '');
+    const url = `${QIMANGA_API_BASE}/series/${encodeURIComponent(cleanSlug)}`;
+
+    const res = await fetch(url, {
+      headers: { 'User-Agent': USER_AGENT },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      next: { revalidate: 300 },
+    });
+
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data || !data.title) return null;
+
+    let altTitles: string[] = [];
+    if (data.alternativeTitles && typeof data.alternativeTitles === 'string') {
+      altTitles = data.alternativeTitles.split(/[•;,|]/).map((s: string) => s.trim()).filter(Boolean);
+    } else if (Array.isArray(data.alternativeTitles)) {
+      altTitles = data.alternativeTitles.map((s: any) => String(s).trim()).filter(Boolean);
+    }
+
+    const rawType = (data.type || 'other').toLowerCase();
+    let type: 'manga' | 'manhwa' | 'manhua' | 'other' = 'other';
+    if (rawType.includes('manhwa')) type = 'manhwa';
+    else if (rawType.includes('manhua')) type = 'manhua';
+    else if (rawType.includes('manga')) type = 'manga';
+
+    const genres = Array.isArray(data.genres) ? data.genres.map((g: any) => g.name || g).filter(Boolean) : [];
+
+    return {
+      id: `qimanga--${cleanSlug}`,
+      title: data.title,
+      altTitles,
+      description: data.description ? data.description.replace(/<[^>]+>/g, '').trim() : 'Tidak ada sinopsis.',
+      coverUrl: data.cover || '',
+      type,
+      status: (data.status?.toLowerCase() === 'completed' ? 'completed' : 'ongoing'),
+      genres,
+      isFullColor: rawType.includes('manhwa') || rawType.includes('manhua'),
+      author: data.author,
+      artist: data.artist,
+    };
+  } catch (err) {
+    console.error('fetchQimangaDetail error:', err);
+    return null;
+  }
+}
+
 export async function fetchQimangaChapterImages(comicSlug: string, chapterSlugOrNum: string): Promise<ChapterPageItem[]> {
   try {
     const cleanComic = comicSlug.replace(/^qimanga--/, '').replace(/^\//, '').replace(/\/$/, '');

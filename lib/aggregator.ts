@@ -7,6 +7,7 @@ import { sortChapters } from './mangadex';
 import { normalizeTitle, searchKomiku, scoreTitleMatch, generateSearchQueries } from './komiku';
 import { searchKomikindo } from './komikindo';
 import { searchSoftkomik } from './softkomik';
+import { searchQimanga } from './qimanga';
 import { parseDateScore } from './date';
 import { isSafeContent, filterSafeGenres } from './security';
 
@@ -18,8 +19,9 @@ function getProviderPriority(id: string): number {
   if (id.startsWith('komiku--')) return 1;
   if (id.startsWith('komikindo--')) return 2;
   if (id.startsWith('softkomik--')) return 3;
-  if (id.startsWith('mangapill--')) return 4;
-  return 5; // MangaDex or other
+  if (id.startsWith('qimanga--')) return 4;
+  if (id.startsWith('mangapill--')) return 5;
+  return 6; // MangaDex or other
 }
 
 function getChapterProviderPriority(id: string): number {
@@ -568,12 +570,20 @@ export async function searchComicsUnified(
         .catch(() => [])
     : searchSoftkomik(cleanQuery).catch(() => []);
 
+  const qimangaPromise = isBrowser
+    ? fetch(`/api/qimanga?action=search&q=${encodeURIComponent(cleanQuery)}`)
+        .then(r => r.ok ? r.json() : { comics: [] })
+        .then(d => d.comics || [])
+        .catch(() => [])
+    : searchQimanga(cleanQuery).catch(() => []);
+
   const mdPromise = mangadex.searchComics(cleanQuery, options).catch(() => []);
 
-  const [komikuRes, komikindoRes, softkomikRes, mdRes] = await Promise.all([
+  const [komikuRes, komikindoRes, softkomikRes, qimangaRes, mdRes] = await Promise.all([
     komikuPromise,
     komikindoPromise,
     softkomikPromise,
+    qimangaPromise,
     mdPromise,
   ]);
 
@@ -581,6 +591,7 @@ export async function searchComicsUnified(
     ...(komikuRes || []),
     ...(komikindoRes || []),
     ...(softkomikRes || []),
+    ...(qimangaRes || []),
     ...(mdRes || []),
   ].filter(isSafeContent);
 
@@ -802,7 +813,25 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
     return null;
   }
 
-  // 4. MangaPill provider
+  // 4. QiManga provider
+  if (decodedId.startsWith('qimanga--')) {
+    const slug = decodedId.replace(/^qimanga--/, '');
+    let detail: ComicDetail | null = null;
+    if (isBrowser) {
+      const res = await fetch(`/api/qimanga?action=detail&slug=${encodeURIComponent(slug)}`);
+      if (res.ok) {
+        const json = await res.json();
+        detail = json.detail || null;
+      }
+    } else {
+      const { fetchQimangaDetail } = await import('./qimanga');
+      detail = await fetchQimangaDetail(slug);
+    }
+    if (detail) return detail;
+    return null;
+  }
+
+  // 5. MangaPill provider
   if (decodedId.startsWith('mangapill--')) {
     const raw = decodedId.replace(/^mangapill--/, '');
     const cleanPath = '/' + raw.replace(/___/g, '/');
@@ -988,7 +1017,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   }
 
   // 5. MangaDex: fetch chapters directly if MangaDex UUID, or resolve MangaDex ID by title
-  const isDirectMangaDex = !id.startsWith('komiku--') && !id.startsWith('komikindo--') && !id.startsWith('softkomik--');
+  const isDirectMangaDex = !id.startsWith('komiku--') && !id.startsWith('komikindo--') && !id.startsWith('softkomik--') && !id.startsWith('qimanga--');
   if (isDirectMangaDex) {
     mdIdPromise = mangadex.fetchComicChapters(id, 'id').catch(() => []);
     mdEnPromise = mangadex.fetchComicChapters(id, 'en').catch(() => []);

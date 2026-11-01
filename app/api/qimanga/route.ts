@@ -5,6 +5,7 @@ import {
   findQimangaSlug,
   fetchQimangaChapters,
   fetchQimangaChapterImages,
+  fetchQimangaDetail,
 } from '@/lib/qimanga';
 
 const CACHE_HEADERS = {
@@ -32,6 +33,18 @@ export async function GET(req: NextRequest) {
 
       const comics = await searchQimanga(title);
       return NextResponse.json({ comics }, { headers: CACHE_HEADERS });
+    }
+
+    if (action === 'detail') {
+      const slug = sanitizeSlug(searchParams.get('slug'));
+      if (!slug) {
+        return NextResponse.json({ error: 'Slug tidak valid' }, { status: 400 });
+      }
+      const detail = await fetchQimangaDetail(slug);
+      return NextResponse.json(
+        { detail },
+        { headers: detail ? CACHE_HEADERS : NO_STORE_HEADERS }
+      );
     }
 
     if (action === 'chapters') {
