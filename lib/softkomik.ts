@@ -395,7 +395,13 @@ export async function fetchSoftkomikChapters(slug: string): Promise<ChapterItem[
       const comicUpdatedAt = parsed.data?.updated_at || parsed.data?.updatedAt || '';
 
       const chapters: ChapterItem[] = chapterList.map((ch, idx) => {
-        const cleanNum = String(ch.chapter).replace(/^0+/, '') || '0';
+        let cleanNum = String(ch.chapter).trim();
+        if (/^0+[1-9]/.test(cleanNum)) {
+          cleanNum = cleanNum.replace(/^0+/, '');
+        } else if (/^0+\./.test(cleanNum)) {
+          cleanNum = cleanNum.replace(/^0+(?=\.)/, '0');
+        }
+        if (!cleanNum || cleanNum === '00' || cleanNum === '000') cleanNum = '0';
         // Softkomik does not store per-chapter release timestamps in its API;
         // assign the comic update timestamp to the latest chapter if available
         const dateStr = ch.updatedAt || ch.updated_at || (idx === 0 ? comicUpdatedAt : '');
@@ -439,6 +445,8 @@ export async function fetchSoftkomikChapterImages(slug: string, chapter: string)
     chapterCandidates.push(`${maj.padStart(3, '0')}.${min}`);
     chapterCandidates.push(`${maj.padStart(4, '0')}.${min}`);
     chapterCandidates.push(`${parseInt(maj, 10)}.${min}`);
+    chapterCandidates.push(`${maj}-${min}`);
+    chapterCandidates.push(`${maj.padStart(3, '0')}-${min}`);
   } else {
     chapterCandidates.push(chapter.padStart(3, '0'));
     chapterCandidates.push(chapter.padStart(4, '0'));

@@ -732,25 +732,84 @@ export async function fetchChapterPages(chapterId: string): Promise<ChapterPageI
       }
 
       // Fallback: If Komiku chapter images fail or get blocked by Cloudflare (403),
-      // attempt fallback to Softkomik by extracting comic slug & chapter number
+      // attempt fallback to Softkomik or Komikindo by extracting comic slug & chapter number
       if (pages.length === 0) {
-        const chapterMatch = chapterSlug.match(/^(.*?)-chapter-([0-9.]+)/i);
+        const chapterMatch = chapterSlug.match(/^(.*?)-chapter-([0-9]+(?:[-.][0-9]+)?)/i);
         if (chapterMatch) {
-          const comicSlug = chapterMatch[1];
-          const chapterNum = chapterMatch[2];
+          const rawComicSlug = chapterMatch[1];
+          const chapterNum = chapterMatch[2].replace('-', '.');
+          const queryTitle = rawComicSlug.replace(/-/g, ' ');
+
+          // Fallback 1: Softkomik
           try {
             if (typeof window !== 'undefined') {
-              const res = await fetch(`/api/softkomik?action=pages&slug=${encodeURIComponent(comicSlug)}&chapter=${encodeURIComponent(chapterNum)}`);
+              const res = await fetch(`/api/softkomik?action=pages&slug=${encodeURIComponent(rawComicSlug)}&chapter=${encodeURIComponent(chapterNum)}`);
               if (res.ok) {
                 const data = await res.json();
                 pages = data.pages || [];
               }
+              if (pages.length === 0) {
+                const slugRes = await fetch(`/api/softkomik?action=slug&title=${encodeURIComponent(queryTitle)}`);
+                if (slugRes.ok) {
+                  const slugData = await slugRes.json();
+                  if (slugData.slug && slugData.slug !== rawComicSlug) {
+                    const res2 = await fetch(`/api/softkomik?action=pages&slug=${encodeURIComponent(slugData.slug)}&chapter=${encodeURIComponent(chapterNum)}`);
+                    if (res2.ok) {
+                      const data2 = await res2.json();
+                      pages = data2.pages || [];
+                    }
+                  }
+                }
+              }
             } else {
-              const { fetchSoftkomikChapterImages } = await import('./softkomik');
-              pages = await fetchSoftkomikChapterImages(comicSlug, chapterNum);
+              const { fetchSoftkomikChapterImages, findSoftkomikSlug } = await import('./softkomik');
+              pages = await fetchSoftkomikChapterImages(rawComicSlug, chapterNum);
+              if (pages.length === 0) {
+                const skSlug = await findSoftkomikSlug(queryTitle);
+                if (skSlug && skSlug !== rawComicSlug) {
+                  pages = await fetchSoftkomikChapterImages(skSlug, chapterNum);
+                }
+              }
             }
           } catch {
             // ignore fallback error
+          }
+
+          // Fallback 2: Komikindo
+          if (pages.length === 0) {
+            try {
+              if (typeof window !== 'undefined') {
+                const res = await fetch(`/api/komikindo?action=pages&chapter=${encodeURIComponent(`${rawComicSlug}-chapter-${chapterNum}`)}`);
+                if (res.ok) {
+                  const data = await res.json();
+                  pages = data.pages || [];
+                }
+                if (pages.length === 0) {
+                  const slugRes = await fetch(`/api/komikindo?action=slug&title=${encodeURIComponent(queryTitle)}`);
+                  if (slugRes.ok) {
+                    const slugData = await slugRes.json();
+                    if (slugData.slug && slugData.slug !== rawComicSlug) {
+                      const res2 = await fetch(`/api/komikindo?action=pages&chapter=${encodeURIComponent(`${slugData.slug}-chapter-${chapterNum}`)}`);
+                      if (res2.ok) {
+                        const data2 = await res2.json();
+                        pages = data2.pages || [];
+                      }
+                    }
+                  }
+                }
+              } else {
+                const { fetchKomikindoChapterImages, findKomikindoSlug } = await import('./komikindo');
+                pages = await fetchKomikindoChapterImages(`${rawComicSlug}-chapter-${chapterNum}`);
+                if (pages.length === 0) {
+                  const kiSlug = await findKomikindoSlug(queryTitle);
+                  if (kiSlug && kiSlug !== rawComicSlug) {
+                    pages = await fetchKomikindoChapterImages(`${kiSlug}-chapter-${chapterNum}`);
+                  }
+                }
+              }
+            } catch {
+              // ignore fallback error
+            }
           }
         }
       }

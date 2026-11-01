@@ -1,6 +1,7 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
 import { isSafeContent, filterSafeGenres, isValidCoverUrl } from './security';
+import { extractChapterNumFromTextOrSlug } from './aggregator';
 
 export const KOMIKU_BASE = 'https://komiku.org';
 export const KOMIKU_API_SEARCH = 'https://api.komiku.org';
@@ -226,14 +227,15 @@ export function parseKomikuChapters(html: string): ChapterItem[] {
   // 1. Try parsing table format with tanggal (matches both 'tanggalseries' and 'tanggalserua')
   const tableRowMatches = [
     ...html.matchAll(
-      /<tr[^>]*>[\s\S]*?<td class="judulseries"[^>]*>[\s\S]*?<a href="(\/([^" ?#]*chapter-([0-9.]+)[^"]*))"[^>]*>[\s\S]*?<\/td>[\s\S]*?<td class="tanggal[^"]*"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi
+      /<tr[^>]*>[\s\S]*?<td class="judulseries"[^>]*>[\s\S]*?<a href="(\/([^" ?#]*chapter-[^" ?#]+))"[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/td>[\s\S]*?<td class="tanggal[^"]*"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<\/tr>/gi
     ),
   ];
 
   if (tableRowMatches.length > 0) {
     for (const m of tableRowMatches) {
       const exactChapterSlug = m[2].replace(/\/$/, '');
-      const chapterNum = m[3];
+      const rawTitle = m[3] || '';
+      const chapterNum = extractChapterNumFromTextOrSlug(rawTitle, exactChapterSlug);
       const publishAt = m[4].replace(/<[^>]+>/g, '').trim();
 
       chapters.push({
@@ -247,10 +249,11 @@ export function parseKomikuChapters(html: string): ChapterItem[] {
     }
   } else {
     // 2. Fallback: match any chapter links
-    const matches = [...html.matchAll(/href="(\/([^"]*chapter-([0-9.]+)[^"]*))"/g)];
+    const matches = [...html.matchAll(/<a[^>]+href="(\/([^" ?#]*chapter-[^" ?#]+))"[^>]*>([\s\S]*?)<\/a>/gi)];
     for (const m of matches) {
       const exactChapterSlug = m[2].replace(/\/$/, '');
-      const chapterNum = m[3];
+      const rawTitle = m[3] || '';
+      const chapterNum = extractChapterNumFromTextOrSlug(rawTitle, exactChapterSlug);
       chapters.push({
         id: `komiku--${exactChapterSlug}`,
         chapter: chapterNum,

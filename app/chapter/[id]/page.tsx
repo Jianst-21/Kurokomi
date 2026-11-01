@@ -135,14 +135,14 @@ export default function ReaderPage() {
           }
         } else if (chapterId.startsWith('komiku--')) {
           const raw = chapterId.replace(/^komiku--/, '');
-          const slug = raw.replace(/-chapter-[0-9.]+.*$/i, '');
+          const slug = raw.replace(/-chapter-[0-9]+.*$/i, '');
           if (slug) {
             targetMangaId = `komiku--${slug}`;
             setMangaId(targetMangaId);
           }
         } else if (chapterId.startsWith('komikindo--')) {
           const raw = chapterId.replace(/^komikindo--/, '');
-          const slug = raw.replace(/-chapter-[0-9.]+.*$/i, '');
+          const slug = raw.replace(/-chapter-[0-9]+.*$/i, '');
           if (slug) {
             targetMangaId = `komikindo--${slug}`;
             setMangaId(targetMangaId);
@@ -151,7 +151,7 @@ export default function ReaderPage() {
           const raw = chapterId.replace(/^mangapill--/, '');
           const parts = raw.split('___');
           const slugPart = parts[parts.length - 1] || '';
-          const cleanSlug = slugPart.replace(/-chapter-[0-9.]+.*$/i, '');
+          const cleanSlug = slugPart.replace(/-chapter-[0-9]+.*$/i, '');
           if (cleanSlug) {
             targetMangaId = `mangapill--${cleanSlug}`;
             setMangaId(targetMangaId);

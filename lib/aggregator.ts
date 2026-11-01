@@ -97,12 +97,47 @@ function pickPreferredCover(
 }
 
 export function normalizeChapterKey(ch: string): string {
-  const clean = (ch || '').trim().replace(/^ch(?:\.|apter)?\s*/i, '');
+  let clean = (ch || '').trim().replace(/^ch(?:\.|apter)?\s*/i, '');
+  // If it has format like "24-2" (subchapter with dash), convert to "24.2"
+  clean = clean.replace(/^(\d+)-(\d+)$/, '$1.$2');
   const num = parseFloat(clean);
   if (!isNaN(num)) {
     return String(num);
   }
   return clean.toLowerCase().replace(/^0+/, '') || '0';
+}
+
+export function extractChapterNumFromTextOrSlug(titleText?: string, slugOrUrl?: string): string {
+  // 1. Try from title text first (e.g. "Chapter 24.2", "Ch. 24.2", "Chapter 24 - 2", "Ch. 103", "24.2")
+  if (titleText) {
+    const cleanText = titleText.replace(/<[^>]+>/g, '').trim();
+    // Match "Chapter 24.2", "Ch. 24.2", "Ch 24.2", "Chapter 24-2", "Chapter 24 - 2"
+    const textMatch = cleanText.match(/(?:chapter|ch|chap)\.?\s*([0-9]+(?:\s*[-.]\s*[0-9]+)?)/i);
+    if (textMatch) {
+      const numStr = textMatch[1].replace(/\s+/g, '').replace('-', '.');
+      return numStr;
+    }
+    // Match lone number or decimal in title (e.g. "24.2" or "24")
+    const pureNumMatch = cleanText.match(/\b([0-9]+(?:\.[0-9]+)?)\b/);
+    if (pureNumMatch) {
+      return pureNumMatch[1];
+    }
+  }
+
+  // 2. Fallback to slug/url: e.g. /...-chapter-24-2/, /...-chapter-24.2/, /...-chapter-24/
+  if (slugOrUrl) {
+    const slugMatch = slugOrUrl.match(/(?:^|[-_/])(?:chapter|ch|chap)[-.]?([0-9]+(?:[-.][0-9]+)?)/i);
+    if (slugMatch) {
+      return slugMatch[1].replace('-', '.');
+    }
+    // Match c-24-2 or c-24.2 or c-24
+    const cMatch = slugOrUrl.match(/(?:^|[-_/])c-([0-9]+(?:[-.][0-9]+)?)/i);
+    if (cMatch) {
+      return cMatch[1].replace('-', '.');
+    }
+  }
+
+  return '0';
 }
 
 export function extractChapterNumber(chapterId: string): string | null {
@@ -115,25 +150,26 @@ export function extractChapterNumber(chapterId: string): string | null {
   }
 
   // Softkomik pattern: softkomik--slug__<chapter>
-  const softkomikMatch = decoded.match(/__([0-9.]+)(?:[?&#]|$)/);
+  const softkomikMatch = decoded.match(/__([0-9]+(?:\.[0-9]+)?)(?:[?&#]|$)/);
   if (softkomikMatch) {
     return normalizeChapterKey(softkomikMatch[1]);
   }
 
   // Common pattern: chapter-123, ch-123, ch.123, c-123 (with optional suffix like -bahasa-indonesia or -indo)
-  const chMatch = decoded.match(/(?:^|[-_/])(?:chapter|ch|chap)[-.]?([0-9.]+)/i);
+  // Handles decimal and hyphenated sub-chapters like chapter-24-2, chapter-24.2, chapter-24
+  const chMatch = decoded.match(/(?:^|[-_/])(?:chapter|ch|chap)[-.]?([0-9]+(?:[-.][0-9]+)?)/i);
   if (chMatch) {
     return normalizeChapterKey(chMatch[1]);
   }
 
   // Fallback pattern: -c-123 or /c-123
-  const cDashMatch = decoded.match(/(?:^|[-_/])c-([0-9.]+)/i);
+  const cDashMatch = decoded.match(/(?:^|[-_/])c-([0-9]+(?:[-.][0-9]+)?)/i);
   if (cDashMatch) {
     return normalizeChapterKey(cDashMatch[1]);
   }
 
-  // Trailing digits pattern: e.g. slug-123 or slug_123
-  const endNumMatch = decoded.match(/[-_]([0-9.]+)$/);
+  // Trailing digits pattern: e.g. slug-123 or slug_123 or slug-24-2
+  const endNumMatch = decoded.match(/[-_]([0-9]+(?:[-.][0-9]+)?)$/);
   if (endNumMatch) {
     return normalizeChapterKey(endNumMatch[1]);
   }

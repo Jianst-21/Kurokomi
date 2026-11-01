@@ -1,6 +1,7 @@
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { generateSearchQueries, scoreTitleMatch } from './komiku';
 import { isSafeContent } from './security';
+import { extractChapterNumFromTextOrSlug } from './aggregator';
 
 export const MANGAPILL_BASE = 'https://mangapill.com';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -65,8 +66,7 @@ export function parseMangaPillChaptersHtml(html: string): ChapterItem[] {
   while ((match = chRegex.exec(html)) !== null) {
     const rawPath = match[1];
     const rawTitle = match[3].replace(/<[^>]+>/g, '').trim();
-    const numMatch = rawTitle.match(/Chapter\s+([0-9.]+)/i);
-    const chapterNum = numMatch ? numMatch[1] : '0';
+    const chapterNum = extractChapterNumFromTextOrSlug(rawTitle, rawPath);
 
     const cleanId = rawPath.replace(/^\//, '').replace(/\//g, '___');
 

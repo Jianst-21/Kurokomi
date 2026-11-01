@@ -81,15 +81,46 @@ export async function GET(req: NextRequest) {
 
       // Fast server-side fallback if Komiku blocked by Cloudflare (403) or returns empty
       if (pages.length === 0) {
-        const chapterMatch = chapterSlug.match(/^(.*?)-chapter-([0-9.]+)/i);
+        const chapterMatch = chapterSlug.match(/^(.*?)-chapter-([0-9]+(?:[-.][0-9]+)?)/i);
         if (chapterMatch) {
-          const comicSlug = chapterMatch[1];
-          const chapterNum = chapterMatch[2];
+          const rawComicSlug = chapterMatch[1];
+          const chapterNum = chapterMatch[2].replace('-', '.');
+          const queryTitle = rawComicSlug.replace(/-/g, ' ');
+
+          // Try 1: Softkomik fallback
           try {
-            const { fetchSoftkomikChapterImages } = await import('@/lib/softkomik');
-            pages = await fetchSoftkomikChapterImages(comicSlug, chapterNum);
+            const { fetchSoftkomikChapterImages, findSoftkomikSlug } = await import('@/lib/softkomik');
+            let skPages = await fetchSoftkomikChapterImages(rawComicSlug, chapterNum);
+            if (skPages.length === 0) {
+              const skSlug = await findSoftkomikSlug(queryTitle);
+              if (skSlug && skSlug !== rawComicSlug) {
+                skPages = await fetchSoftkomikChapterImages(skSlug, chapterNum);
+              }
+            }
+            if (skPages.length > 0) {
+              pages = skPages;
+            }
           } catch {
             // ignore
+          }
+
+          // Try 2: Komikindo fallback
+          if (pages.length === 0) {
+            try {
+              const { fetchKomikindoChapterImages, findKomikindoSlug } = await import('@/lib/komikindo');
+              let kiPages = await fetchKomikindoChapterImages(`${rawComicSlug}-chapter-${chapterNum}`);
+              if (kiPages.length === 0) {
+                const kiSlug = await findKomikindoSlug(queryTitle);
+                if (kiSlug && kiSlug !== rawComicSlug) {
+                  kiPages = await fetchKomikindoChapterImages(`${kiSlug}-chapter-${chapterNum}`);
+                }
+              }
+              if (kiPages.length > 0) {
+                pages = kiPages;
+              }
+            } catch {
+              // ignore
+            }
           }
         }
       }

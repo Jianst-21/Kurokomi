@@ -3,6 +3,7 @@ import { deduplicateChapters, sortChapters } from './mangadex';
 import { scoreTitleMatch, generateSearchQueries } from './komiku';
 import { isSafeContent, filterSafeGenres, isValidCoverUrl } from './security';
 import { parseDateScore } from './date';
+import { extractChapterNumFromTextOrSlug } from './aggregator';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
@@ -300,9 +301,8 @@ export function parseKomikindoChapters(html: string): ChapterItem[] {
     const href = linkMatch[1];
     const rawChapterTitle = linkMatch[2].replace(/<[^>]+>/g, '').trim();
 
-    // Extract chapter number
-    const numMatch = rawChapterTitle.match(/Chapter\s+([0-9.]+)/i) || href.match(/chapter-([0-9.]+)/i);
-    const chapterNum = numMatch ? numMatch[1] : '0';
+    // Extract chapter number supporting decimals (e.g. 24.2, Ch. 24.2, chapter-24-2)
+    const chapterNum = extractChapterNumFromTextOrSlug(rawChapterTitle, href);
 
     // Extract exact chapter slug from URL
     const cleanChapterSlug = href.replace(/^https?:\/\/komikindo\.ch\/?/, '').replace(/^\//, '').replace(/\/$/, '');
