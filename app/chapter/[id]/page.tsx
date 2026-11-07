@@ -25,6 +25,7 @@ import {
   fetchUnifiedChapters,
   extractChapterNumber,
   findChapterMatch,
+  resolveActiveChapters,
 } from '@/lib/aggregator';
 import {
   saveHistory,
@@ -53,6 +54,7 @@ export default function ReaderPage() {
   const rawChapterId = params?.id as string;
   const chapterId = decodeURIComponent(rawChapterId || '');
   const initialMangaId = searchParams.get('mangaId') || '';
+  const langParam = searchParams.get('lang');
 
   const [mangaId, setMangaId] = useState(initialMangaId);
   const [pages, setPages] = useState<ChapterPageItem[]>([]);
@@ -178,17 +180,10 @@ export default function ReaderPage() {
         if (detailData) {
           setComic(detailData);
 
-          let activeList = chapters;
-          if (activeList.length === 0) {
-            const { idChapters, enChapters } = await fetchUnifiedChapters(detailData);
-            const matchesEn = Boolean(findChapterMatch(enChapters, chapterId));
-            activeList = matchesEn
-              ? enChapters
-              : (idChapters.length > 0 ? idChapters : enChapters);
-
-            if (activeList.length > 0) {
-              setChapters(activeList);
-            }
+          const { idChapters, enChapters } = await fetchUnifiedChapters(detailData);
+          const activeList = resolveActiveChapters(chapterId, idChapters, enChapters, langParam);
+          if (activeList.length > 0) {
+            setChapters(activeList);
           }
 
           // Extract chapter number for history robustly across all providers
@@ -245,6 +240,11 @@ export default function ReaderPage() {
     ? ascChapters[currentIndex + 1]
     : null;
 
+  const currentLang =
+    langParam ||
+    (chapterId.startsWith('mangapill--') || chapterId.startsWith('qimanga--') ? 'en' : 'id');
+  const langQuery = currentLang ? `&lang=${currentLang}` : '';
+
   const toggleHUD = () => {
     setHudVisible(prev => !prev);
   };
@@ -253,7 +253,7 @@ export default function ReaderPage() {
     const next = getNextPageIndex(currentPageIndex, pages.length);
     if (next === 'next-chapter') {
       if (nextChapter) {
-        router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
+        router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}${langQuery}`);
       }
     } else {
       setCurrentPageIndex(next);
@@ -266,7 +266,7 @@ export default function ReaderPage() {
     const prev = getPrevPageIndex(currentPageIndex);
     if (prev === 'prev-chapter') {
       if (prevChapter) {
-        router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}`);
+        router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}${langQuery}`);
       }
     } else {
       setCurrentPageIndex(prev);
@@ -402,13 +402,13 @@ export default function ReaderPage() {
         if (effectiveMode === 'paged') {
           handlePrevPage();
         } else if (prevChapter) {
-          router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}`);
+          router.push(`/chapter/${prevChapter.id}?mangaId=${mangaId}${langQuery}`);
         }
       } else if (e.key === 'ArrowRight' || e.key === ']') {
         if (effectiveMode === 'paged') {
           handleNextPage();
         } else if (nextChapter) {
-          router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
+          router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}${langQuery}`);
         }
       } else if (e.key === 'm' || e.key === 'M') {
         setIsDrawerOpen(prev => !prev);
@@ -467,7 +467,7 @@ export default function ReaderPage() {
         <div className="flex flex-col sm:flex-row items-center gap-2 mt-2 w-full max-w-xs">
           {prevChapter && (
             <Link
-              href={`/chapter/${prevChapter.id}?mangaId=${mangaId}`}
+              href={`/chapter/${prevChapter.id}?mangaId=${mangaId}${langQuery}`}
               className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-blue-500/20 transition-all transform active:scale-95"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -503,6 +503,7 @@ export default function ReaderPage() {
         comicTitle={comic?.title || 'Komik'}
         currentChapter={currentChapter?.chapter || extractChapterNumber(chapterId) || '?'}
         mangaId={mangaId}
+        lang={currentLang}
         readProgress={readProgress}
         isManga={isManga}
         readerMode={effectiveMode}
@@ -568,7 +569,7 @@ export default function ReaderPage() {
             mangaId={mangaId}
             onTriggerNext={() => {
               if (nextChapter) {
-                router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}`);
+                router.push(`/chapter/${nextChapter.id}?mangaId=${mangaId}${langQuery}`);
               }
             }}
           />
@@ -601,7 +602,7 @@ export default function ReaderPage() {
                 return (
                   <Link
                     key={ch.id}
-                    href={`/chapter/${ch.id}?mangaId=${mangaId}`}
+                    href={`/chapter/${ch.id}?mangaId=${mangaId}${langQuery}`}
                     onClick={() => setIsDrawerOpen(false)}
                     className={`flex items-center justify-between p-2.5 rounded-lg text-xs font-medium transition-colors ${
                       isCurrent

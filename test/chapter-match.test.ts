@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractChapterNumber, findChapterMatch } from '@/lib/aggregator';
+import { extractChapterNumber, findChapterMatch, resolveActiveChapters } from '@/lib/aggregator';
 import { ChapterItem } from '@/lib/types';
 
 describe('extractChapterNumber and findChapterMatch', () => {
@@ -78,6 +78,98 @@ describe('extractChapterNumber and findChapterMatch', () => {
     it('returns null if no chapter matches ID or number', () => {
       const match = findChapterMatch(mockChapters, 'softkomik--lookism__999');
       expect(match).toBeNull();
+    });
+  });
+
+  describe('resolveActiveChapters', () => {
+    const idChapters: ChapterItem[] = [
+      {
+        id: 'komikindo--solo-leveling-chapter-2',
+        chapter: '2',
+        title: 'Chapter 2',
+        scanlationGroup: 'Komikindo',
+        publishAt: '2023-01-02',
+        pagesCount: 20,
+      },
+      {
+        id: 'komikindo--solo-leveling-chapter-1',
+        chapter: '1',
+        title: 'Chapter 1',
+        scanlationGroup: 'Komikindo',
+        publishAt: '2023-01-01',
+        pagesCount: 20,
+      },
+    ];
+
+    const enChapters: ChapterItem[] = [
+      {
+        id: 'mangapill--chapters___123___solo-leveling-chapter-2',
+        chapter: '2',
+        title: 'Chapter 2',
+        scanlationGroup: 'MangaPill',
+        publishAt: '2023-01-02',
+        pagesCount: 20,
+      },
+      {
+        id: 'mangapill--chapters___123___solo-leveling-chapter-1',
+        chapter: '1',
+        title: 'Chapter 1',
+        scanlationGroup: 'MangaPill',
+        publishAt: '2023-01-01',
+        pagesCount: 20,
+      },
+    ];
+
+    it('resolves Indonesian chapters when chapter ID is from Komikindo even if English has same chapter number', () => {
+      const active = resolveActiveChapters('komikindo--solo-leveling-chapter-1', idChapters, enChapters);
+      expect(active).toBe(idChapters);
+    });
+
+    it('resolves Indonesian chapters when chapter ID is from Softkomik or Komiku', () => {
+      const activeSoft = resolveActiveChapters('softkomik--solo-leveling__1', idChapters, enChapters);
+      expect(activeSoft).toBe(idChapters);
+
+      const activeKomiku = resolveActiveChapters('komiku--solo-leveling-chapter-1-indo', idChapters, enChapters);
+      expect(activeKomiku).toBe(idChapters);
+    });
+
+    it('resolves English chapters when chapter ID is from MangaPill', () => {
+      const active = resolveActiveChapters('mangapill--chapters___123___solo-leveling-chapter-1', idChapters, enChapters);
+      expect(active).toBe(enChapters);
+    });
+
+    it('resolves exact match for MangaDex Indonesian UUID', () => {
+      const mdIdChaps: ChapterItem[] = [
+        { id: 'uuid-id-ch1', chapter: '1', title: 'Ch 1', publishAt: '2023-01-01', pagesCount: 20 },
+      ];
+      const mdEnChaps: ChapterItem[] = [
+        { id: 'uuid-en-ch1', chapter: '1', title: 'Ch 1', publishAt: '2023-01-01', pagesCount: 20 },
+      ];
+
+      const active = resolveActiveChapters('uuid-id-ch1', mdIdChaps, mdEnChaps);
+      expect(active).toBe(mdIdChaps);
+
+      const activeEn = resolveActiveChapters('uuid-en-ch1', mdIdChaps, mdEnChaps);
+      expect(activeEn).toBe(mdEnChaps);
+    });
+
+    it('falls back to single available language if other is empty', () => {
+      expect(resolveActiveChapters('any-chapter', idChapters, [])).toBe(idChapters);
+      expect(resolveActiveChapters('any-chapter', [], enChapters)).toBe(enChapters);
+    });
+
+    it('respects preferredLang parameter when unambiguous', () => {
+      const mdIdChaps: ChapterItem[] = [
+        { id: 'id-1', chapter: '1', title: 'Ch 1', publishAt: '2023-01-01', pagesCount: 20 },
+      ];
+      const mdEnChaps: ChapterItem[] = [
+        { id: 'en-1', chapter: '1', title: 'Ch 1', publishAt: '2023-01-01', pagesCount: 20 },
+      ];
+
+      // Unknown ID format but preferredLang='en'
+      expect(resolveActiveChapters('unknown-id', mdIdChaps, mdEnChaps, 'en')).toBe(mdEnChaps);
+      // Unknown ID format but preferredLang='id'
+      expect(resolveActiveChapters('unknown-id', mdIdChaps, mdEnChaps, 'id')).toBe(mdIdChaps);
     });
   });
 });

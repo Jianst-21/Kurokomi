@@ -369,7 +369,7 @@ export default function MangaDetailPage() {
                 </Link>
               ) : firstChapter ? (
                 <Link
-                  href={`/chapter/${firstChapter.id}?mangaId=${comic.id}`}
+                  href={`/chapter/${firstChapter.id}?mangaId=${comic.id}&lang=${selectedLang}`}
                   className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-500 font-semibold text-xs text-white shadow-md shadow-blue-600/30 transition-all"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
@@ -537,6 +537,7 @@ export default function MangaDetailPage() {
                 mangaId={comic.id}
                 chapters={activeChapters}
                 lastReadChapterId={lastReadChapter?.chapterId}
+                lang={selectedLang}
               />
             ) : (
               <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center flex flex-col items-center gap-2">

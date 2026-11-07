@@ -9,6 +9,7 @@ interface ReaderHUDProps {
   comicTitle: string;
   currentChapter: string;
   mangaId: string;
+  lang?: string;
   readProgress?: number;
   isManga?: boolean;
   readerMode?: 'webtoon' | 'paged';
@@ -28,6 +29,7 @@ export function ReaderHUD({
   comicTitle,
   currentChapter,
   mangaId,
+  lang,
   readProgress,
   isManga,
   readerMode = 'webtoon',
@@ -79,7 +81,7 @@ export function ReaderHUD({
             <span className="text-[10px] text-zinc-400 font-medium">
               Chapter {currentChapter} • {readerMode === 'paged' && currentPage && totalPages ? (
                 <span>{currentPage} / {totalPages}</span>
-              ) : (readProgress !== undefined && readProgress > 0 ? `${readProgress}%` : 'Sub Indo')}
+              ) : (readProgress !== undefined && readProgress > 0 ? `${readProgress}%` : (lang === 'en' ? 'English' : 'Sub Indo'))}
             </span>
           </div>
 
@@ -136,7 +138,7 @@ export function ReaderHUD({
             {/* Prev Chapter Button */}
             {prevChapterId ? (
               <Link
-                href={`/chapter/${prevChapterId}?mangaId=${mangaId}`}
+                href={`/chapter/${prevChapterId}?mangaId=${mangaId}${lang ? `&lang=${lang}` : ''}`}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 transition-colors"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -159,7 +161,7 @@ export function ReaderHUD({
             {/* Next Chapter Button */}
             {nextChapterId ? (
               <Link
-                href={`/chapter/${nextChapterId}?mangaId=${mangaId}`}
+                href={`/chapter/${nextChapterId}?mangaId=${mangaId}${lang ? `&lang=${lang}` : ''}`}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs font-semibold text-zinc-200 hover:bg-zinc-800 transition-colors"
               >
                 <span>Ch. {nextChapterNumber || 'Next'}</span>

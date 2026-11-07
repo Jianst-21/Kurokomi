@@ -199,6 +199,66 @@ export function findChapterMatch(chapters: ChapterItem[], chapterId: string): Ch
   return null;
 }
 
+/**
+ * Resolves whether the reader should display Indonesian or English chapters based on the current chapterId,
+ * available chapter lists, and explicit user preference.
+ * Guarantees that Indonesian chapters (Komikindo, Komiku, Softkomik, MD Indonesian) never accidentally switch to English.
+ */
+export function resolveActiveChapters(
+  chapterId: string,
+  idChapters: ChapterItem[] = [],
+  enChapters: ChapterItem[] = [],
+  preferredLang?: string | null
+): ChapterItem[] {
+  if (idChapters.length > 0 && enChapters.length === 0) return idChapters;
+  if (enChapters.length > 0 && idChapters.length === 0) return enChapters;
+  if (idChapters.length === 0 && enChapters.length === 0) return [];
+
+  const decodedId = decodeURIComponent(chapterId || '');
+
+  // 1. Known provider prefixes (hard guarantee based on provider language)
+  const isIdProvider =
+    decodedId.startsWith('komiku--') ||
+    decodedId.startsWith('komiku:') ||
+    decodedId.startsWith('komikindo--') ||
+    decodedId.startsWith('softkomik--');
+  if (isIdProvider && idChapters.length > 0) {
+    return idChapters;
+  }
+
+  const isEnProvider =
+    decodedId.startsWith('mangapill--') ||
+    decodedId.startsWith('qimanga--');
+  if (isEnProvider && enChapters.length > 0) {
+    return enChapters;
+  }
+
+  // 2. Exact match in either list (e.g. MangaDex UUIDs)
+  const exactInId = idChapters.some(c => c.id === chapterId || decodeURIComponent(c.id) === decodedId);
+  const exactInEn = enChapters.some(c => c.id === chapterId || decodeURIComponent(c.id) === decodedId);
+
+  if (exactInId && !exactInEn) return idChapters;
+  if (exactInEn && !exactInId) return enChapters;
+
+  // 3. User preferred language parameter from searchParams (?lang=id or ?lang=en)
+  if (preferredLang === 'en' && enChapters.length > 0 && !isIdProvider) {
+    return enChapters;
+  }
+  if (preferredLang === 'id' && idChapters.length > 0 && !isEnProvider) {
+    return idChapters;
+  }
+
+  // 4. Fallback: Fuzzy number match ONLY if uniquely matching one language list
+  const matchesId = Boolean(findChapterMatch(idChapters, chapterId));
+  const matchesEn = Boolean(findChapterMatch(enChapters, chapterId));
+
+  if (matchesId && !matchesEn) return idChapters;
+  if (matchesEn && !matchesId) return enChapters;
+
+  // 5. Default to Indonesian for Kurokomi
+  return idChapters.length > 0 ? idChapters : enChapters;
+}
+
 export function mergeAndSortChapters(
   ...chapterArrays: ChapterItem[][]
 ): ChapterItem[] {

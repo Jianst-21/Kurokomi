@@ -12,9 +12,10 @@ interface ChapterListProps {
   mangaId: string;
   chapters: ChapterItem[];
   lastReadChapterId?: string;
+  lang?: string;
 }
 
-export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterListProps) {
+export function ChapterList({ mangaId, chapters, lastReadChapterId, lang }: ChapterListProps) {
   const [ascending, setAscending] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
@@ -59,7 +60,7 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId }: ChapterLis
           return (
             <Link
               key={ch.id}
-              href={`/chapter/${ch.id}?mangaId=${mangaId}`}
+              href={`/chapter/${ch.id}?mangaId=${mangaId}${lang ? `&lang=${lang}` : ''}`}
               className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                 isLastRead
                   ? 'bg-blue-950/40 border-blue-800/80 text-blue-200'
