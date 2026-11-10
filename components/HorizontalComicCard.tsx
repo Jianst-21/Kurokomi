@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, Clock, BookOpen, Check, Heart } from 'lucide-react';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
-import { formatChapterDate } from '@/lib/date';
+import { formatRelativeTime } from '@/lib/date';
 import { getComicLastRead, isFavorite, getCachedComicCover, hasComicUpdate } from '@/lib/storage';
 
 interface HorizontalComicCardProps {
@@ -52,11 +52,7 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
     }
   };
 
-  const formattedDate = comic.updatedAt
-    ? comic.updatedAt.includes('lalu')
-      ? comic.updatedAt
-      : formatChapterDate(comic.updatedAt)
-    : '';
+  const formattedDate = formatRelativeTime(comic.updatedAt);
 
   const typeBadgeColors: Record<string, string> = {
     manga: 'bg-rose-950 text-rose-400 border-rose-900',

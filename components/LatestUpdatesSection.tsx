@@ -64,6 +64,7 @@ export function LatestUpdatesSection() {
           updateFavoriteComic(c.id, {
             latestChapter: c.latestChapter,
             latestChapterId: c.latestChapterId,
+            updatedAt: c.updatedAt,
           });
         }
       });

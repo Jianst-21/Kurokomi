@@ -129,6 +129,7 @@ export default function MangaDetailPage() {
         updateFavoriteComic(mangaId, {
           latestChapter: latest.chapter ? `Ch. ${latest.chapter}` : latest.title,
           latestChapterId: latest.id,
+          updatedAt: latest.publishAt || undefined,
         });
       }
     } catch {
@@ -153,6 +154,7 @@ export default function MangaDetailPage() {
       isFullColor: comic.isFullColor,
       latestChapter: latest ? (latest.chapter ? `Ch. ${latest.chapter}` : latest.title) : undefined,
       latestChapterId: latest?.id,
+      updatedAt: latest?.publishAt || undefined,
     });
     setFavorited(newState);
   };

@@ -56,7 +56,30 @@ export function parseKomikuAsiaComicList(items: KomikuAsiaComicDto[]): ComicCard
     else if (rawType.includes('manga')) type = 'manga';
 
     const latestChapter = item.latestChapter ? `Chapter ${item.latestChapter}` : undefined;
-    const updatedAt = item.updatedHoursAgo !== undefined ? `${item.updatedHoursAgo} jam lalu` : undefined;
+    let updatedAt: string | undefined = undefined;
+
+    if (typeof item.latestChapterAt === 'number' && item.latestChapterAt > 0) {
+      const tsMs = item.latestChapterAt < 1e11 ? item.latestChapterAt * 1000 : item.latestChapterAt;
+      const diffSec = Math.floor((Date.now() - tsMs) / 1000);
+      if (diffSec < 60) {
+        updatedAt = 'Baru saja';
+      } else if (diffSec < 3600) {
+        const mins = Math.max(1, Math.floor(diffSec / 60));
+        updatedAt = `${mins} menit lalu`;
+      } else if (diffSec < 86400) {
+        const hours = Math.floor(diffSec / 3600);
+        updatedAt = `${hours} jam lalu`;
+      } else {
+        const days = Math.floor(diffSec / 86400);
+        updatedAt = `${days} hari lalu`;
+      }
+    } else if (item.updatedHoursAgo !== undefined) {
+      if (item.updatedHoursAgo === 0) {
+        updatedAt = 'Baru saja';
+      } else {
+        updatedAt = `${item.updatedHoursAgo} jam lalu`;
+      }
+    }
 
     cards.push({
       id: `komiku--${item.slug}`,

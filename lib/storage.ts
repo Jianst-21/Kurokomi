@@ -1,4 +1,5 @@
 import { ComicCardItem, ReadingHistoryItem } from './types';
+import { parseDateScore } from './date';
 
 const FAVORITES_KEY = 'kurokomi_favorites_v1';
 const HISTORY_KEY = 'kurokomi_history_v1';
@@ -495,13 +496,53 @@ export function updateFavoriteComic(id: string, updates: Partial<ComicCardItem>)
     const list = getFavorites();
     const index = list.findIndex(c => c.id === id);
     if (index >= 0) {
-      list[index] = { ...list[index], ...updates };
+      const existing = list[index];
+      const hasChapterChanged = updates.latestChapter && updates.latestChapter !== existing.latestChapter;
+      const hasDateChanged = updates.updatedAt && updates.updatedAt !== existing.updatedAt;
+      const updated = { ...existing, ...updates };
+
+      // If comic received a newer chapter or updated date, move it to the front (top-left) of favorites
+      if (hasChapterChanged || hasDateChanged) {
+        list.splice(index, 1);
+        list.unshift(updated);
+      } else {
+        list[index] = updated;
+      }
+
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
       notifyFavoritesChanged();
     }
   } catch {
     // ignore
   }
+}
+
+export function sortFavoritesByLatestUpdate(favorites: ComicCardItem[]): ComicCardItem[] {
+  if (!Array.isArray(favorites) || favorites.length <= 1) return favorites || [];
+
+  return [...favorites].sort((a, b) => {
+    // 1. Comics that have an unread update (red dot) come first
+    const updateA = hasComicUpdate(a);
+    const updateB = hasComicUpdate(b);
+    if (updateA && !updateB) return -1;
+    if (!updateA && updateB) return 1;
+
+    // 2. Newest updatedAt timestamp score (descending)
+    const scoreA = parseDateScore(a.updatedAt);
+    const scoreB = parseDateScore(b.updatedAt);
+    if (scoreA !== scoreB) {
+      return scoreB - scoreA;
+    }
+
+    // 3. Fallback: highest latest chapter number (descending)
+    const chapA = parseChapterNumberValue(a.latestChapter);
+    const chapB = parseChapterNumberValue(b.latestChapter);
+    if (chapA !== null && chapB !== null && chapA !== chapB) {
+      return chapB - chapA;
+    }
+
+    return 0;
+  });
 }
 
 

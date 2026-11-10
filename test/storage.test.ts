@@ -25,6 +25,7 @@ import {
   hasComicUpdate,
   hasAnyFavoriteUpdate,
   updateFavoriteComic,
+  sortFavoritesByLatestUpdate,
 } from '@/lib/storage';
 import { ComicCardItem, ReadingHistoryItem } from '@/lib/types';
 
@@ -405,6 +406,79 @@ describe('LocalStorage Helper', () => {
 
       // Must find the history entry via slug match and return false
       expect(hasComicUpdate(comic)).toBe(false);
+    });
+
+    it('moves updated comic to index 0 (top-left) when updateFavoriteComic receives newer chapter or updatedAt', () => {
+      const comic1: ComicCardItem = { id: 'fav-1', title: 'Comic 1', coverUrl: '', type: 'manga' };
+      const comic2: ComicCardItem = { id: 'fav-2', title: 'Comic 2', coverUrl: '', type: 'manga' };
+      toggleFavorite(comic1);
+      toggleFavorite(comic2);
+
+      // Initially comic2 is at 0 because it was toggled second
+      expect(getFavorites()[0].id).toBe('fav-2');
+
+      // Now comic1 gets a new chapter update
+      updateFavoriteComic('fav-1', {
+        latestChapter: 'Ch. 100',
+        updatedAt: '5 menit lalu',
+      });
+
+      // comic1 should have moved to index 0 (top-left)
+      expect(getFavorites()[0].id).toBe('fav-1');
+    });
+
+    it('sorts favorites so that comic with newest update is at index 0 (top-left)', () => {
+      const comicA: ComicCardItem = {
+        id: 'c-a',
+        title: 'Comic A',
+        coverUrl: '',
+        type: 'manhwa',
+        latestChapter: 'Ch. 10',
+        updatedAt: '10 menit lalu',
+      };
+      const comicB: ComicCardItem = {
+        id: 'c-b',
+        title: 'Comic B',
+        coverUrl: '',
+        type: 'manhwa',
+        latestChapter: 'Ch. 50',
+        updatedAt: '2 jam lalu',
+      };
+      const comicC: ComicCardItem = {
+        id: 'c-c',
+        title: 'Comic C',
+        coverUrl: '',
+        type: 'manhwa',
+        latestChapter: 'Ch. 5',
+        updatedAt: '3 hari lalu',
+      };
+
+      // Add to favorites
+      toggleFavorite(comicC);
+      toggleFavorite(comicB);
+      toggleFavorite(comicA);
+
+      // Comic A updated 10 minutes ago, Comic B updated 2 hours ago, Comic C 3 days ago.
+      // All 3 have unread updates, so comic A (newest) must be at index 0 (top-left)
+      const sorted = sortFavoritesByLatestUpdate(getFavorites());
+      expect(sorted[0].id).toBe('c-a');
+      expect(sorted[1].id).toBe('c-b');
+      expect(sorted[2].id).toBe('c-c');
+
+      // If user reads comic A, but comic B still has an unread update:
+      saveHistory({
+        mangaId: 'c-a',
+        title: 'Comic A',
+        coverUrl: '',
+        type: 'manhwa',
+        chapterNumber: 'Ch. 10',
+        chapterId: 'ch-10',
+        readAt: new Date().toISOString(),
+      });
+
+      // Comic B now has unread update, so it moves to index 0 (top-left)!
+      const reSorted = sortFavoritesByLatestUpdate(getFavorites());
+      expect(reSorted[0].id).toBe('c-b');
     });
   });
 });
