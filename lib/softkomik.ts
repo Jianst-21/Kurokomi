@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { ComicCardItem, ComicDetail, ChapterItem, ChapterPageItem } from './types';
 import { deduplicateChapters, sortChapters } from './mangadex';
 import { scoreTitleMatch, generateSearchQueries } from './komiku';
@@ -38,10 +37,13 @@ export function buildSoftkomikPageUrl(rawPathOrUrl: string, token: string = SOFT
 }
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const FETCH_TIMEOUT_MS = 4000;
+const FETCH_TIMEOUT_MS = 6000;
 
 export function decryptOpenSSLAES(ciphertextB64: string, keyStr: string = SOFTKOMIK_ENCRYPTION_KEY): string {
+  if (typeof window !== 'undefined') return '';
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const crypto = require('crypto');
     const ciphertextBytes = Buffer.from(ciphertextB64, 'base64');
     if (ciphertextBytes.length < 16) return '';
     if (ciphertextBytes.subarray(0, 8).toString() !== 'Salted__') {
@@ -165,45 +167,69 @@ export function mapSoftkomikItemToCard(item: SoftkomikRawItem): ComicCardItem {
 }
 
 export async function fetchSoftkomikLatest(
-  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'manhwa',
+  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'all',
   page: number = 1,
   limit: number = 10
 ): Promise<ComicCardItem[]> {
   try {
-    const url = type === 'all'
-      ? `${SOFTKOMIK_BASE}/komik/update?page=${page}&category=normal`
-      : `${SOFTKOMIK_BASE}/komik/type/${type}?page=${page}&category=normal`;
+    const fetchSoftkomikPage = async (p: number): Promise<SoftkomikRawItem[]> => {
+      const url = `${SOFTKOMIK_BASE}/komik/update?page=${p}&category=normal`;
+      const res = await fetch(url, {
+        headers: { 'User-Agent': USER_AGENT },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        next: { revalidate: 60 },
+      });
 
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 60 },
-    });
+      if (!res.ok) return [];
+      const html = await res.text();
+      const nextData = extractNextData(html) as Record<string, unknown> | null;
+      const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
+      if (!pageProps) return [];
 
-    if (!res.ok) return [];
-    const html = await res.text();
-    const nextData = extractNextData(html) as Record<string, unknown> | null;
-    const pageProps = (nextData?.props as Record<string, unknown>)?.pageProps as Record<string, unknown> | undefined;
-    if (!pageProps) return [];
+      let rawList: SoftkomikRawItem[] = [];
+      if (pageProps.initialData && Array.isArray((pageProps.initialData as Record<string, unknown>).data)) {
+        rawList = (pageProps.initialData as Record<string, unknown>).data as SoftkomikRawItem[];
+      } else if (pageProps.data && Array.isArray((pageProps.data as Record<string, unknown>).data)) {
+        rawList = (pageProps.data as Record<string, unknown>).data as SoftkomikRawItem[];
+      }
+      return rawList.filter(
+        item => item.contentRating !== '18+' && item.contentRating !== 'adult' && item.contentRating !== 'ecchi'
+      );
+    };
 
-    let rawList: SoftkomikRawItem[] = [];
-    if (pageProps.initialData && Array.isArray((pageProps.initialData as Record<string, unknown>).data)) {
-      rawList = (pageProps.initialData as Record<string, unknown>).data as SoftkomikRawItem[];
-    } else if (pageProps.data && Array.isArray((pageProps.data as Record<string, unknown>).data)) {
-      rawList = (pageProps.data as Record<string, unknown>).data as SoftkomikRawItem[];
+    if (type === 'all') {
+      const softkomikPage = Math.floor(((page - 1) * limit) / 24) + 1;
+      const pageOffset = ((page - 1) * limit) % 24;
+      let rawItems = await fetchSoftkomikPage(softkomikPage);
+      if (pageOffset + limit > 24) {
+        const nextItems = await fetchSoftkomikPage(softkomikPage + 1);
+        rawItems = [...rawItems, ...nextItems];
+      }
+      return rawItems
+        .slice(pageOffset, pageOffset + limit)
+        .map(mapSoftkomikItemToCard)
+        .filter(isSafeContent);
+    } else {
+      const targetType = type.toLowerCase();
+      const neededTotal = page * limit;
+      const allMatching: SoftkomikRawItem[] = [];
+      let currentP = 1;
+      while (allMatching.length < neededTotal && currentP <= 4) {
+        const pageItems = await fetchSoftkomikPage(currentP);
+        if (pageItems.length === 0) break;
+        const matching = pageItems.filter(item => {
+          const raw = (item.type || '').toLowerCase();
+          return raw.includes(targetType);
+        });
+        allMatching.push(...matching);
+        currentP++;
+      }
+      const startIdx = (page - 1) * limit;
+      return allMatching
+        .slice(startIdx, startIdx + limit)
+        .map(mapSoftkomikItemToCard)
+        .filter(isSafeContent);
     }
-
-    const items = rawList
-      .filter(item => item.contentRating !== '18+' && item.contentRating !== 'adult' && item.contentRating !== 'ecchi')
-      .sort((a, b) => {
-        const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-        const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-        return timeB - timeA;
-      })
-      .map(mapSoftkomikItemToCard)
-      .filter(isSafeContent);
-
-    return items.slice(0, limit);
   } catch (e) {
     console.error('fetchSoftkomikLatest error:', e);
     return [];

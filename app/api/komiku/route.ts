@@ -55,7 +55,8 @@ export async function GET(req: NextRequest) {
     if (action === 'latest') {
       const type = (searchParams.get('type') || 'all') as 'manga' | 'manhwa' | 'manhua' | 'all';
       const page = clampInteger(searchParams.get('page'), 1, 500, 1);
-      const comics = await fetchKomikuLatest(type, page);
+      const limit = clampInteger(searchParams.get('limit'), 1, 50, 10);
+      const comics = await fetchKomikuLatest(type, page, limit);
       return NextResponse.json({ comics }, { headers: LATEST_CACHE_HEADERS });
     }
 

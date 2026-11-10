@@ -96,11 +96,8 @@ export function DesktopNavbar() {
                   <span
                     aria-label="Ada update favorit"
                     title="Ada update komik favorit"
-                    className="relative flex h-2 w-2"
-                  >
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-2 ring-zinc-950" />
-                  </span>
+                    className="relative flex h-2 w-2 rounded-full bg-rose-500 ring-2 ring-zinc-950"
+                  />
                 )}
               </Link>
             );

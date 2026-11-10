@@ -142,7 +142,7 @@ export function parseKomikuAsiaPages(pages: KomikuAsiaPageDto[]): ChapterPageIte
 }
 
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const FETCH_TIMEOUT_MS = 2500;
+const FETCH_TIMEOUT_MS = 6000;
 
 export function normalizeTitle(t: string): string {
   if (!t) return '';
@@ -339,31 +339,43 @@ export function parseKomikuLatestUpdates(html: string): ComicCardItem[] {
 }
 
 export async function fetchKomikuLatest(
-  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'manhwa',
-  page: number = 1
+  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'all',
+  page: number = 1,
+  limit: number = 10
 ): Promise<ComicCardItem[]> {
   // 1. Try modern Komiku Asia JSON API first
   try {
-    const url = `${KOMIKU_ASIA_API}/comics?sort=update&page=${page}`;
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'application/json, text/plain, */*',
-        'Referer': `${KOMIKU_ASIA_BASE}/`,
-      },
-      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 60 },
-    });
+    const typeParam = type && type !== 'all' ? `&type=${type}` : '';
+    const komikuPage = Math.floor(((page - 1) * limit) / 12) + 1;
+    const pageOffset = ((page - 1) * limit) % 12;
 
-    if (res.ok) {
+    const fetchAsiaPage = async (p: number): Promise<ComicCardItem[]> => {
+      const url = `${KOMIKU_ASIA_API}/comics?sort=update${typeParam}&page=${p}`;
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': USER_AGENT,
+          'Accept': 'application/json, text/plain, */*',
+          'Referer': `${KOMIKU_ASIA_BASE}/`,
+        },
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        next: { revalidate: 60 },
+      });
+
+      if (!res.ok) return [];
       const data = await res.json();
       if (data && Array.isArray(data.items) && data.items.length > 0) {
-        const cards = parseKomikuAsiaComicList(data.items);
-        if (type && type !== 'all') {
-          return cards.filter(c => c.type === type);
-        }
-        return cards;
+        return parseKomikuAsiaComicList(data.items);
       }
+      return [];
+    };
+
+    let cards = await fetchAsiaPage(komikuPage);
+    if (cards.length > 0) {
+      if (pageOffset + limit > 12) {
+        const nextCards = await fetchAsiaPage(komikuPage + 1);
+        cards = [...cards, ...nextCards];
+      }
+      return cards.slice(pageOffset, pageOffset + limit);
     }
   } catch (e) {
     console.warn('fetchKomikuLatest Asia API error, falling back:', e);
@@ -383,7 +395,8 @@ export async function fetchKomikuLatest(
 
     if (!res.ok) return [];
     const html = await res.text();
-    return parseKomikuLatestUpdates(html);
+    const items = parseKomikuLatestUpdates(html);
+    return items.slice(0, limit);
   } catch (e) {
     console.error('fetchKomikuLatest error:', e);
     return [];

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAllowedImageProxyUrl } from '@/lib/security';
+import { isAllowedImageProxyUrl, isSoftkomikPromoBanner } from '@/lib/security';
 
 export const runtime = 'edge';
 
-export const SOFTKOMIK_TRAP_BANNER_SIZE = 213850;
-export const SOFTKOMIK_DEFAULT_TOKEN = 'T4Kmwztku';
+const SOFTKOMIK_DEFAULT_TOKEN = 'T4Kmwztku';
 
 // 1x1 transparent GIF fallback when upstream image cannot be found (404/not found)
 // Prevents console errors and broken image icons in browser
@@ -15,10 +14,6 @@ const TRANSPARENT_1PX_GIF = new Uint8Array([
   0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x01, 0x44,
   0x00, 0x3b
 ]);
-
-export function isSoftkomikPromoBanner(byteLength: number): boolean {
-  return byteLength === SOFTKOMIK_TRAP_BANNER_SIZE;
-}
 
 export async function GET(req: NextRequest) {
   const urlParam = req.nextUrl.searchParams.get('url');

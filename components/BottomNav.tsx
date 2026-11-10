@@ -49,11 +49,8 @@ export function BottomNav() {
                   <span
                     aria-label="Ada update favorit"
                     title="Ada update komik favorit"
-                    className="absolute -top-1 -right-1 flex h-2 w-2"
-                  >
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500 ring-2 ring-zinc-950" />
-                  </span>
+                    className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-zinc-950"
+                  />
                 )}
               </div>
               <span className="text-[10px] tracking-tight">{item.label}</span>

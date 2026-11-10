@@ -10,5 +10,5 @@ describe('fetchLatestComicsByType Multi-Source Stream', () => {
     if (results.length > 0) {
       expect(results[0].source).toBeDefined();
     }
-  });
+  }, 15000);
 });

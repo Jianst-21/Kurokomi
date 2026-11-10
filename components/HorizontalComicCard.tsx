@@ -215,11 +215,8 @@ export function HorizontalComicCard({ comic }: HorizontalComicCardProps) {
       <span
         aria-label="Update baru"
         title="Ada chapter baru"
-        className="absolute -top-1 -right-1 z-20 flex h-2.5 w-2.5 pointer-events-none"
-      >
-        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 ring-2 ring-zinc-950" />
-      </span>
+        className="absolute -top-1 -right-1 z-20 h-2.5 w-2.5 rounded-full bg-rose-500 ring-2 ring-zinc-950 pointer-events-none"
+      />
     )}
   </div>
   );

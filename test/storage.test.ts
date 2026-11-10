@@ -323,5 +323,88 @@ describe('LocalStorage Helper', () => {
       expect(hasComicUpdate(updated)).toBe(true);
       expect(hasAnyFavoriteUpdate()).toBe(true);
     });
+
+    it('correctly compares numeric chapter numbers without false positive red marks', () => {
+      const comic: ComicCardItem = {
+        id: 'komikindo--solo-leveling',
+        title: 'Solo Leveling',
+        coverUrl: 'https://example.com/sl.jpg',
+        type: 'manhwa',
+        latestChapter: 'Ch. 179',
+      };
+
+      toggleFavorite(comic);
+
+      // User has read chapter '179' (stored as plain numeric string in reader)
+      saveHistory({
+        mangaId: 'komikindo--solo-leveling',
+        title: 'Solo Leveling',
+        coverUrl: 'https://example.com/sl.jpg',
+        type: 'manhwa',
+        chapterId: 'komikindo--chapter-179',
+        chapterNumber: '179',
+        readAt: new Date().toISOString(),
+      });
+
+      // Since user already read 179, hasComicUpdate must be FALSE (no red mark)
+      expect(hasComicUpdate(comic)).toBe(false);
+      expect(hasAnyFavoriteUpdate()).toBe(false);
+
+      // If a new chapter Ch. 180 is published and synced to favorites
+      updateFavoriteComic('komikindo--solo-leveling', { latestChapter: 'Ch. 180' });
+      const updatedComic = getFavorites().find(c => c.id === 'komikindo--solo-leveling')!;
+      expect(hasComicUpdate(updatedComic)).toBe(true);
+      expect(hasAnyFavoriteUpdate()).toBe(true);
+
+      // If user reads chapter 180, it returns to FALSE
+      saveHistory({
+        mangaId: 'komikindo--solo-leveling',
+        title: 'Solo Leveling',
+        coverUrl: 'https://example.com/sl.jpg',
+        type: 'manhwa',
+        chapterId: 'komikindo--chapter-180',
+        chapterNumber: '180',
+        readAt: new Date().toISOString(),
+      });
+      expect(hasComicUpdate(comic)).toBe(false);
+
+      // If user is ahead (read 181), it should also be FALSE
+      saveHistory({
+        mangaId: 'komikindo--solo-leveling',
+        title: 'Solo Leveling',
+        coverUrl: 'https://example.com/sl.jpg',
+        type: 'manhwa',
+        chapterId: 'komikindo--chapter-181',
+        chapterNumber: '181',
+        readAt: new Date().toISOString(),
+      });
+      expect(hasComicUpdate(comic)).toBe(false);
+    });
+
+    it('matches reading history across different provider prefixes', () => {
+      const comic: ComicCardItem = {
+        id: 'softkomik--nano-machine',
+        title: 'Nano Machine',
+        coverUrl: 'https://example.com/nm.jpg',
+        type: 'manhwa',
+        latestChapter: 'Ch. 200',
+      };
+
+      toggleFavorite(comic);
+
+      // History was saved from komikindo provider
+      saveHistory({
+        mangaId: 'komikindo--nano-machine',
+        title: 'Nano Machine',
+        coverUrl: 'https://example.com/nm.jpg',
+        type: 'manhwa',
+        chapterId: 'komikindo--chapter-200',
+        chapterNumber: '200',
+        readAt: new Date().toISOString(),
+      });
+
+      // Must find the history entry via slug match and return false
+      expect(hasComicUpdate(comic)).toBe(false);
+    });
   });
 });

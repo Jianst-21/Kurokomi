@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isSoftkomikPromoBanner } from '@/app/api/image-proxy/route';
+import { isSoftkomikPromoBanner } from '@/lib/security';
 
 describe('Softkomik Banner Interceptor in Image Proxy', () => {
   it('detects promotional trap banner by exact byte size (213,850 bytes)', () => {

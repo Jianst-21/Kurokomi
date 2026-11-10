@@ -7,7 +7,7 @@ import { extractChapterNumFromTextOrSlug } from './aggregator';
 
 export const KOMIKINDO_BASE = 'https://komikindo.ch';
 const USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-const FETCH_TIMEOUT_MS = 4000;
+const FETCH_TIMEOUT_MS = 6000;
 
 export function parseKomikindoSearchResults(html: string): ComicCardItem[] {
   const items: ComicCardItem[] = [];
@@ -152,7 +152,7 @@ export function parseKomikindoLatestUpdates(html: string): ComicCardItem[] {
 }
 
 export async function fetchKomikindoLatest(
-  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'manhwa',
+  type: 'manga' | 'manhwa' | 'manhua' | 'all' = 'all',
   page: number = 1,
   limit: number = 10
 ): Promise<ComicCardItem[]> {
@@ -177,7 +177,25 @@ export async function fetchKomikindoLatest(
 
     if (!res.ok) return [];
     const html = await res.text();
-    const all = parseKomikindoLatestUpdates(html);
+    let all = parseKomikindoLatestUpdates(html);
+
+    if (pageOffset + limit > all.length) {
+      const nextUrl = `${KOMIKINDO_BASE}/${path}/page/${komikindoPage + 1}/`;
+      try {
+        const nextRes = await fetch(nextUrl, {
+          headers: { 'User-Agent': USER_AGENT },
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+          next: { revalidate: 60 },
+        });
+        if (nextRes.ok) {
+          const nextHtml = await nextRes.text();
+          all = [...all, ...parseKomikindoLatestUpdates(nextHtml)];
+        }
+      } catch {
+        // ignore next page error
+      }
+    }
+
     return all.slice(pageOffset, pageOffset + limit);
   } catch (e) {
     console.error('fetchKomikindoLatest error:', e);

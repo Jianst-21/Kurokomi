@@ -8,7 +8,8 @@ import { getSavedLatestSectionState, saveLatestSectionState, isFavorite, updateF
 import { HorizontalComicCard } from './HorizontalComicCard';
 import { CleanPagination } from './CleanPagination';
 
-const TYPES: Array<{ id: 'manhwa' | 'manga' | 'manhua'; label: string }> = [
+const TYPES: Array<{ id: 'all' | 'manhwa' | 'manga' | 'manhua'; label: string }> = [
+  { id: 'all', label: 'Semua' },
   { id: 'manhwa', label: 'Manhwa' },
   { id: 'manga', label: 'Manga' },
   { id: 'manhua', label: 'Manhua' },
@@ -16,15 +17,16 @@ const TYPES: Array<{ id: 'manhwa' | 'manga' | 'manhua'; label: string }> = [
 
 export function LatestUpdatesSection() {
   const initial = getSavedLatestSectionState();
-  const [activeType, setActiveType] = useState<'manhwa' | 'manga' | 'manhua'>(initial.type);
+  const [activeType, setActiveType] = useState<'all' | 'manhwa' | 'manga' | 'manhua'>(initial.type);
   const [page, setPage] = useState<number>(initial.page);
   const [comics, setComics] = useState<ComicCardItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const sectionRef = useRef<HTMLElement>(null);
-  const cacheRef = useRef<Map<string, ComicCardItem[]>>(new Map());
-  const PAGE_LIMIT = 10;
+  const cacheRef = useRef<Map<string, { items: ComicCardItem[]; timestamp: number }>>(new Map());
+  const CACHE_TTL_MS = 60 * 1000;
+  const PAGE_LIMIT = 12;
 
   useEffect(() => {
     saveLatestSectionState(activeType, page);
@@ -37,10 +39,11 @@ export function LatestUpdatesSection() {
     }
   };
 
-  const loadLatestComics = useCallback(async (type: ComicType, pageNum: number) => {
+  const loadLatestComics = useCallback(async (type: ComicType, pageNum: number, forceRefresh = false) => {
     const cacheKey = `${type}-${pageNum}`;
-    if (cacheRef.current.has(cacheKey)) {
-      setComics(cacheRef.current.get(cacheKey)!);
+    const cached = cacheRef.current.get(cacheKey);
+    if (!forceRefresh && cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      setComics(cached.items);
       setIsLoading(false);
       setError(null);
       return;
@@ -52,7 +55,7 @@ export function LatestUpdatesSection() {
 
     try {
       const results = await fetchLatestComicsByType(type, PAGE_LIMIT, offset);
-      cacheRef.current.set(cacheKey, results);
+      cacheRef.current.set(cacheKey, { items: results, timestamp: Date.now() });
       setComics(results);
 
       // Automatically sync latestChapter to favorites if any of these comics are favorited
@@ -72,16 +75,20 @@ export function LatestUpdatesSection() {
   }, []);
 
   const handleRetry = () => {
-    const cacheKey = `${activeType}-${page}`;
-    cacheRef.current.delete(cacheKey);
-    loadLatestComics(activeType, page);
+    cacheRef.current.clear();
+    loadLatestComics(activeType, page, true);
+  };
+
+  const handleRefresh = () => {
+    cacheRef.current.clear();
+    loadLatestComics(activeType, page, true);
   };
 
   useEffect(() => {
     loadLatestComics(activeType, page);
   }, [activeType, page, loadLatestComics]);
 
-  const handleTabChange = (type: 'manhwa' | 'manga' | 'manhua') => {
+  const handleTabChange = (type: 'all' | 'manhwa' | 'manga' | 'manhua') => {
     if (type === activeType) return;
     setActiveType(type);
     setPage(1);
@@ -105,8 +112,17 @@ export function LatestUpdatesSection() {
         <div className="flex items-center gap-2">
           <span className="w-2 h-4 rounded-full bg-blue-500" />
           <h2 className="text-sm font-bold text-zinc-100">Update Komik Terbaru</h2>
+          <button
+            onClick={handleRefresh}
+            disabled={isLoading}
+            title="Segarkan Update"
+            aria-label="Segarkan Update"
+            className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-850 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-blue-400' : ''}`} />
+          </button>
         </div>
-        <span className="text-[11px] text-zinc-500">10 Komik per Halaman</span>
+        <span className="text-[11px] text-zinc-500">{PAGE_LIMIT} Komik per Halaman</span>
       </div>
 
       {/* 3 Tab Kategori (Manga / Manhwa / Manhua) */}

@@ -484,7 +484,7 @@ export async function fetchLatestComicsByType(
       .then(d => d.comics || [])
       .catch(() => []);
 
-    komikuPromise = fetch(`/api/komiku?action=latest&type=${type}&page=${page}`)
+    komikuPromise = fetch(`/api/komiku?action=latest&type=${type}&page=${page}&limit=${limit}`)
       .then(r => r.ok ? r.json() : { comics: [] })
       .then(d => d.comics || [])
       .catch(() => []);
@@ -498,7 +498,7 @@ export async function fetchLatestComicsByType(
       .catch(() => []);
 
     komikuPromise = import('./komiku')
-      .then(m => m.fetchKomikuLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page))
+      .then(m => m.fetchKomikuLatest(type as 'manga' | 'manhwa' | 'manhua' | 'all', page, limit))
       .catch(() => []);
   }
 

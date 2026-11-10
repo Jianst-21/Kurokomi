@@ -515,8 +515,12 @@ export function mergeLatestComics(
   return result.sort((a, b) => {
     const scoreA = parseDateScore(a.updatedAt);
     const scoreB = parseDateScore(b.updatedAt);
-    if (scoreA > 0 && scoreB > 0 && scoreA !== scoreB) {
-      return scoreB - scoreA;
+    if (scoreA > 0 && scoreB > 0) {
+      if (scoreA !== scoreB) return scoreB - scoreA;
+    } else if (scoreA > 0) {
+      return -1;
+    } else if (scoreB > 0) {
+      return 1;
     }
     return 0;
   });

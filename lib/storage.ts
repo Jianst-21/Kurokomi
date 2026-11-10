@@ -128,9 +128,35 @@ export function getHistory(): ReadingHistoryItem[] {
   }
 }
 
-export function getComicLastRead(mangaId: string): ReadingHistoryItem | undefined {
+export function getComicLastRead(mangaId: string, comicTitle?: string): ReadingHistoryItem | undefined {
   const list = getHistory();
-  return list.find(h => h.mangaId === mangaId);
+  if (!list.length) return undefined;
+
+  // 1. Exact match on mangaId
+  const exact = list.find(h => h.mangaId === mangaId);
+  if (exact) return exact;
+
+  // 2. Slug match without provider prefix
+  const cleanId = mangaId.replace(/^(?:komikindo|softkomik|komiku|mangadex|mangapill|qimanga)--/, '').toLowerCase();
+  const slugMatch = list.find(h => {
+    const hClean = h.mangaId.replace(/^(?:komikindo|softkomik|komiku|mangadex|mangapill|qimanga)--/, '').toLowerCase();
+    return hClean === cleanId;
+  });
+  if (slugMatch) return slugMatch;
+
+  // 3. Normalized title match if title provided
+  if (comicTitle) {
+    const norm = comicTitle.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (norm) {
+      const titleMatch = list.find(h => {
+        const hNorm = (h.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return hNorm === norm;
+      });
+      if (titleMatch) return titleMatch;
+    }
+  }
+
+  return undefined;
 }
 
 export function saveHistory(item: ReadingHistoryItem): void {
@@ -278,22 +304,22 @@ export function importUserData(jsonString: string): { success: boolean; count: n
 // Navigation & Pagination State Persistence (SessionStorage)
 // ---------------------------------------------------------
 
-export function getSavedLatestSectionState(): { type: 'manhwa' | 'manga' | 'manhua'; page: number } {
-  if (typeof window === 'undefined') return { type: 'manhwa', page: 1 };
+export function getSavedLatestSectionState(): { type: 'all' | 'manhwa' | 'manga' | 'manhua'; page: number } {
+  if (typeof window === 'undefined') return { type: 'all', page: 1 };
   try {
     const raw = sessionStorage.getItem(LATEST_PAGE_KEY);
-    if (!raw) return { type: 'manhwa', page: 1 };
+    if (!raw) return { type: 'all', page: 1 };
     const parsed = JSON.parse(raw);
     return {
-      type: ['manhwa', 'manga', 'manhua'].includes(parsed.type) ? parsed.type : 'manhwa',
+      type: ['all', 'manhwa', 'manga', 'manhua'].includes(parsed.type) ? parsed.type : 'all',
       page: typeof parsed.page === 'number' && parsed.page > 0 ? parsed.page : 1,
     };
   } catch {
-    return { type: 'manhwa', page: 1 };
+    return { type: 'all', page: 1 };
   }
 }
 
-export function saveLatestSectionState(type: 'manhwa' | 'manga' | 'manhua', page: number): void {
+export function saveLatestSectionState(type: 'all' | 'manhwa' | 'manga' | 'manhua', page: number): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.setItem(LATEST_PAGE_KEY, JSON.stringify({ type, page }));
@@ -402,6 +428,16 @@ export function clearChapterScrollPosition(chapterId: string): void {
 // Favorite Update Detection
 // ---------------------------------------------------------
 
+export function parseChapterNumberValue(chStr?: string): number | null {
+  if (!chStr) return null;
+  const match = chStr.match(/(?:chapter|ch|chap)?\.?\s*([0-9]+(?:\.[0-9]+)?)/i);
+  if (match) {
+    const num = parseFloat(match[1]);
+    return isNaN(num) ? null : num;
+  }
+  return null;
+}
+
 export function hasComicUpdate(comic: ComicCardItem): boolean {
   if (!comic || !isFavorite(comic.id)) return false;
   if (!comic.latestChapter && !comic.latestChapterId) return false;
@@ -411,20 +447,37 @@ export function hasComicUpdate(comic: ComicCardItem): boolean {
     return false;
   }
 
-  // 2. Check history entry
-  const lastRead = getComicLastRead(comic.id);
+  // 2. Check history entry (with title matching fallback)
+  const lastRead = getComicLastRead(comic.id, comic.title);
   if (!lastRead) {
-    // Not read yet, but in favorites with a latestChapter -> has unread update
+    // In favorites with a latestChapter, but never read -> consider it has unread update
     return true;
   }
 
-  // If lastRead matches latestChapterId or latestChapter title
+  // 3. If lastRead matches latestChapterId
   if (comic.latestChapterId && lastRead.chapterId === comic.latestChapterId) {
     return false;
   }
 
-  if (comic.latestChapter && lastRead.chapterNumber && lastRead.chapterNumber.trim().toLowerCase() === comic.latestChapter.trim().toLowerCase()) {
-    return false;
+  // 4. Robust numeric chapter comparison
+  const readNum = parseChapterNumberValue(lastRead.chapterNumber);
+  const latestNum = parseChapterNumberValue(comic.latestChapter);
+
+  if (readNum !== null && latestNum !== null) {
+    // If the chapter user has read is >= the latest chapter, they've already read it (or ahead)!
+    if (readNum >= latestNum) {
+      return false;
+    }
+    return true;
+  }
+
+  // 5. Fallback string comparison for non-numeric chapters (e.g. "Prologue", "End")
+  if (comic.latestChapter && lastRead.chapterNumber) {
+    const cleanRead = lastRead.chapterNumber.toLowerCase().replace(/^(?:chapter|ch|chap)\.?\s*/i, '').trim();
+    const cleanLatest = comic.latestChapter.toLowerCase().replace(/^(?:chapter|ch|chap)\.?\s*/i, '').trim();
+    if (cleanRead && cleanRead === cleanLatest) {
+      return false;
+    }
   }
 
   return true;

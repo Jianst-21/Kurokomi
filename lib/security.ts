@@ -231,3 +231,9 @@ export function isSafeContent(item: {
 
   return true;
 }
+
+export const SOFTKOMIK_TRAP_BANNER_SIZE = 213850;
+
+export function isSoftkomikPromoBanner(byteLength: number): boolean {
+  return byteLength === SOFTKOMIK_TRAP_BANNER_SIZE;
+}
