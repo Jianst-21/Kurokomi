@@ -39,6 +39,7 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
+              scroll={!isActive}
               className={`flex flex-col items-center gap-1 transition-colors relative ${
                 isActive ? 'text-blue-500 font-medium' : 'text-zinc-500 hover:text-zinc-300'
               }`}

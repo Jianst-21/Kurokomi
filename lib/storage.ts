@@ -8,6 +8,7 @@ const LATEST_PAGE_KEY = 'kurokomi_latest_page_v1';
 const TOP_PAGE_KEY = 'kurokomi_top_page_v1';
 const CHAPTER_SCROLL_PREFIX = 'kurokomi_ch_scroll_';
 const HOME_SCROLL_KEY = 'kurokomi_home_scroll_v1';
+const HISTORY_SCROLL_KEY = 'kurokomi_history_scroll_v1';
 const COMIC_COVERS_KEY = 'kurokomi_comic_covers_v1';
 
 function isBrowser(): boolean {
@@ -370,6 +371,25 @@ export function getSavedHomeScrollPosition(): number {
   if (typeof window === 'undefined') return 0;
   try {
     const raw = sessionStorage.getItem(HOME_SCROLL_KEY);
+    return raw ? Number(raw) || 0 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+export function saveHistoryScrollPosition(y: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(HISTORY_SCROLL_KEY, String(Math.max(0, Math.round(y))));
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedHistoryScrollPosition(): number {
+  if (typeof window === 'undefined') return 0;
+  try {
+    const raw = sessionStorage.getItem(HISTORY_SCROLL_KEY);
     return raw ? Number(raw) || 0 : 0;
   } catch {
     return 0;

@@ -19,6 +19,8 @@ import {
   saveTopSectionState,
   saveHomeScrollPosition,
   getSavedHomeScrollPosition,
+  saveHistoryScrollPosition,
+  getSavedHistoryScrollPosition,
   saveChapterScrollPosition,
   getSavedChapterScrollPosition,
   clearChapterScrollPosition,
@@ -215,6 +217,10 @@ describe('LocalStorage Helper', () => {
     // 3. Home scroll position
     saveHomeScrollPosition(450);
     expect(getSavedHomeScrollPosition()).toBe(450);
+
+    // 3b. History scroll position
+    saveHistoryScrollPosition(680);
+    expect(getSavedHistoryScrollPosition()).toBe(680);
 
     // 4. Chapter scroll position
     saveChapterScrollPosition('chapter-abc', 1250, 4);

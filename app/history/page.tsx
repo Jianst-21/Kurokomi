@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Clock, Trash2, Play, BookOpen, Compass, X } from 'lucide-react';
 import { ReadingHistoryItem } from '@/lib/types';
-import { getHistory, clearHistory, removeFromHistory } from '@/lib/storage';
+import { getHistory, clearHistory, removeFromHistory, saveHistoryScrollPosition, getSavedHistoryScrollPosition } from '@/lib/storage';
 import { BottomNav } from '@/components/BottomNav';
 import { DesktopNavbar } from '@/components/DesktopNavbar';
 
@@ -13,8 +13,39 @@ export default function HistoryPage() {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Enable browser native scroll restoration
+    if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'auto';
+    }
+
     setMounted(true);
-    setHistory(getHistory());
+    const items = getHistory();
+    setHistory(items);
+
+    // Restore saved scroll position after elements mount
+    const savedY = getSavedHistoryScrollPosition();
+    if (savedY > 0) {
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: savedY, behavior: 'instant' });
+      });
+    }
+
+    // Save scroll position as user scrolls
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          saveHistoryScrollPosition(window.scrollY);
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleClearHistory = () => {

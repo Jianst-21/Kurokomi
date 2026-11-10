@@ -85,6 +85,7 @@ export function DesktopNavbar() {
               <Link
                 key={item.href}
                 href={item.href}
+                scroll={!isActive}
                 className={`text-sm transition-colors relative flex items-center gap-1.5 ${
                   isActive
                     ? 'text-blue-500 font-semibold'
