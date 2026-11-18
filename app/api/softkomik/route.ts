@@ -10,7 +10,7 @@ import {
 } from '@/lib/softkomik';
 
 const CACHE_HEADERS = {
-  'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=86400',
+  'Cache-Control': 'public, s-maxage=60, max-age=60, stale-while-revalidate=120',
 };
 
 const NO_STORE_HEADERS = {
@@ -24,6 +24,8 @@ const LATEST_CACHE_HEADERS = {
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const action = searchParams.get('action');
+  const isRefresh = searchParams.get('refresh') === 'true';
+  const effectiveCacheHeaders = isRefresh ? NO_STORE_HEADERS : CACHE_HEADERS;
 
   try {
     if (action === 'search' || action === 'slug') {
@@ -33,11 +35,11 @@ export async function GET(req: NextRequest) {
 
       if (searchParams.get('slugOnly') === 'true' || action === 'slug') {
         const slug = await findSoftkomikSlug(q, altTitles);
-        return NextResponse.json({ slug }, { headers: CACHE_HEADERS });
+        return NextResponse.json({ slug }, { headers: effectiveCacheHeaders });
       }
 
       const comics = await searchSoftkomik(q);
-      return NextResponse.json({ comics }, { headers: CACHE_HEADERS });
+      return NextResponse.json({ comics }, { headers: effectiveCacheHeaders });
     }
 
     if (action === 'detail') {
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
       const detail = await fetchSoftkomikDetail(slug);
       return NextResponse.json(
         { detail },
-        { headers: detail ? CACHE_HEADERS : NO_STORE_HEADERS }
+        { headers: detail ? effectiveCacheHeaders : NO_STORE_HEADERS }
       );
     }
 
@@ -57,7 +59,7 @@ export async function GET(req: NextRequest) {
       const page = clampInteger(searchParams.get('page'), 1, 500, 1);
       const limit = clampInteger(searchParams.get('limit'), 1, 50, 10);
       const comics = await fetchSoftkomikLatest(type, page, limit);
-      return NextResponse.json({ comics }, { headers: LATEST_CACHE_HEADERS });
+      return NextResponse.json({ comics }, { headers: isRefresh ? NO_STORE_HEADERS : LATEST_CACHE_HEADERS });
     }
 
     if (action === 'chapters') {
@@ -68,7 +70,7 @@ export async function GET(req: NextRequest) {
       const chapters = await fetchSoftkomikChapters(slug);
       return NextResponse.json(
         { chapters },
-        { headers: chapters.length > 0 ? CACHE_HEADERS : NO_STORE_HEADERS }
+        { headers: chapters.length > 0 ? effectiveCacheHeaders : NO_STORE_HEADERS }
       );
     }
 

@@ -86,6 +86,15 @@ export function LatestUpdatesSection() {
   };
 
   useEffect(() => {
+    const onGlobalRefresh = () => {
+      cacheRef.current.clear();
+      loadLatestComics(activeType, page, true);
+    };
+    window.addEventListener('kurokomi_refresh_home', onGlobalRefresh);
+    return () => window.removeEventListener('kurokomi_refresh_home', onGlobalRefresh);
+  }, [activeType, page, loadLatestComics]);
+
+  useEffect(() => {
     loadLatestComics(activeType, page);
   }, [activeType, page, loadLatestComics]);
 

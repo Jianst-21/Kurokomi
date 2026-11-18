@@ -417,9 +417,17 @@ export function mergeLatestComics(
     const normAliases = new Set<string>();
     for (const a of rawAliases) {
       const norm = normalizeTitle(a);
-      if (norm) normAliases.add(norm);
+      if (norm) {
+        normAliases.add(norm);
+        normAliases.add(norm.replace(/\s+/g, ''));
+        normAliases.add(norm.replace(/([a-z])\1+/g, '$1').replace(/\s+/g, ''));
+      }
       const clean = cleanComicAlias(a);
-      if (clean) normAliases.add(clean);
+      if (clean) {
+        normAliases.add(clean);
+        normAliases.add(clean.replace(/\s+/g, ''));
+        normAliases.add(clean.replace(/([a-z])\1+/g, '$1').replace(/\s+/g, ''));
+      }
     }
 
     const matchingClusters: Cluster[] = [];
@@ -542,9 +550,17 @@ export function deduplicateComics(comics: ComicCardItem[]): ComicCardItem[] {
     const normAliases = new Set<string>();
     for (const a of rawAliases) {
       const norm = normalizeTitle(a);
-      if (norm) normAliases.add(norm);
+      if (norm) {
+        normAliases.add(norm);
+        normAliases.add(norm.replace(/\s+/g, ''));
+        normAliases.add(norm.replace(/([a-z])\1+/g, '$1').replace(/\s+/g, ''));
+      }
       const clean = cleanComicAlias(a);
-      if (clean) normAliases.add(clean);
+      if (clean) {
+        normAliases.add(clean);
+        normAliases.add(clean.replace(/\s+/g, ''));
+        normAliases.add(clean.replace(/([a-z])\1+/g, '$1').replace(/\s+/g, ''));
+      }
     }
 
     const matchingClusters: Cluster[] = [];
@@ -922,11 +938,21 @@ async function resolveBaseComicDetail(id: string): Promise<ComicDetail | null> {
 
 const detailMemoryCache = new Map<string, { data: ComicDetail; exp: number }>();
 const chaptersMemoryCache = new Map<string, { data: { idChapters: ChapterItem[]; enChapters: ChapterItem[] }; exp: number }>();
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 1000; // 1 minute shortened cache
 
-export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail | null> {
+export function clearUnifiedComicCache(id?: string): void {
+  if (id) {
+    detailMemoryCache.delete(id);
+    chaptersMemoryCache.delete(id);
+  } else {
+    detailMemoryCache.clear();
+    chaptersMemoryCache.clear();
+  }
+}
+
+export async function fetchUnifiedComicDetail(id: string, forceRefresh = false): Promise<ComicDetail | null> {
   const isBrowser = isClientBrowser();
-  if (isBrowser) {
+  if (isBrowser && !forceRefresh) {
     const cached = detailMemoryCache.get(id);
     if (cached && cached.exp > Date.now()) {
       return cached.data;
@@ -943,19 +969,22 @@ export async function fetchUnifiedComicDetail(id: string): Promise<ComicDetail |
   return enriched;
 }
 
-export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
+export async function fetchUnifiedChapters(comic: ComicDetail, forceRefresh = false): Promise<{
   idChapters: ChapterItem[];
   enChapters: ChapterItem[];
 }> {
   const isBrowser = isClientBrowser();
   const id = comic.id;
 
-  if (isBrowser) {
+  if (isBrowser && !forceRefresh) {
     const cached = chaptersMemoryCache.get(id);
     if (cached && cached.exp > Date.now()) {
       return cached.data;
     }
   }
+
+  const refreshParam = forceRefresh ? '&refresh=true' : '';
+  const fetchOpts: RequestInit | undefined = forceRefresh ? { cache: 'no-store' } : undefined;
 
   let komikuPromise: Promise<ChapterItem[]> = Promise.resolve([]);
   let komikindoPromise: Promise<ChapterItem[]> = Promise.resolve([]);
@@ -968,7 +997,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   if (id.startsWith('komiku--')) {
     const slug = id.replace(/^komiku--/, '');
     komikuPromise = isBrowser
-      ? fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}`)
+      ? fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(slug)}${refreshParam}`, fetchOpts)
           .then(r => r.ok ? r.json() : { chapters: [] })
           .then(d => d.chapters || [])
           .catch(() => [])
@@ -977,11 +1006,11 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
     // Search Komiku by title + altTitles
     const altParam = (comic.altTitles || []).slice(0, 10).join('|');
     komikuPromise = isBrowser
-      ? fetch(`/api/komiku?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`)
+      ? fetch(`/api/komiku?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true${refreshParam}`, fetchOpts)
           .then(r => r.ok ? r.json() : { slug: null })
           .then(async d => {
             if (!d.slug) return [];
-            const cr = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(d.slug)}`);
+            const cr = await fetch(`/api/komiku?action=chapters&slug=${encodeURIComponent(d.slug)}${refreshParam}`, fetchOpts);
             if (!cr.ok) return [];
             const cjson = await cr.json();
             return cjson.chapters || [];
@@ -997,7 +1026,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   if (id.startsWith('komikindo--')) {
     const slug = id.replace(/^komikindo--/, '');
     komikindoPromise = isBrowser
-      ? fetch(`/api/komikindo?action=chapters&slug=${encodeURIComponent(slug)}`)
+      ? fetch(`/api/komikindo?action=chapters&slug=${encodeURIComponent(slug)}${refreshParam}`, fetchOpts)
           .then(r => r.ok ? r.json() : { chapters: [] })
           .then(d => d.chapters || [])
           .catch(() => [])
@@ -1006,11 +1035,11 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
     // Search Komikindo by title + altTitles
     const altParam = (comic.altTitles || []).slice(0, 10).join('|');
     komikindoPromise = isBrowser
-      ? fetch(`/api/komikindo?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`)
+      ? fetch(`/api/komikindo?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true${refreshParam}`, fetchOpts)
           .then(r => r.ok ? r.json() : { slug: null })
           .then(async d => {
             if (!d.slug) return [];
-            const cr = await fetch(`/api/komikindo?action=chapters&slug=${encodeURIComponent(d.slug)}`);
+            const cr = await fetch(`/api/komikindo?action=chapters&slug=${encodeURIComponent(d.slug)}${refreshParam}`, fetchOpts);
             if (!cr.ok) return [];
             const cjson = await cr.json();
             return cjson.chapters || [];
@@ -1026,7 +1055,7 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
   if (id.startsWith('softkomik--')) {
     const slug = id.replace(/^softkomik--/, '');
     softkomikPromise = isBrowser
-      ? fetch(`/api/softkomik?action=chapters&slug=${encodeURIComponent(slug)}`)
+      ? fetch(`/api/softkomik?action=chapters&slug=${encodeURIComponent(slug)}${refreshParam}`, fetchOpts)
           .then(r => r.ok ? r.json() : { chapters: [] })
           .then(d => d.chapters || [])
           .catch(() => [])
@@ -1035,11 +1064,11 @@ export async function fetchUnifiedChapters(comic: ComicDetail): Promise<{
     // Search Softkomik by title + altTitles
     const altParam = (comic.altTitles || []).slice(0, 10).join('|');
     softkomikPromise = isBrowser
-      ? fetch(`/api/softkomik?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true`)
+      ? fetch(`/api/softkomik?action=search&title=${encodeURIComponent(comic.title)}&altTitles=${encodeURIComponent(altParam)}&slugOnly=true${refreshParam}`, fetchOpts)
           .then(r => r.ok ? r.json() : { slug: null })
           .then(async d => {
             if (!d.slug) return [];
-            const cr = await fetch(`/api/softkomik?action=chapters&slug=${encodeURIComponent(d.slug)}`);
+            const cr = await fetch(`/api/softkomik?action=chapters&slug=${encodeURIComponent(d.slug)}${refreshParam}`, fetchOpts);
             if (!cr.ok) return [];
             const cjson = await cr.json();
             return cjson.chapters || [];

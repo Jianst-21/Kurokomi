@@ -386,7 +386,7 @@ export async function searchKomikindo(query: string): Promise<ComicCardItem[]> {
     const res = await fetch(`${KOMIKINDO_BASE}/?s=${encodeURIComponent(query)}`, {
       headers: { 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
+      next: { revalidate: 60 },
     });
     if (!res.ok) return [];
     const html = await res.text();
@@ -402,7 +402,7 @@ export async function fetchKomikindoDetail(slug: string): Promise<ComicDetail | 
     const res = await fetch(`${KOMIKINDO_BASE}/komik/${slug}/`, {
       headers: { 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
+      next: { revalidate: 60 },
     });
     if (!res.ok) return null;
     const html = await res.text();
@@ -418,7 +418,7 @@ export async function fetchKomikindoChapters(slug: string): Promise<ChapterItem[
     const res = await fetch(`${KOMIKINDO_BASE}/komik/${slug}/`, {
       headers: { 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
+      next: { revalidate: 60 },
     });
     if (!res.ok) return [];
     const html = await res.text();
@@ -447,7 +447,7 @@ export async function fetchKomikindoChapterImages(chapterSlug: string): Promise<
   }
 }
 
-const SLUG_CACHE_TTL_MS = 15 * 60 * 1000;
+const SLUG_CACHE_TTL_MS = 2 * 60 * 1000;
 const komikindoSlugCache = new Map<string, { slug: string | null; exp: number }>();
 
 export async function findKomikindoSlug(title: string, altTitles?: string[]): Promise<string | null> {

@@ -16,7 +16,7 @@ import {
   Languages,
 } from 'lucide-react';
 import { ComicDetail, ChapterItem } from '@/lib/types';
-import { fetchUnifiedComicDetail, fetchUnifiedChapters } from '@/lib/aggregator';
+import { fetchUnifiedComicDetail, fetchUnifiedChapters, clearUnifiedComicCache } from '@/lib/aggregator';
 import { toggleFavorite, isFavorite, getComicLastRead, saveComicCoverCache, updateFavoriteComic } from '@/lib/storage';
 import { filterSafeGenres } from '@/lib/security';
 import { ChapterList } from '@/components/ChapterList';
@@ -73,21 +73,34 @@ export default function MangaDetailPage() {
   const [enChapters, setEnChapters] = useState<ChapterItem[]>([]);
   const [selectedLang, setSelectedLang] = useState<'id' | 'en'>('id');
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [favorited, setFavorited] = useState(false);
   const [lastReadChapter, setLastReadChapter] = useState<{ chapterId: string; chapterNumber: string } | null>(null);
   const [synopsisExpanded, setSynopsisExpanded] = useState(false);
 
-  const loadData = async () => {
+  // Pull to refresh states
+  const [pullY, setPullY] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const touchStartY = React.useRef(0);
+  const isPullingRef = React.useRef(false);
+
+  const loadData = async (force = false) => {
     if (!mangaId) return;
-    setIsLoading(true);
+    if (force) {
+      setIsRefreshing(true);
+      clearUnifiedComicCache(mangaId);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
 
     try {
-      const detailData = await fetchUnifiedComicDetail(mangaId);
+      const detailData = await fetchUnifiedComicDetail(mangaId, force);
       if (!detailData) {
         setError('Komik tidak ditemukan atau telah dihapus.');
         setIsLoading(false);
+        setIsRefreshing(false);
         return;
       }
 
@@ -110,7 +123,7 @@ export default function MangaDetailPage() {
       }
 
       // Fetch unified Indonesian chapters (merged Komiku + Komikindo + MangaDex) and English chapters
-      const { idChapters: mergedIdChapters, enChapters: mdEnChaps } = await fetchUnifiedChapters(detailData);
+      const { idChapters: mergedIdChapters, enChapters: mdEnChaps } = await fetchUnifiedChapters(detailData, force);
 
       setIdChapters(mergedIdChapters);
       setEnChapters(mdEnChaps);
@@ -136,11 +149,64 @@ export default function MangaDetailPage() {
       setError('Gagal memuat detail komik. Silakan coba kembali.');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      setPullY(0);
     }
   };
 
+  const handleRefresh = () => {
+    loadData(true);
+  };
+
+  // Pull-to-refresh swipe touch handler
   useEffect(() => {
-    loadData();
+    const handleTouchStart = (e: TouchEvent) => {
+      if (typeof window !== 'undefined' && window.scrollY <= 0 && !isRefreshing) {
+        touchStartY.current = e.touches[0].clientY;
+        isPullingRef.current = true;
+      } else {
+        isPullingRef.current = false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isPullingRef.current || isRefreshing) return;
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - touchStartY.current;
+      if (diff > 0 && typeof window !== 'undefined' && window.scrollY <= 0) {
+        const pull = Math.min(diff * 0.45, 80);
+        setPullY(pull);
+        setIsPulling(true);
+      } else {
+        setPullY(0);
+        setIsPulling(false);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (isPullingRef.current && pullY >= 45 && !isRefreshing) {
+        setPullY(45);
+        loadData(true);
+      } else {
+        setPullY(0);
+      }
+      isPullingRef.current = false;
+      setIsPulling(false);
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isRefreshing, pullY]);
+
+  useEffect(() => {
+    loadData(false);
   }, [mangaId]);
 
   const handleToggleFavorite = () => {
@@ -260,7 +326,28 @@ export default function MangaDetailPage() {
   const firstChapter = activeChapters.length > 0 ? activeChapters[activeChapters.length - 1] : null;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col pb-28 relative">
+      {/* Pull To Refresh Floating Banner */}
+      <div
+        style={{
+          transform: `translateY(${isRefreshing ? 52 : pullY}px)`,
+          opacity: pullY > 10 || isRefreshing ? 1 : 0,
+          transition: isPulling ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease',
+        }}
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pointer-events-none"
+      >
+        <div className="flex items-center gap-2 bg-zinc-900/95 border border-zinc-750 text-zinc-200 px-4 py-2 rounded-full shadow-2xl backdrop-blur-md text-xs font-semibold mt-2">
+          <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isRefreshing || pullY >= 45 ? 'animate-spin' : ''}`} />
+          <span>
+            {isRefreshing
+              ? 'Memperbarui data...'
+              : pullY >= 45
+              ? 'Lepaskan untuk memperbarui'
+              : 'Tarik ke bawah untuk memperbarui'}
+          </span>
+        </div>
+      </div>
+
       {/* Desktop Navigation */}
       <DesktopNavbar />
 
@@ -273,20 +360,31 @@ export default function MangaDetailPage() {
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <h1 className="text-xs font-bold text-zinc-200 line-clamp-1 max-w-[200px] text-center">
+        <h1 className="text-xs font-bold text-zinc-200 line-clamp-1 max-w-[180px] text-center">
           {comic.title}
         </h1>
-        <button
-          onClick={handleToggleFavorite}
-          aria-label="Favorit"
-          className={`p-1.5 rounded-lg border transition-colors ${
-            favorited
-              ? 'bg-blue-600 border-blue-500 text-white'
-              : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
-          }`}
-        >
-          <Bookmark className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            aria-label="Segarkan Chapter"
+            title="Segarkan Chapter"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
+          </button>
+          <button
+            onClick={handleToggleFavorite}
+            aria-label="Favorit"
+            className={`p-1.5 rounded-lg border transition-colors ${
+              favorited
+                ? 'bg-blue-600 border-blue-500 text-white'
+                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Bookmark className={`w-4 h-4 ${favorited ? 'fill-current' : ''}`} />
+          </button>
+        </div>
       </header>
 
       {/* Main Container */}
@@ -390,6 +488,16 @@ export default function MangaDetailPage() {
               >
                 <Bookmark className={`w-4 h-4 ${favorited ? 'fill-current text-blue-400' : ''}`} />
                 <span>{favorited ? 'Tersimpan di Favorit' : 'Tambah ke Favorit'}</span>
+              </button>
+
+              {/* Desktop Refresh Button */}
+              <button
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+                className="hidden md:flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-850 hover:text-white text-xs font-semibold transition-all"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
+                <span>{isRefreshing ? 'Memperbarui Chapter...' : 'Segarkan Chapter Terbaru'}</span>
               </button>
             </div>
 
@@ -540,6 +648,8 @@ export default function MangaDetailPage() {
                 chapters={activeChapters}
                 lastReadChapterId={lastReadChapter?.chapterId}
                 lang={selectedLang}
+                onRefresh={handleRefresh}
+                isRefreshing={isRefreshing}
               />
             ) : (
               <div className="p-6 rounded-xl bg-zinc-900/40 border border-zinc-800 text-center flex flex-col items-center gap-2">

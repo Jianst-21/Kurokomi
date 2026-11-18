@@ -265,7 +265,7 @@ export async function searchSoftkomik(query: string): Promise<ComicCardItem[]> {
   }
 }
 
-const SLUG_CACHE_TTL_MS = 15 * 60 * 1000;
+const SLUG_CACHE_TTL_MS = 2 * 60 * 1000;
 const softkomikSlugCache = new Map<string, { slug: string | null; exp: number }>();
 
 export async function findSoftkomikSlug(title: string, altTitles: string[] = []): Promise<string | null> {
@@ -323,7 +323,7 @@ export async function fetchSoftkomikDetail(slug: string): Promise<ComicDetail | 
       const res = await fetch(url, {
         headers: { 'User-Agent': USER_AGENT },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        next: { revalidate: 300 },
+        next: { revalidate: 60 },
       });
 
       if (!res.ok) return null;
@@ -403,7 +403,7 @@ export async function fetchSoftkomikChapters(slug: string): Promise<ChapterItem[
       const res = await fetch(url, {
         headers: { 'User-Agent': USER_AGENT },
         signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        next: { revalidate: 120 },
+        next: { revalidate: 60 },
       });
 
       if (!res.ok) return [];

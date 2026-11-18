@@ -1,14 +1,20 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Link from 'next/link';
-import { Search } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { DesktopNavbar } from '@/components/DesktopNavbar';
 import { LatestUpdatesSection } from '@/components/LatestUpdatesSection';
 import { TopComicsSection } from '@/components/TopComicsSection';
 
 export default function HomePage() {
+  const [pullY, setPullY] = useState(0);
+  const [isPulling, setIsPulling] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartY = useRef(0);
+  const isPullingRef = useRef(false);
+
   useEffect(() => {
     // Enable browser native scroll restoration to avoid synthetic scroll jumps during initial load
     if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
@@ -16,8 +22,82 @@ export default function HomePage() {
     }
   }, []);
 
+  // Pull-to-refresh swipe handler
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      if (typeof window !== 'undefined' && window.scrollY <= 0 && !isRefreshing) {
+        touchStartY.current = e.touches[0].clientY;
+        isPullingRef.current = true;
+      } else {
+        isPullingRef.current = false;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isPullingRef.current || isRefreshing) return;
+      const currentY = e.touches[0].clientY;
+      const diff = currentY - touchStartY.current;
+      if (diff > 0 && typeof window !== 'undefined' && window.scrollY <= 0) {
+        const pull = Math.min(diff * 0.45, 80);
+        setPullY(pull);
+        setIsPulling(true);
+      } else {
+        setPullY(0);
+        setIsPulling(false);
+      }
+    };
+
+    const handleTouchEnd = () => {
+      if (isPullingRef.current && pullY >= 45 && !isRefreshing) {
+        setPullY(45);
+        setIsRefreshing(true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('kurokomi_refresh_home'));
+        }
+        setTimeout(() => {
+          setIsRefreshing(false);
+          setPullY(0);
+        }, 800);
+      } else {
+        setPullY(0);
+      }
+      isPullingRef.current = false;
+      setIsPulling(false);
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isRefreshing, pullY]);
+
   return (
-    <div className="min-h-screen bg-zinc-950 pb-28 md:pb-12 text-zinc-100 flex flex-col">
+    <div className="min-h-screen bg-zinc-950 pb-28 md:pb-12 text-zinc-100 flex flex-col relative">
+      {/* Pull To Refresh Floating Banner */}
+      <div
+        style={{
+          transform: `translateY(${isRefreshing ? 52 : pullY}px)`,
+          opacity: pullY > 10 || isRefreshing ? 1 : 0,
+          transition: isPulling ? 'none' : 'transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.2s ease',
+        }}
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center pointer-events-none"
+      >
+        <div className="flex items-center gap-2 bg-zinc-900/95 border border-zinc-750 text-zinc-200 px-4 py-2 rounded-full shadow-2xl backdrop-blur-md text-xs font-semibold mt-2">
+          <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isRefreshing || pullY >= 45 ? 'animate-spin' : ''}`} />
+          <span>
+            {isRefreshing
+              ? 'Memperbarui update komik...'
+              : pullY >= 45
+              ? 'Lepaskan untuk memperbarui'
+              : 'Tarik ke bawah untuk memperbarui'}
+          </span>
+        </div>
+      </div>
       {/* Desktop Navbar (md+) */}
       <DesktopNavbar />
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowUpDown, BookOpen, Clock, ChevronRight, Check } from 'lucide-react';
+import { ArrowUpDown, BookOpen, Clock, ChevronRight, Check, RefreshCw } from 'lucide-react';
 import { ChapterItem } from '@/lib/types';
 import { sortChapters } from '@/lib/mangadex';
 import { formatChapterDate } from '@/lib/date';
@@ -13,9 +13,11 @@ interface ChapterListProps {
   chapters: ChapterItem[];
   lastReadChapterId?: string;
   lang?: string;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
-export function ChapterList({ mangaId, chapters, lastReadChapterId, lang }: ChapterListProps) {
+export function ChapterList({ mangaId, chapters, lastReadChapterId, lang, onRefresh, isRefreshing }: ChapterListProps) {
   const [ascending, setAscending] = useState(false);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
 
@@ -33,14 +35,28 @@ export function ChapterList({ mangaId, chapters, lastReadChapterId, lang }: Chap
           <BookOpen className="w-4 h-4 text-blue-400" />
           <span>Daftar Chapter ({chapters.length})</span>
         </div>
-        <button
-          onClick={() => setAscending(!ascending)}
-          aria-label="Ubah urutan"
-          className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
-        >
-          <ArrowUpDown className="w-3 h-3" />
-          <span>{ascending ? 'Terlama' : 'Terbaru'}</span>
-        </button>
+        <div className="flex items-center gap-1.5">
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              disabled={isRefreshing}
+              title="Segarkan Chapter"
+              aria-label="Segarkan Chapter"
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-blue-400' : ''}`} />
+              <span className="hidden sm:inline">Segarkan</span>
+            </button>
+          )}
+          <button
+            onClick={() => setAscending(!ascending)}
+            aria-label="Ubah urutan"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-medium text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <ArrowUpDown className="w-3 h-3" />
+            <span>{ascending ? 'Terlama' : 'Terbaru'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Chapters Stack */}

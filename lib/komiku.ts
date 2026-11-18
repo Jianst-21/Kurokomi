@@ -181,12 +181,24 @@ export function normalizeTitle(t: string): string {
     .trim();
 }
 
+function collapseRepeatedLetters(str: string): string {
+  return str.replace(/([a-z])\1+/g, '$1');
+}
+
 export function scoreTitleMatch(query: string, candidate: string): number {
   const qNorm = normalizeTitle(query);
   const cNorm = normalizeTitle(candidate);
 
   if (!qNorm || !cNorm) return 0;
   if (qNorm === cNorm) return 100;
+
+  // 1. No-space match (e.g. "naru nda" vs "narunda")
+  const qNoSpace = qNorm.replace(/\s+/g, '');
+  const cNoSpace = cNorm.replace(/\s+/g, '');
+  if (qNoSpace === cNoSpace) return 98;
+
+  // 2. Collapsed repeated letters match (e.g. "bizzare" vs "bizarre")
+  if (collapseRepeatedLetters(qNoSpace) === collapseRepeatedLetters(cNoSpace)) return 95;
 
   const qTokens = qNorm.split(' ').filter(Boolean);
   const cTokens = cNorm.split(' ').filter(Boolean);
@@ -206,21 +218,57 @@ export function scoreTitleMatch(query: string, candidate: string): number {
     return t;
   };
 
+  const isTokenFuzzyMatch = (t1: string, t2: string) => {
+    if (t1 === t2) return true;
+    if (collapseRepeatedLetters(t1) === collapseRepeatedLetters(t2)) return true;
+    if (Math.abs(t1.length - t2.length) <= 1 && Math.min(t1.length, t2.length) >= 5) {
+      let diff = 0;
+      let i = 0, j = 0;
+      while (i < t1.length && j < t2.length) {
+        if (t1[i] !== t2[j]) {
+          diff++;
+          if (diff > 1) return false;
+          if (t1.length > t2.length) i++;
+          else if (t1.length < t2.length) j++;
+          else { i++; j++; }
+        } else {
+          i++; j++;
+        }
+      }
+      return true;
+    }
+    return false;
+  };
+
   const qNormalizedTokens = qTokens.map(normalizeToken);
   const cNormalizedTokens = cTokens.map(normalizeToken);
 
   // Check if all query tokens are present
-  const allInCandidate = qNormalizedTokens.every(qt => cNormalizedTokens.includes(qt));
+  const allInCandidate = qNormalizedTokens.every(qt =>
+    cNormalizedTokens.some(ct => isTokenFuzzyMatch(qt, ct))
+  );
   if (allInCandidate) {
-    const extraTokens = cNormalizedTokens.length - qNormalizedTokens.length;
+    const extraTokens = Math.abs(cNormalizedTokens.length - qNormalizedTokens.length);
     if (extraTokens === 0) return 100;
     return Math.max(50, 95 - extraTokens * 10);
   }
 
-  const matched = qNormalizedTokens.filter(qt => cNormalizedTokens.includes(qt)).length;
+  let matched = 0;
+  const usedCIndices = new Set<number>();
+  for (const qt of qNormalizedTokens) {
+    for (let i = 0; i < cNormalizedTokens.length; i++) {
+      if (usedCIndices.has(i)) continue;
+      if (isTokenFuzzyMatch(qt, cNormalizedTokens[i])) {
+        matched++;
+        usedCIndices.add(i);
+        break;
+      }
+    }
+  }
+
   const matchRatio = matched / Math.max(qNormalizedTokens.length, cNormalizedTokens.length);
-  if (matchRatio >= 0.75) {
-    return Math.round(matchRatio * 90);
+  if (matchRatio >= 0.70) {
+    return Math.round(matchRatio * 95);
   }
 
   return Math.round((matched / qTokens.length) * 50);
@@ -766,7 +814,7 @@ export function generateSearchQueries(title: string, altTitles?: string[]): stri
   return Array.from(queries);
 }
 
-const SLUG_CACHE_TTL_MS = 15 * 60 * 1000;
+const SLUG_CACHE_TTL_MS = 2 * 60 * 1000;
 const komikuSlugCache = new Map<string, { slug: string | null; exp: number }>();
 
 export async function findKomikuSlug(title: string, altTitles?: string[]): Promise<string | null> {
@@ -802,7 +850,7 @@ export async function findKomikuSlug(title: string, altTitles?: string[]): Promi
         }
       }
 
-      if (highestScore >= 80 && bestSlug) {
+      if (highestScore >= 75 && bestSlug) {
         komikuSlugCache.set(cacheKey, { slug: bestSlug, exp: Date.now() + SLUG_CACHE_TTL_MS });
         return bestSlug;
       }
@@ -826,7 +874,7 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
         'Referer': `${KOMIKU_ASIA_BASE}/`,
       },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
+      next: { revalidate: 60 },
     });
     if (res.ok) {
       const comicData = await res.json();
@@ -847,7 +895,7 @@ export async function fetchKomikuChapters(slug: string): Promise<ChapterItem[]> 
     let res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-      next: { revalidate: 300 },
+      next: { revalidate: 60 },
     });
 
     if (!res.ok) {
